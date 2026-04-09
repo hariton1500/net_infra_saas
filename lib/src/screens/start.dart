@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
+import 'cable_lines_page.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
@@ -84,7 +85,7 @@ class _StartPageState extends State<StartPage> {
                   const SizedBox(height: 14),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final compact = constraints.maxWidth < 860;
+                      final compact = constraints.maxWidth < 1100;
                       final cards = [
                         _ActionCard(
                           icon: Icons.map_outlined,
@@ -111,6 +112,20 @@ class _StartPageState extends State<StartPage> {
                               MaterialPageRoute(
                                 builder: (context) =>
                                     MuffNotebookPage(controller: controller),
+                              ),
+                            );
+                          },
+                        ),
+                        _ActionCard(
+                          icon: Icons.timeline_rounded,
+                          title: 'Кабельные линии',
+                          description:
+                              'Отдельный раздел для маршрутов кабелей по координатам и отображения линий на карте.',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    CableLinesPage(controller: controller),
                               ),
                             );
                           },

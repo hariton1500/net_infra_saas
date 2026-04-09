@@ -130,7 +130,7 @@ class _AuthPageState extends State<AuthPage>
                     }
 
                     return Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Expanded(child: _BrandPanel(isCompact: false)),
                         const SizedBox(width: 24),
