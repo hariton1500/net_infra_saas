@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
+import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
 
@@ -87,15 +88,18 @@ class _StartPageState extends State<StartPage> {
                       final cards = [
                         _ActionCard(
                           icon: Icons.map_outlined,
-                          title: 'Карта PON боксов и кабелей',
+                          title: 'Карта инфраструктуры',
                           description:
-                              'Быстрый переход к карте инфраструктуры, маршрутам и точкам подключения.',
-                          onTap: () => _openModule(
-                            context,
-                            title: 'Карта PON боксов и кабелей',
-                            description:
-                                'Здесь будет основной экран карты инфраструктуры сотрудника.',
-                          ),
+                              'Быстрый переход к карте муфт, PON боксов, кабельных маршрутов и точек подключения.',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => InfrastructureMapPage(
+                                  controller: controller,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         _ActionCard(
                           icon: Icons.notes_rounded,
@@ -403,19 +407,6 @@ class _StartPageState extends State<StartPage> {
     }
   }
 
-  void _openModule(
-    BuildContext context, {
-    required String title,
-    required String description,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) =>
-            _ModulePlaceholderPage(title: title, description: description),
-      ),
-    );
-  }
-
   String _formatDate(DateTime value) {
     final day = value.day.toString().padLeft(2, '0');
     final month = value.month.toString().padLeft(2, '0');
@@ -616,49 +607,6 @@ class _InfoRow extends StatelessWidget {
             child: Text(tag),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ModulePlaceholderPage extends StatelessWidget {
-  const _ModulePlaceholderPage({
-    required this.title,
-    required this.description,
-  });
-
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(description),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -80,6 +80,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Map<String, dynamic>? _selectedCabinet;
   int? _selectedCableId;
   double _mapZoom = 14;
+  String _selectedTileLayerId = 'osm';
   Timer? _syncTimer;
 
   static int _nextCabinetId = 1;
@@ -1669,7 +1670,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         },
       ),
       children: [
-        openStreetMapTileLayer,
+        tileLayerById(_selectedTileLayerId),
         MarkerLayer(
           markers: cabinetsWithCoords
               .map((cabinet) {
@@ -2483,6 +2484,25 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       appBar: AppBar(
         title: const Text('Сетевые шкафы'),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Слой карты',
+            initialValue: _selectedTileLayerId,
+            onSelected: (value) {
+              setState(() {
+                _selectedTileLayerId = value;
+              });
+            },
+            icon: const Icon(Icons.layers_outlined),
+            itemBuilder: (context) => mapTileOptions
+                .map(
+                  (option) => CheckedPopupMenuItem<String>(
+                    value: option.id,
+                    checked: option.id == _selectedTileLayerId,
+                    child: Text(option.label),
+                  ),
+                )
+                .toList(growable: false),
+          ),
           IconButton(
             onPressed: _syncing ? null : _syncAll,
             icon: Icon(

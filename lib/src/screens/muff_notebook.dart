@@ -37,6 +37,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
 
   final MapController _mapController = MapController();
   double _mapZoom = 14;
+  String _selectedTileLayerId = 'osm';
 
   final GlobalKey _fiberAreaKey = GlobalKey();
   final Map<String, GlobalKey> _fiberKeys = {};
@@ -79,6 +80,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   };
 
   String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
+
+  bool _isPonBox(Map<String, dynamic> muff) => muff['is_pon_box'] == true;
 
   List<String> get _districtOptions {
     final districts =
@@ -391,6 +394,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     );
     double? lat = muff?['location_lat'] as double?;
     double? lng = muff?['location_lng'] as double?;
+    var isPonBox = _isPonBox(muff ?? const <String, dynamic>{});
 
     await showDialog<void>(
       context: context,
@@ -427,6 +431,20 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                           labelText: 'Комментарий',
                         ),
                         maxLines: 2,
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        value: isPonBox,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Это PON бокс'),
+                        subtitle: const Text(
+                          'Флаг сохраняется в карточке муфты и синхронизируется между сотрудниками.',
+                        ),
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            isPonBox = value;
+                          });
+                        },
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -482,6 +500,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       'district': districtController.text.trim(),
                       'location': locationController.text.trim(),
                       'comment': commentController.text.trim(),
+                      'is_pon_box': isPonBox,
                       'location_lat': lat,
                       'location_lng': lng,
                       'updated_at': DateTime.now(),
@@ -1191,6 +1210,25 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       appBar: AppBar(
         title: const Text('Блокнот муфт'),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Слой карты',
+            initialValue: _selectedTileLayerId,
+            onSelected: (value) {
+              setState(() {
+                _selectedTileLayerId = value;
+              });
+            },
+            icon: const Icon(Icons.layers_outlined),
+            itemBuilder: (context) => mapTileOptions
+                .map(
+                  (option) => CheckedPopupMenuItem<String>(
+                    value: option.id,
+                    checked: option.id == _selectedTileLayerId,
+                    child: Text(option.label),
+                  ),
+                )
+                .toList(growable: false),
+          ),
           IconButton(
             onPressed: _syncing ? null : _syncAll,
             icon: Icon(
@@ -1289,7 +1327,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         },
       ),
       children: [
-        openStreetMapTileLayer,
+        tileLayerById(_selectedTileLayerId),
         MarkerLayer(
           markers: muffsWithCoords.map((muff) {
             final point = LatLng(
@@ -1325,6 +1363,10 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                 muff['name'] ?? 'Без названия',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
+              if (_isPonBox(muff)) ...[
+                const SizedBox(height: 6),
+                _ponBadge(context),
+              ],
               const SizedBox(height: 6),
               if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
                 Text('Район: ${muff['district']}'),
@@ -1404,6 +1446,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             title: Text(muff['name'] ?? 'Без названия'),
             subtitle: Text(
               [
+                if (_isPonBox(muff)) 'Тип: PON бокс',
                 if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
                   'Район: ${muff['district']}',
                 if ((muff['location'] ?? '').toString().trim().isNotEmpty)
@@ -1498,6 +1541,10 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                         ),
                       ],
                     ),
+                    if (_isPonBox(muff)) ...[
+                      const SizedBox(height: 8),
+                      _ponBadge(context),
+                    ],
                     const SizedBox(height: 4),
                     if (((muff['district'] as String?)?.trim() ?? '')
                         .isNotEmpty)
@@ -1938,6 +1985,25 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             ...spliterItems,
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _ponBadge(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.secondary.withValues(alpha: 0.45),
+        ),
+      ),
+      child: const Text(
+        'PON бокс',
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );
   }

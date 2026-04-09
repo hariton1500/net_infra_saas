@@ -19,7 +19,7 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
   final MapController _mapController = MapController();
   LatLng? _selected;
   double _zoom = 16;
-  bool _satelliteLike = false;
+  String _selectedTileLayerId = 'osm';
 
   @override
   void initState() {
@@ -40,14 +40,24 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
             onPressed: _goToCurrentLocation,
             icon: const Icon(Icons.my_location_rounded),
           ),
-          IconButton(
-            tooltip: 'Сменить слой',
-            onPressed: () {
+          PopupMenuButton<String>(
+            tooltip: 'Выбрать слой карты',
+            initialValue: _selectedTileLayerId,
+            onSelected: (value) {
               setState(() {
-                _satelliteLike = !_satelliteLike;
+                _selectedTileLayerId = value;
               });
             },
-            icon: Icon(_satelliteLike ? Icons.layers : Icons.layers_outlined),
+            icon: const Icon(Icons.layers_outlined),
+            itemBuilder: (context) => mapTileOptions
+                .map(
+                  (option) => CheckedPopupMenuItem<String>(
+                    value: option.id,
+                    checked: option.id == _selectedTileLayerId,
+                    child: Text(option.label),
+                  ),
+                )
+                .toList(growable: false),
           ),
           IconButton(
             tooltip: 'Сохранить точку',
@@ -77,7 +87,7 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
               },
             ),
             children: [
-              _satelliteLike ? openTopoMapTileLayer : openStreetMapTileLayer,
+              tileLayerById(_selectedTileLayerId),
               if (_selected != null)
                 MarkerLayer(
                   markers: [
