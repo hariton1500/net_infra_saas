@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
+import '../core/employee_positions.dart';
 import 'cable_lines_page.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
+import 'profile_page.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({super.key, required this.controller});
@@ -20,6 +22,7 @@ class _StartPageState extends State<StartPage> {
   final _inviteFormKey = GlobalKey<FormState>();
   final _inviteEmailController = TextEditingController();
   String _selectedRole = 'member';
+  String _selectedPosition = employeePositionEngineer;
 
   @override
   void dispose() {
@@ -40,6 +43,19 @@ class _StartPageState extends State<StartPage> {
       appBar: AppBar(
         title: Text(membership?.companyName ?? 'Net Infra SaaS'),
         actions: [
+          IconButton(
+            tooltip: 'Профиль',
+            onPressed: controller.isBusy
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => ProfilePage(controller: controller),
+                      ),
+                    );
+                  },
+            icon: const Icon(Icons.person_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Обновить данные',
             onPressed: controller.isBusy ? null : _refreshTeam,
@@ -69,6 +85,7 @@ class _StartPageState extends State<StartPage> {
                 children: [
                   _HeroCard(
                     displayName: displayName,
+                    position: profile?.position ?? '',
                     companyName: membership?.companyName ?? 'Компания',
                     role: membership?.role ?? 'member',
                     slug: membership?.slug ?? '-',
@@ -245,6 +262,30 @@ class _StartPageState extends State<StartPage> {
               const Text(
                 'Приглашение создаётся по рабочему email. После регистрации с этим email сотрудник автоматически попадёт в компанию.',
               ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedPosition,
+                items: employeePositions
+                    .map(
+                      (position) => DropdownMenuItem<String>(
+                        value: position,
+                        child: Text(position),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: controller.isBusy
+                    ? null
+                    : (value) {
+                        if (value == null) {
+                          return;
+                        }
+
+                        setState(() {
+                          _selectedPosition = value;
+                        });
+                      },
+                decoration: const InputDecoration(labelText: 'Должность'),
+              ),
               const SizedBox(height: 18),
               TextFormField(
                 controller: _inviteEmailController,
@@ -326,7 +367,8 @@ class _StartPageState extends State<StartPage> {
                   title: invite.email,
                   subtitle:
                       'Код: ${invite.token} • ${_formatDate(invite.createdAt)}',
-                  tag: invite.role,
+                  role: invite.role,
+                  position: invite.position,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -361,7 +403,8 @@ class _StartPageState extends State<StartPage> {
                       ? member.email
                       : member.fullName,
                   subtitle: member.email,
-                  tag: member.role,
+                  role: member.role,
+                  position: member.position,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -380,9 +423,13 @@ class _StartPageState extends State<StartPage> {
       final message = await widget.controller.inviteEmployee(
         email: _inviteEmailController.text,
         role: _selectedRole,
+        position: _selectedPosition,
       );
 
       _inviteEmailController.clear();
+      setState(() {
+        _selectedPosition = employeePositionEngineer;
+      });
 
       if (!mounted) {
         return;
@@ -430,11 +477,21 @@ class _StartPageState extends State<StartPage> {
 
     return '$day.$month.${value.year} $hour:$minute';
   }
+
+  String _tagWithPosition(String role, String position) {
+    final normalizedPosition = position.trim();
+    if (normalizedPosition.isEmpty) {
+      return role;
+    }
+
+    return '$role • $normalizedPosition';
+  }
 }
 
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.displayName,
+    required this.position,
     required this.companyName,
     required this.role,
     required this.slug,
@@ -443,6 +500,7 @@ class _HeroCard extends StatelessWidget {
   });
 
   final String displayName;
+  final String position;
   final String companyName;
   final String role;
   final String slug;
@@ -478,6 +536,10 @@ class _HeroCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text('Роль: $role'),
                   const SizedBox(height: 6),
+                  if (position.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text('Position: $position'),
+                  ],
                   Text('Slug: $slug'),
                 ],
               ),
@@ -578,12 +640,14 @@ class _InfoRow extends StatelessWidget {
   const _InfoRow({
     required this.title,
     required this.subtitle,
-    required this.tag,
+    required this.role,
+    required this.position,
   });
 
   final String title;
   final String subtitle;
-  final String tag;
+  final String role;
+  final String position;
 
   @override
   Widget build(BuildContext context) {
@@ -613,15 +677,64 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF143456),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(tag),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _TagBadge(
+                label: _roleLabel(role),
+                backgroundColor: const Color(0xFF143456),
+                borderColor: const Color(0xFF2A648E),
+              ),
+              _TagBadge(
+                label: position,
+                backgroundColor: const Color(0xFF123524),
+                borderColor: const Color(0xFF35C886),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  String _roleLabel(String value) {
+    switch (value) {
+      case 'owner':
+        return 'Владелец';
+      case 'admin':
+        return 'Администратор';
+      case 'member':
+        return 'Сотрудник';
+      default:
+        return value;
+    }
+  }
+}
+
+class _TagBadge extends StatelessWidget {
+  const _TagBadge({
+    required this.label,
+    required this.backgroundColor,
+    required this.borderColor,
+  });
+
+  final String label;
+  final Color backgroundColor;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600),
       ),
     );
   }

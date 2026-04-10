@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_logger.dart';
+import '../core/employee_positions.dart';
 
 enum AuthView { loading, signedOut, needsCompanySetup, ready, error }
 
@@ -12,11 +13,13 @@ class ProfileData {
     required this.id,
     required this.email,
     required this.fullName,
+    required this.position,
   });
 
   final String id;
   final String email;
   final String fullName;
+  final String position;
 }
 
 class CompanyMembershipData {
@@ -39,12 +42,14 @@ class TeamMemberData {
     required this.email,
     required this.fullName,
     required this.role,
+    required this.position,
   });
 
   final String userId;
   final String email;
   final String fullName;
   final String role;
+  final String position;
 }
 
 class CompanyInviteData {
@@ -52,6 +57,7 @@ class CompanyInviteData {
     required this.id,
     required this.email,
     required this.role,
+    required this.position,
     required this.status,
     required this.token,
     required this.createdAt,
@@ -60,6 +66,7 @@ class CompanyInviteData {
   final String id;
   final String email;
   final String role;
+  final String position;
   final String status;
   final String token;
   final DateTime createdAt;
@@ -165,16 +172,19 @@ class AuthController extends ChangeNotifier {
 
   Future<String> signUp({
     required String fullName,
+    required String position,
     required String companyName,
     required String email,
     required String password,
   }) async {
     return _runBusy(() async {
+      _assertValidPosition(position);
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
         data: {
           'full_name': fullName.trim(),
+          'position': position.trim(),
           'company_name': companyName.trim(),
         },
       );
@@ -218,11 +228,17 @@ class AuthController extends ChangeNotifier {
   Future<String> inviteEmployee({
     required String email,
     required String role,
+    required String position,
   }) async {
     return _runBusy(() async {
+      _assertValidPosition(position);
       final response = await _client.rpc(
         'create_company_invite',
-        params: {'invited_email_input': email.trim(), 'role_input': role},
+        params: {
+          'invited_email_input': email.trim(),
+          'role_input': role,
+          'position_input': position.trim(),
+        },
       );
 
       await _loadCompanyData();
@@ -244,20 +260,55 @@ class AuthController extends ChangeNotifier {
     });
   }
 
+  Future<void> updateProfile({
+    required String fullName,
+    required String position,
+  }) async {
+    await _runBusy(() async {
+      _assertValidPosition(position);
+      final user = currentUser;
+      if (user == null) {
+        throw const AuthException('Authentication required');
+      }
+
+      final normalizedFullName = fullName.trim();
+      final normalizedPosition = position.trim();
+      final mergedMetadata = <String, dynamic>{
+        ...?user.userMetadata,
+        'full_name': normalizedFullName,
+        'position': normalizedPosition,
+      };
+
+      await _client.auth.updateUser(UserAttributes(data: mergedMetadata));
+      await _client.from('profiles').upsert({
+        'id': user.id,
+        'email': user.email,
+        'full_name': normalizedFullName,
+        'position': normalizedPosition,
+      });
+
+      _profile = await _fetchProfile(user);
+      await _loadCompanyData();
+      notifyListeners();
+    });
+  }
+
   Future<void> _syncProfileFromUser(User user) async {
     final fullName = _readString(user.userMetadata, 'full_name');
+    final position = _readString(user.userMetadata, 'position');
 
     await _client.from('profiles').upsert({
       'id': user.id,
       'email': user.email,
       if (fullName.isNotEmpty) 'full_name': fullName,
+      if (position.isNotEmpty) 'position': position,
     });
   }
 
   Future<ProfileData> _fetchProfile(User user) async {
     final response = await _client
         .from('profiles')
-        .select('id, email, full_name')
+        .select('id, email, full_name, position')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -266,6 +317,7 @@ class AuthController extends ChangeNotifier {
         id: user.id,
         email: user.email ?? '',
         fullName: _readString(user.userMetadata, 'full_name'),
+        position: _readString(user.userMetadata, 'position'),
       );
     }
 
@@ -275,6 +327,7 @@ class AuthController extends ChangeNotifier {
       id: data['id'] as String,
       email: (data['email'] as String?) ?? (user.email ?? ''),
       fullName: (data['full_name'] as String?) ?? '',
+      position: (data['position'] as String?) ?? '',
     );
   }
 
@@ -331,7 +384,7 @@ class AuthController extends ChangeNotifier {
     if (userIds.isNotEmpty) {
       final profilesResponse = await _client
           .from('profiles')
-          .select('id, email, full_name')
+          .select('id, email, full_name, position')
           .inFilter('id', userIds);
 
       profilesById = {
@@ -351,13 +404,14 @@ class AuthController extends ChangeNotifier {
             email: (profile['email'] as String?) ?? '',
             fullName: (profile['full_name'] as String?) ?? '',
             role: row['role'] as String,
+            position: (profile['position'] as String?) ?? '',
           );
         })
         .toList(growable: false);
 
     final invitesResponse = await _client
         .from('company_invites')
-        .select('id, invited_email, role, status, token, created_at')
+        .select('id, invited_email, role, position, status, token, created_at')
         .eq('company_id', membership.companyId)
         .eq('status', 'pending')
         .order('created_at', ascending: false);
@@ -370,6 +424,7 @@ class AuthController extends ChangeNotifier {
             id: row['id'] as String,
             email: row['invited_email'] as String,
             role: row['role'] as String,
+            position: (row['position'] as String?) ?? '',
             status: row['status'] as String,
             token: row['token'] as String,
             createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
@@ -419,6 +474,13 @@ class AuthController extends ChangeNotifier {
     }
 
     return error.toString();
+  }
+
+  void _assertValidPosition(String position) {
+    final normalizedPosition = position.trim();
+    if (!employeePositions.contains(normalizedPosition)) {
+      throw const AuthException('Unsupported position');
+    }
   }
 
   Future<T> _runBusy<T>(Future<T> Function() action) async {

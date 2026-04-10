@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
+import '../core/employee_positions.dart';
+import 'profile_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key, required this.controller});
@@ -16,6 +18,7 @@ class _DashboardPageState extends State<DashboardPage> {
   final _inviteFormKey = GlobalKey<FormState>();
   final _inviteEmailController = TextEditingController();
   String _selectedRole = 'member';
+  String _selectedPosition = employeePositionEngineer;
 
   @override
   void dispose() {
@@ -34,6 +37,19 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('Net Infra SaaS'),
         actions: [
+          IconButton(
+            tooltip: 'Профиль',
+            onPressed: controller.isBusy
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => ProfilePage(controller: controller),
+                      ),
+                    );
+                  },
+            icon: const Icon(Icons.person_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Обновить',
             onPressed: controller.isBusy ? null : _refreshTeam,
@@ -107,6 +123,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     title: 'Профиль',
                     lines: [
                       'Email: ${profile?.email ?? user?.email ?? '-'}',
+                      'Должность: ${profile?.position.isNotEmpty == true ? profile!.position : '-'}',
                       'Имя: ${profile?.fullName.isNotEmpty == true ? profile!.fullName : '-'}',
                     ],
                   ),
@@ -199,6 +216,30 @@ class _DashboardPageState extends State<DashboardPage> {
               const Text(
                 'Создайте приглашение по рабочему email. Сотрудник зарегистрируется с этим email и автоматически попадёт в компанию.',
               ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedPosition,
+                decoration: const InputDecoration(labelText: 'Должность'),
+                items: employeePositions
+                    .map(
+                      (position) => DropdownMenuItem<String>(
+                        value: position,
+                        child: Text(position),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: controller.isBusy
+                    ? null
+                    : (value) {
+                        if (value == null) {
+                          return;
+                        }
+
+                        setState(() {
+                          _selectedPosition = value;
+                        });
+                      },
+              ),
               const SizedBox(height: 18),
               TextFormField(
                 controller: _inviteEmailController,
@@ -281,7 +322,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       ? member.email
                       : member.fullName,
                   subtitle: member.email,
-                  trailing: member.role,
+                  role: member.role,
+                  position: member.position,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -315,7 +357,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   title: invite.email,
                   subtitle:
                       'Код: ${invite.token} • ${_formatDate(invite.createdAt)}',
-                  trailing: invite.role,
+                  role: invite.role,
+                  position: invite.position,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -334,9 +377,13 @@ class _DashboardPageState extends State<DashboardPage> {
       final message = await widget.controller.inviteEmployee(
         email: _inviteEmailController.text,
         role: _selectedRole,
+        position: _selectedPosition,
       );
 
       _inviteEmailController.clear();
+      setState(() {
+        _selectedPosition = employeePositionEngineer;
+      });
 
       if (!mounted) {
         return;
@@ -383,6 +430,15 @@ class _DashboardPageState extends State<DashboardPage> {
     final minute = value.minute.toString().padLeft(2, '0');
 
     return '$day.$month ${value.year} $hour:$minute';
+  }
+
+  String _tagWithPosition(String role, String position) {
+    final normalizedPosition = position.trim();
+    if (normalizedPosition.isEmpty) {
+      return role;
+    }
+
+    return '$role • $normalizedPosition';
   }
 }
 
@@ -465,12 +521,14 @@ class _PersonRow extends StatelessWidget {
   const _PersonRow({
     required this.title,
     required this.subtitle,
-    required this.trailing,
+    required this.role,
+    required this.position,
   });
 
   final String title;
   final String subtitle;
-  final String trailing;
+  final String role;
+  final String position;
 
   @override
   Widget build(BuildContext context) {
@@ -500,15 +558,64 @@ class _PersonRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF143456),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(trailing),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _TagBadge(
+                label: _roleLabel(role),
+                backgroundColor: const Color(0xFF143456),
+                borderColor: const Color(0xFF2A648E),
+              ),
+              _TagBadge(
+                label: position,
+                backgroundColor: const Color(0xFF123524),
+                borderColor: const Color(0xFF35C886),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  String _roleLabel(String value) {
+    switch (value) {
+      case 'owner':
+        return 'Владелец';
+      case 'admin':
+        return 'Администратор';
+      case 'member':
+        return 'Сотрудник';
+      default:
+        return value;
+    }
+  }
+}
+
+class _TagBadge extends StatelessWidget {
+  const _TagBadge({
+    required this.label,
+    required this.backgroundColor,
+    required this.borderColor,
+  });
+
+  final String label;
+  final Color backgroundColor;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600),
       ),
     );
   }

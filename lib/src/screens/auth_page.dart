@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
+import '../core/employee_positions.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, required this.controller});
@@ -25,6 +26,7 @@ class _AuthPageState extends State<AuthPage>
   final _signUpCompanyController = TextEditingController();
   final _signUpEmailController = TextEditingController();
   final _signUpPasswordController = TextEditingController();
+  String _selectedSignUpPosition = employeePositionEngineer;
 
   @override
   void initState() {
@@ -86,7 +88,7 @@ class _AuthPageState extends State<AuthPage>
                             ),
                             const SizedBox(height: 24),
                             SizedBox(
-                              height: 460,
+                              height: 540,
                               child: TabBarView(
                                 controller: _tabController,
                                 children: [
@@ -102,6 +104,12 @@ class _AuthPageState extends State<AuthPage>
                                     formKey: _signUpFormKey,
                                     fullNameController:
                                         _signUpFullNameController,
+                                    selectedPosition: _selectedSignUpPosition,
+                                    onPositionChanged: (value) {
+                                      setState(() {
+                                        _selectedSignUpPosition = value;
+                                      });
+                                    },
                                     companyController: _signUpCompanyController,
                                     emailController: _signUpEmailController,
                                     passwordController:
@@ -170,6 +178,7 @@ class _AuthPageState extends State<AuthPage>
     try {
       final message = await widget.controller.signUp(
         fullName: _signUpFullNameController.text,
+        position: _selectedSignUpPosition,
         companyName: _signUpCompanyController.text,
         email: _signUpEmailController.text,
         password: _signUpPasswordController.text,
@@ -433,6 +442,8 @@ class _SignUpForm extends StatelessWidget {
   const _SignUpForm({
     required this.formKey,
     required this.fullNameController,
+    required this.selectedPosition,
+    required this.onPositionChanged,
     required this.companyController,
     required this.emailController,
     required this.passwordController,
@@ -442,6 +453,8 @@ class _SignUpForm extends StatelessWidget {
 
   final GlobalKey<FormState> formKey;
   final TextEditingController fullNameController;
+  final String selectedPosition;
+  final ValueChanged<String> onPositionChanged;
   final TextEditingController companyController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
@@ -468,6 +481,24 @@ class _SignUpForm extends StatelessWidget {
             controller: fullNameController,
             decoration: const InputDecoration(labelText: 'Ваше имя'),
             validator: _validateRequired,
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: selectedPosition,
+            decoration: const InputDecoration(labelText: 'Должность'),
+            items: employeePositions
+                .map(
+                  (position) => DropdownMenuItem<String>(
+                    value: position,
+                    child: Text(position),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: (value) {
+              if (value != null) {
+                onPositionChanged(value);
+              }
+            },
           ),
           const SizedBox(height: 14),
           TextFormField(
