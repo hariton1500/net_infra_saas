@@ -96,6 +96,7 @@ class AuthController extends ChangeNotifier {
   List<CompanyInviteData> get pendingInvites => _pendingInvites;
   User? get currentUser => _client.auth.currentUser;
   SupabaseClient get client => _client;
+  bool get canAssignEmployeePosition => _membership?.role == 'owner';
   bool get canManageTeam {
     final role = _membership?.role;
     return role == 'owner' || role == 'admin';
@@ -231,13 +232,16 @@ class AuthController extends ChangeNotifier {
     required String position,
   }) async {
     return _runBusy(() async {
-      _assertValidPosition(position);
+      final normalizedPosition = canAssignEmployeePosition
+          ? position.trim()
+          : employeePositionEngineer;
+      _assertValidPosition(normalizedPosition);
       final response = await _client.rpc(
         'create_company_invite',
         params: {
           'invited_email_input': email.trim(),
           'role_input': role,
-          'position_input': position.trim(),
+          'position_input': normalizedPosition,
         },
       );
 

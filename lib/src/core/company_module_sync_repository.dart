@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -36,11 +38,13 @@ class CompanyModuleSyncRepository {
     Set<int>? skipReplaceIds,
   }) async {
     final merged = localRecords.map(_cloneRecord).toList(growable: true);
-    final response = await _client
-        .from('company_module_records')
-        .select('record_id, payload, deleted, updated_at')
-        .eq('company_id', companyId)
-        .eq('module_key', moduleKey);
+    final response = await _runWithRetry(
+      () => _client
+          .from('company_module_records')
+          .select('record_id, payload, deleted, updated_at')
+          .eq('company_id', companyId)
+          .eq('module_key', moduleKey),
+    );
 
     final rows = (response as List<dynamic>).cast<Map<String, dynamic>>();
 
@@ -111,30 +115,34 @@ class CompanyModuleSyncRepository {
       final timestamp = updatedAt.toIso8601String();
 
       if (record['deleted'] == true) {
-        await _client.from('company_module_records').upsert({
-          'company_id': companyId,
-          'module_key': moduleKey,
-          'record_id': recordId,
-          'payload': null,
-          'deleted': true,
-          'updated_at': timestamp,
-          'synced_at': DateTime.now().toUtc().toIso8601String(),
-          'updated_by_user_id': _client.auth.currentUser?.id,
-        }, onConflict: 'company_id,module_key,record_id').select();
+        await _runWithRetry(
+          () => _client.from('company_module_records').upsert({
+            'company_id': companyId,
+            'module_key': moduleKey,
+            'record_id': recordId,
+            'payload': null,
+            'deleted': true,
+            'updated_at': timestamp,
+            'synced_at': DateTime.now().toUtc().toIso8601String(),
+            'updated_by_user_id': _client.auth.currentUser?.id,
+          }, onConflict: 'company_id,module_key,record_id').select(),
+        );
         merged.removeWhere((entry) => entry['id'] == recordId);
         continue;
       }
 
-      await _client.from('company_module_records').upsert({
-        'company_id': companyId,
-        'module_key': moduleKey,
-        'record_id': recordId,
-        'payload': _payloadForDb(record),
-        'deleted': false,
-        'updated_at': timestamp,
-        'synced_at': DateTime.now().toUtc().toIso8601String(),
-        'updated_by_user_id': _client.auth.currentUser?.id,
-      }, onConflict: 'company_id,module_key,record_id').select();
+      await _runWithRetry(
+        () => _client.from('company_module_records').upsert({
+          'company_id': companyId,
+          'module_key': moduleKey,
+          'record_id': recordId,
+          'payload': _payloadForDb(record),
+          'deleted': false,
+          'updated_at': timestamp,
+          'synced_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_by_user_id': _client.auth.currentUser?.id,
+        }, onConflict: 'company_id,module_key,record_id').select(),
+      );
 
       final index = merged.indexWhere((entry) => entry['id'] == recordId);
       if (index != -1) {
@@ -228,5 +236,37 @@ class CompanyModuleSyncRepository {
     }
 
     return DateTime.tryParse(value?.toString() ?? '') ?? DateTime(1970);
+  }
+
+  Future<T> _runWithRetry<T>(
+    Future<T> Function() action, {
+    int attempts = 3,
+  }) async {
+    Object? lastError;
+    StackTrace? lastStackTrace;
+
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      try {
+        return await action();
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastStackTrace = stackTrace;
+        final shouldRetry =
+            attempt < attempts - 1 && _isTransientNetworkError(error);
+        if (!shouldRetry) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+      }
+    }
+
+    Error.throwWithStackTrace(lastError!, lastStackTrace!);
+  }
+
+  bool _isTransientNetworkError(Object error) {
+    return error is HandshakeException ||
+        error is SocketException ||
+        error is HttpException ||
+        error is TimeoutException;
   }
 }

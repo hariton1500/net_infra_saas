@@ -44,7 +44,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 : () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => ProfilePage(controller: controller),
+                        builder: (context) =>
+                            ProfilePage(controller: controller),
                       ),
                     );
                   },
@@ -197,6 +198,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildInviteCard(BuildContext context) {
     final controller = widget.controller;
+    final canAssignPosition = controller.canAssignEmployeePosition;
 
     return Card(
       child: Padding(
@@ -217,29 +219,34 @@ class _DashboardPageState extends State<DashboardPage> {
                 'Создайте приглашение по рабочему email. Сотрудник зарегистрируется с этим email и автоматически попадёт в компанию.',
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedPosition,
-                decoration: const InputDecoration(labelText: 'Должность'),
-                items: employeePositions
-                    .map(
-                      (position) => DropdownMenuItem<String>(
-                        value: position,
-                        child: Text(position),
-                      ),
-                    )
-                    .toList(growable: false),
-                onChanged: controller.isBusy
-                    ? null
-                    : (value) {
-                        if (value == null) {
-                          return;
-                        }
+              if (canAssignPosition)
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedPosition,
+                  decoration: const InputDecoration(labelText: 'Должность'),
+                  items: employeePositions
+                      .map(
+                        (position) => DropdownMenuItem<String>(
+                          value: position,
+                          child: Text(position),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: controller.isBusy
+                      ? null
+                      : (value) {
+                          if (value == null) {
+                            return;
+                          }
 
-                        setState(() {
-                          _selectedPosition = value;
-                        });
-                      },
-              ),
+                          setState(() {
+                            _selectedPosition = value;
+                          });
+                        },
+                )
+              else
+                const Text(
+                  'Должность назначает только владелец компании. Для сотрудников по умолчанию будет использована стандартная должность.',
+                ),
               const SizedBox(height: 18),
               TextFormField(
                 controller: _inviteEmailController,
@@ -431,15 +438,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return '$day.$month ${value.year} $hour:$minute';
   }
-
-  String _tagWithPosition(String role, String position) {
-    final normalizedPosition = position.trim();
-    if (normalizedPosition.isEmpty) {
-      return role;
-    }
-
-    return '$role • $normalizedPosition';
-  }
 }
 
 class _MetricCard extends StatelessWidget {
@@ -613,10 +611,7 @@ class _TagBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: borderColor),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 }

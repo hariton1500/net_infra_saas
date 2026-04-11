@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
-import 'cable_lines_page.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
@@ -50,7 +49,8 @@ class _StartPageState extends State<StartPage> {
                 : () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => ProfilePage(controller: controller),
+                        builder: (context) =>
+                            ProfilePage(controller: controller),
                       ),
                     );
                   },
@@ -137,12 +137,13 @@ class _StartPageState extends State<StartPage> {
                           icon: Icons.timeline_rounded,
                           title: 'Кабельные линии',
                           description:
-                              'Отдельный раздел для маршрутов кабелей по координатам и отображения линий на карте.',
+                              'Построение и редактирование кабельных маршрутов теперь выполняется прямо на карте инфраструктуры.',
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    CableLinesPage(controller: controller),
+                                builder: (context) => InfrastructureMapPage(
+                                  controller: controller,
+                                ),
                               ),
                             );
                           },
@@ -243,6 +244,7 @@ class _StartPageState extends State<StartPage> {
 
   Widget _buildInviteCard(BuildContext context) {
     final controller = widget.controller;
+    final canAssignPosition = controller.canAssignEmployeePosition;
 
     return Card(
       child: Padding(
@@ -263,29 +265,34 @@ class _StartPageState extends State<StartPage> {
                 'Приглашение создаётся по рабочему email. После регистрации с этим email сотрудник автоматически попадёт в компанию.',
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedPosition,
-                items: employeePositions
-                    .map(
-                      (position) => DropdownMenuItem<String>(
-                        value: position,
-                        child: Text(position),
-                      ),
-                    )
-                    .toList(growable: false),
-                onChanged: controller.isBusy
-                    ? null
-                    : (value) {
-                        if (value == null) {
-                          return;
-                        }
+              if (canAssignPosition)
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedPosition,
+                  items: employeePositions
+                      .map(
+                        (position) => DropdownMenuItem<String>(
+                          value: position,
+                          child: Text(position),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: controller.isBusy
+                      ? null
+                      : (value) {
+                          if (value == null) {
+                            return;
+                          }
 
-                        setState(() {
-                          _selectedPosition = value;
-                        });
-                      },
-                decoration: const InputDecoration(labelText: 'Должность'),
-              ),
+                          setState(() {
+                            _selectedPosition = value;
+                          });
+                        },
+                  decoration: const InputDecoration(labelText: 'Должность'),
+                )
+              else
+                const Text(
+                  'Должность назначает только владелец компании. Для сотрудников по умолчанию будет использована стандартная должность.',
+                ),
               const SizedBox(height: 18),
               TextFormField(
                 controller: _inviteEmailController,
@@ -399,10 +406,11 @@ class _StartPageState extends State<StartPage> {
             else
               for (final member in team) ...[
                 _InfoRow(
-                  title: member.fullName.isEmpty
-                      ? member.email
-                      : member.fullName,
-                  subtitle: member.email,
+                  title: _memberTitle(member.fullName, member.email),
+                  subtitle: _memberSubtitle(
+                    email: member.email,
+                    position: member.position,
+                  ),
                   role: member.role,
                   position: member.position,
                 ),
@@ -478,13 +486,27 @@ class _StartPageState extends State<StartPage> {
     return '$day.$month.${value.year} $hour:$minute';
   }
 
-  String _tagWithPosition(String role, String position) {
-    final normalizedPosition = position.trim();
-    if (normalizedPosition.isEmpty) {
-      return role;
+  String _memberTitle(String fullName, String email) {
+    final normalizedName = fullName.trim();
+    final normalizedEmail = email.trim();
+    if (normalizedName.isNotEmpty) {
+      return normalizedName;
     }
+    if (normalizedEmail.isNotEmpty) {
+      return normalizedEmail;
+    }
+    return 'Сотрудник без имени';
+  }
 
-    return '$role • $normalizedPosition';
+  String _memberSubtitle({required String email, required String position}) {
+    final parts = <String>[
+      if (email.trim().isNotEmpty) email.trim(),
+      if (position.trim().isNotEmpty) position.trim(),
+    ];
+    if (parts.isEmpty) {
+      return 'Профиль сотрудника';
+    }
+    return parts.join(' • ');
   }
 }
 
@@ -535,11 +557,11 @@ class _HeroCard extends StatelessWidget {
                   Text('Компания: $companyName'),
                   const SizedBox(height: 6),
                   Text('Роль: $role'),
-                  const SizedBox(height: 6),
                   if (position.trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text('Position: $position'),
+                    Text('Должность: $position'),
                   ],
+                  const SizedBox(height: 6),
                   Text('Slug: $slug'),
                 ],
               ),
@@ -686,11 +708,12 @@ class _InfoRow extends StatelessWidget {
                 backgroundColor: const Color(0xFF143456),
                 borderColor: const Color(0xFF2A648E),
               ),
-              _TagBadge(
-                label: position,
-                backgroundColor: const Color(0xFF123524),
-                borderColor: const Color(0xFF35C886),
-              ),
+              if (position.trim().isNotEmpty)
+                _TagBadge(
+                  label: position,
+                  backgroundColor: const Color(0xFF123524),
+                  borderColor: const Color(0xFF35C886),
+                ),
             ],
           ),
         ],
@@ -732,10 +755,7 @@ class _TagBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: borderColor),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 }
