@@ -20,6 +20,18 @@ class MuffNotebookPage extends StatefulWidget {
   State<MuffNotebookPage> createState() => _MuffNotebookPageState();
 }
 
+class _EndpointChoice {
+  const _EndpointChoice({
+    required this.key,
+    required this.label,
+    required this.endpoint,
+  });
+
+  final String key;
+  final String label;
+  final Map<String, dynamic> endpoint;
+}
+
 class _MuffNotebookPageState extends State<MuffNotebookPage> {
   static const String _allDistrictsValue = '__all_districts__';
   static const String _moduleKey = 'muff_notebook';
@@ -80,6 +92,162 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   };
 
   String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
+
+  String _splitterPortKey(int splitterId, String portType, int portIndex) =>
+      'splitter:$splitterId:$portType:$portIndex';
+
+  Map<String, dynamic> _cableEndpoint(int cableId, int fiberIndex) => {
+    'type': 'cable',
+    'cableId': cableId,
+    'fiberIndex': fiberIndex,
+  };
+
+  Map<String, dynamic> _splitterEndpoint(
+    int splitterId,
+    String portType,
+    int portIndex,
+  ) => {
+    'type': 'splitter',
+    'splitterId': splitterId,
+    'portType': portType,
+    'portIndex': portIndex,
+  };
+
+  String _endpointKey(Map<String, dynamic> endpoint) {
+    if (endpoint['type'] == 'splitter') {
+      return _splitterPortKey(
+        endpoint['splitterId'] as int,
+        (endpoint['portType'] as String?) ?? 'output',
+        (endpoint['portIndex'] as int?) ?? 0,
+      );
+    }
+
+    return _fiberKey(
+      endpoint['cableId'] as int,
+      (endpoint['fiberIndex'] as int?) ?? 0,
+    );
+  }
+
+  bool _sameEndpoint(Map<String, dynamic> a, Map<String, dynamic> b) =>
+      _endpointKey(a) == _endpointKey(b);
+
+  Map<String, dynamic> _normalizeConnection(Map<String, dynamic> raw) {
+    if (raw['endpoint1'] is Map && raw['endpoint2'] is Map) {
+      return {
+        'endpoint1': Map<String, dynamic>.from(raw['endpoint1'] as Map),
+        'endpoint2': Map<String, dynamic>.from(raw['endpoint2'] as Map),
+      };
+    }
+
+    return {
+      'endpoint1': _cableEndpoint(
+        (raw['cable1'] as int?) ?? 0,
+        (raw['fiber1'] as int?) ?? 0,
+      ),
+      'endpoint2': _cableEndpoint(
+        (raw['cable2'] as int?) ?? 0,
+        (raw['fiber2'] as int?) ?? 0,
+      ),
+    };
+  }
+
+  List<Map<String, dynamic>> _normalizedConnections(Map<String, dynamic> muff) {
+    final rawConnections = List<Map<String, dynamic>>.from(
+      muff['connections'] ?? [],
+    );
+    return rawConnections.map(_normalizeConnection).toList(growable: true);
+  }
+
+  List<Map<String, dynamic>> _getSplittersBySide(int side) {
+    final muff = _selectedMuff;
+    if (muff == null) {
+      return const [];
+    }
+
+    return List<Map<String, dynamic>>.from(muff['splitters'] ?? const [])
+        .where((splitter) => (splitter['side'] as int? ?? 0) == side)
+        .toList(growable: false);
+  }
+
+  Map<String, dynamic>? _getSplitterById(int id) {
+    final muff = _selectedMuff;
+    if (muff == null) {
+      return null;
+    }
+
+    final splitters = List<Map<String, dynamic>>.from(
+      muff['splitters'] ?? const [],
+    );
+    for (final splitter in splitters) {
+      if (splitter['id'] == id) {
+        return splitter;
+      }
+    }
+
+    return null;
+  }
+
+  List<_EndpointChoice> _endpointChoices(Map<String, dynamic> muff) {
+    final choices = <_EndpointChoice>[];
+    final cables = List<Map<String, dynamic>>.from(muff['cables'] ?? const []);
+    for (final cable in cables) {
+      final fibers = (cable['fibers'] as int?) ?? 1;
+      for (var i = 0; i < fibers; i++) {
+        final endpoint = _cableEndpoint(cable['id'] as int, i);
+        choices.add(
+          _EndpointChoice(
+            key: _endpointKey(endpoint),
+            label: '${cable['name'] ?? 'Кабель'} • Волокно ${i + 1}',
+            endpoint: endpoint,
+          ),
+        );
+      }
+    }
+
+    final splitters = List<Map<String, dynamic>>.from(
+      muff['splitters'] ?? const [],
+    );
+    for (final splitter in splitters) {
+      final ratio = (splitter['ratio'] as int?) ?? 8;
+      final input = _splitterEndpoint(splitter['id'] as int, 'input', 0);
+      choices.add(
+        _EndpointChoice(
+          key: _endpointKey(input),
+          label: '${splitter['name'] ?? 'Делитель'} • Вход',
+          endpoint: input,
+        ),
+      );
+
+      for (var i = 0; i < ratio; i++) {
+        final output = _splitterEndpoint(splitter['id'] as int, 'output', i);
+        choices.add(
+          _EndpointChoice(
+            key: _endpointKey(output),
+            label: '${splitter['name'] ?? 'Делитель'} • Выход ${i + 1}',
+            endpoint: output,
+          ),
+        );
+      }
+    }
+
+    return choices;
+  }
+
+  String _endpointLabel(Map<String, dynamic> endpoint) {
+    if (endpoint['type'] == 'splitter') {
+      final splitter = _getSplitterById(endpoint['splitterId'] as int);
+      final name = splitter?['name'] ?? 'Делитель';
+      final portType = (endpoint['portType'] as String?) ?? 'output';
+      if (portType == 'input') {
+        return '$name[Вход]';
+      }
+
+      return '$name[Выход ${(endpoint['portIndex'] as int) + 1}]';
+    }
+
+    final cable = _getCableById(endpoint['cableId'] as int);
+    return '${cable?['name'] ?? 'Кабель'}[${(endpoint['fiberIndex'] as int) + 1}]';
+  }
 
   bool _isPonBox(Map<String, dynamic> muff) => muff['is_pon_box'] == true;
 
@@ -512,6 +680,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       payload['created_by'] = _actorLabel;
                       payload['cables'] = <Map<String, dynamic>>[];
                       payload['connections'] = <Map<String, dynamic>>[];
+                      payload['splitters'] = <Map<String, dynamic>>[];
                       payload['deleted'] = false;
                       payload['dirty'] = true;
                       _muffs.add(payload);
@@ -522,6 +691,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                           muff['cables'] ?? <Map<String, dynamic>>[];
                       payload['connections'] =
                           muff['connections'] ?? <Map<String, dynamic>>[];
+                      payload['splitters'] =
+                          muff['splitters'] ?? <Map<String, dynamic>>[];
                       payload['dirty'] = true;
                       final idx = _muffs.indexWhere(
                         (m) => m['id'] == muff['id'],
@@ -719,7 +890,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       'side': side,
                       'color_scheme': scheme,
                       'fiber_comments': List<String>.filled(fibersNumber, ''),
-                      'spliters': List<int>.filled(fibersNumber, 0),
                     });
                     muff['cables'] = cables;
                     _touchMuff(muff);
@@ -751,12 +921,16 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     cables.removeWhere((c) => c['id'] == cableId);
     muff['cables'] = cables;
 
-    final connections = List<Map<String, dynamic>>.from(
-      muff['connections'] ?? [],
-    );
-    connections.removeWhere(
-      (c) => c['cable1'] == cableId || c['cable2'] == cableId,
-    );
+    final connections = _normalizedConnections(muff);
+    connections.removeWhere((connection) {
+      final endpoint1 = Map<String, dynamic>.from(
+        connection['endpoint1'] as Map,
+      );
+      final endpoint2 = Map<String, dynamic>.from(
+        connection['endpoint2'] as Map,
+      );
+      return endpoint1['cableId'] == cableId || endpoint2['cableId'] == cableId;
+    });
     muff['connections'] = connections;
 
     _touchMuff(muff);
@@ -836,94 +1010,63 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     }
 
     final comments = List<String>.from(cable['fiber_comments'] ?? []);
-    final spliters = List<int>.from(cable['spliters'] ?? []);
-    if (fiberIndex >= comments.length || fiberIndex >= spliters.length) {
+    if (fiberIndex >= comments.length) {
       return;
     }
 
     final commentController = TextEditingController(text: comments[fiberIndex]);
-    int spliter = spliters[fiberIndex];
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateSheet) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Кабель: ${cable['name']} | Волокно ${fiberIndex + 1}'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: commentController,
+                decoration: const InputDecoration(labelText: 'Комментарий'),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text('Кабель: ${cable['name']} | Волокно ${fiberIndex + 1}'),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: commentController,
-                    decoration: const InputDecoration(labelText: 'Комментарий'),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Отмена'),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text('Сплиттер:'),
-                      const SizedBox(width: 12),
-                      DropdownButton<int>(
-                        value: spliter,
-                        items: [0, 2, 4, 8, 16, 32]
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value == 0 ? 'Нет' : '$value'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          setStateSheet(() {
-                            spliter = value ?? 0;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Отмена'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.tonalIcon(
-                        onPressed: () async {
-                          final navigator = Navigator.of(context);
-                          comments[fiberIndex] = commentController.text.trim();
-                          spliters[fiberIndex] = spliter;
-                          cable['fiber_comments'] = comments;
-                          cable['spliters'] = spliters;
-                          if (_selectedMuff != null) {
-                            _touchMuff(_selectedMuff!);
-                          }
-                          await _persist();
-                          if (!mounted) {
-                            return;
-                          }
-                          setState(() {});
-                          navigator.pop();
-                        },
-                        icon: const Icon(Icons.save),
-                        label: const Text('Сохранить'),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final navigator = Navigator.of(context);
+                      comments[fiberIndex] = commentController.text.trim();
+                      cable['fiber_comments'] = comments;
+                      if (_selectedMuff != null) {
+                        _touchMuff(_selectedMuff!);
+                      }
+                      await _persist();
+                      if (!mounted) {
+                        return;
+                      }
+                      setState(() {});
+                      navigator.pop();
+                    },
+                    icon: const Icon(Icons.save),
+                    label: const Text('Сохранить'),
                   ),
                 ],
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );
@@ -935,34 +1078,26 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       return;
     }
 
-    final cables = List<Map<String, dynamic>>.from(muff['cables'] ?? []);
-    if (cables.length < 2) {
-      _showSnack('Нужно минимум два кабеля');
+    final choices = _endpointChoices(muff);
+    if (choices.length < 2) {
+      _showSnack('Нужно минимум две точки подключения');
       return;
     }
 
-    int cable1 = cables.first['id'] as int;
-    int cable2 = cables.last['id'] as int;
-    int fiber1 = 0;
-    int fiber2 = 0;
+    var endpoint1 = choices.first.endpoint;
+    var endpoint2 = choices.last.endpoint;
 
-    List<DropdownMenuItem<int>> cableItems() => cables
+    List<DropdownMenuItem<String>> endpointItems() => choices
         .map(
-          (c) => DropdownMenuItem<int>(
-            value: c['id'] as int,
-            child: Text(c['name'] ?? 'Кабель'),
+          (choice) => DropdownMenuItem<String>(
+            value: choice.key,
+            child: Text(choice.label),
           ),
         )
-        .toList();
+        .toList(growable: false);
 
-    List<DropdownMenuItem<int>> fiberItems(int cableId) {
-      final cable = cables.firstWhere((c) => c['id'] == cableId);
-      final count = (cable['fibers'] as int?) ?? 1;
-      return List.generate(
-        count,
-        (index) => DropdownMenuItem(value: index, child: Text('${index + 1}')),
-      );
-    }
+    Map<String, dynamic> choiceByKey(String key) =>
+        choices.firstWhere((choice) => choice.key == key).endpoint;
 
     await showDialog<void>(
       context: context,
@@ -974,56 +1109,40 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('От:'),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      DropdownButton<int>(
-                        value: cable1,
-                        items: cableItems(),
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            cable1 = value ?? cable1;
-                            fiber1 = 0;
-                          });
-                        },
-                      ),
-                      DropdownButton<int>(
-                        value: fiber1,
-                        items: fiberItems(cable1),
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            fiber1 = value ?? 0;
-                          });
-                        },
-                      ),
-                    ],
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('От:'),
                   ),
                   const SizedBox(height: 8),
-                  const Text('Куда:'),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      DropdownButton<int>(
-                        value: cable2,
-                        items: cableItems(),
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            cable2 = value ?? cable2;
-                            fiber2 = 0;
-                          });
-                        },
-                      ),
-                      DropdownButton<int>(
-                        value: fiber2,
-                        items: fiberItems(cable2),
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            fiber2 = value ?? 0;
-                          });
-                        },
-                      ),
-                    ],
+                  DropdownButtonFormField<String>(
+                    value: _endpointKey(endpoint1),
+                    items: endpointItems(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setStateDialog(() {
+                        endpoint1 = choiceByKey(value);
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Куда:'),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _endpointKey(endpoint2),
+                    items: endpointItems(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setStateDialog(() {
+                        endpoint2 = choiceByKey(value);
+                      });
+                    },
                   ),
                 ],
               ),
@@ -1035,46 +1154,218 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                 FilledButton.tonalIcon(
                   onPressed: () async {
                     final navigator = Navigator.of(context);
-                    final connections = List<Map<String, dynamic>>.from(
-                      muff['connections'] ?? [],
+                    final success = await _addConnectionBetweenEndpoints(
+                      endpoint1: endpoint1,
+                      endpoint2: endpoint2,
                     );
-
-                    if (_isFiberBusy(connections, cable1, fiber1) ||
-                        _isFiberBusy(connections, cable2, fiber2)) {
-                      _showSnack('Волокно уже используется (без сплиттера)');
+                    if (!success || !mounted) {
                       return;
                     }
+                    navigator.pop();
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Добавить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
-                    final exists = connections.any((c) {
-                      final c1 = c['cable1'];
-                      final f1 = c['fiber1'];
-                      final c2 = c['cable2'];
-                      final f2 = c['fiber2'];
-                      final same =
-                          c1 == cable1 &&
-                          f1 == fiber1 &&
-                          c2 == cable2 &&
-                          f2 == fiber2;
-                      final reverse =
-                          c1 == cable2 &&
-                          f1 == fiber2 &&
-                          c2 == cable1 &&
-                          f2 == fiber1;
-                      return same || reverse;
+  Future<void> _addConnectionDirect({
+    required Map<String, dynamic> endpoint1,
+    required Map<String, dynamic> endpoint2,
+  }) async {
+    await _addConnectionBetweenEndpoints(
+      endpoint1: endpoint1,
+      endpoint2: endpoint2,
+    );
+  }
+
+  Future<bool> _addConnectionBetweenEndpoints({
+    required Map<String, dynamic> endpoint1,
+    required Map<String, dynamic> endpoint2,
+  }) async {
+    final muff = _selectedMuff;
+    if (muff == null) {
+      return false;
+    }
+
+    if (_sameEndpoint(endpoint1, endpoint2)) {
+      _showSnack('Нельзя соединить точку саму с собой');
+      return false;
+    }
+
+    if ((endpoint1['type'] == 'cable') &&
+        (endpoint2['type'] == 'cable') &&
+        endpoint1['cableId'] == endpoint2['cableId']) {
+      _showSnack('Нельзя соединять волокна одного кабеля');
+      return false;
+    }
+
+    final connections = _normalizedConnections(muff);
+    if (_isEndpointBusy(connections, endpoint1) ||
+        _isEndpointBusy(connections, endpoint2)) {
+      _showSnack('Точка подключения уже занята');
+      return false;
+    }
+
+    if (_connectionExists(connections, endpoint1, endpoint2)) {
+      _showSnack('Такое соединение уже есть');
+      return false;
+    }
+
+    connections.add({
+      'endpoint1': Map<String, dynamic>.from(endpoint1),
+      'endpoint2': Map<String, dynamic>.from(endpoint2),
+    });
+    muff['connections'] = connections;
+    _touchMuff(muff);
+    await _persist();
+    if (mounted) {
+      setState(() {});
+    }
+    return true;
+  }
+
+  bool _isEndpointBusy(
+    List<Map<String, dynamic>> connections,
+    Map<String, dynamic> endpoint,
+  ) {
+    return connections.any((connection) {
+      final a = Map<String, dynamic>.from(connection['endpoint1'] as Map);
+      final b = Map<String, dynamic>.from(connection['endpoint2'] as Map);
+      return _sameEndpoint(a, endpoint) || _sameEndpoint(b, endpoint);
+    });
+  }
+
+  bool _connectionExists(
+    List<Map<String, dynamic>> connections,
+    Map<String, dynamic> endpoint1,
+    Map<String, dynamic> endpoint2,
+  ) {
+    return connections.any((connection) {
+      final a = Map<String, dynamic>.from(connection['endpoint1'] as Map);
+      final b = Map<String, dynamic>.from(connection['endpoint2'] as Map);
+      return (_sameEndpoint(a, endpoint1) && _sameEndpoint(b, endpoint2)) ||
+          (_sameEndpoint(a, endpoint2) && _sameEndpoint(b, endpoint1));
+    });
+  }
+
+  Future<void> _addSplitter() async {
+    final muff = _selectedMuff;
+    if (muff == null) {
+      return;
+    }
+
+    var name = '';
+    var ratio = 8;
+    var side = 0;
+    var orientation = 'vertical';
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Добавить делитель'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Название делителя',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => name = value.trim(),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: ratio,
+                      decoration: const InputDecoration(
+                        labelText: 'Коэффициент деления',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [2, 4, 8, 16, 32]
+                          .map(
+                            (value) => DropdownMenuItem<int>(
+                              value: value,
+                              child: Text('1:$value'),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          ratio = value ?? 8;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: side,
+                      decoration: const InputDecoration(
+                        labelText: 'Сторона',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('Слева')),
+                        DropdownMenuItem(value: 1, child: Text('Справа')),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          side = value ?? 0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: orientation,
+                      decoration: const InputDecoration(
+                        labelText: 'Расположение выходных портов',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'vertical',
+                          child: Text('Вертикально'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'horizontal',
+                          child: Text('Горизонтально'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          orientation = value ?? 'vertical';
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Отмена'),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final splitters = List<Map<String, dynamic>>.from(
+                      muff['splitters'] ?? const [],
+                    );
+                    splitters.add({
+                      'id': DateTime.now().microsecondsSinceEpoch,
+                      'name': name.isEmpty ? 'Делитель 1:$ratio' : name,
+                      'ratio': ratio,
+                      'side': side,
+                      'orientation': orientation,
                     });
-
-                    if (exists) {
-                      _showSnack('Такое соединение уже есть');
-                      return;
-                    }
-
-                    connections.add({
-                      'cable1': cable1,
-                      'fiber1': fiber1,
-                      'cable2': cable2,
-                      'fiber2': fiber2,
-                    });
-                    muff['connections'] = connections;
+                    muff['splitters'] = splitters;
                     _touchMuff(muff);
                     await _persist();
                     if (!mounted) {
@@ -1094,92 +1385,164 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     );
   }
 
-  Future<void> _addConnectionDirect({
-    required int cable1,
-    required int fiber1,
-    required int cable2,
-    required int fiber2,
-  }) async {
+  Future<void> _editSplitter(int splitterId) async {
+    final muff = _selectedMuff;
+    final splitter = _getSplitterById(splitterId);
+    if (muff == null || splitter == null) {
+      return;
+    }
+
+    var name = (splitter['name'] as String?) ?? '';
+    var ratio = (splitter['ratio'] as int?) ?? 8;
+    var side = (splitter['side'] as int?) ?? 0;
+    var orientation = (splitter['orientation'] as String?) ?? 'vertical';
+    final nameController = TextEditingController(text: name);
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Редактировать делитель'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Название делителя',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => name = value.trim(),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: ratio,
+                      decoration: const InputDecoration(
+                        labelText: 'Коэффициент деления',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [2, 4, 8, 16, 32]
+                          .map(
+                            (value) => DropdownMenuItem<int>(
+                              value: value,
+                              child: Text('1:$value'),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          ratio = value ?? 8;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: side,
+                      decoration: const InputDecoration(
+                        labelText: 'Сторона',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('Слева')),
+                        DropdownMenuItem(value: 1, child: Text('Справа')),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          side = value ?? 0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: orientation,
+                      decoration: const InputDecoration(
+                        labelText: 'Расположение выходных портов',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'vertical',
+                          child: Text('Вертикально'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'horizontal',
+                          child: Text('Горизонтально'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          orientation = value ?? 'vertical';
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Отмена'),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    splitter['name'] = nameController.text.trim().isEmpty
+                        ? 'Делитель 1:$ratio'
+                        : nameController.text.trim();
+                    splitter['ratio'] = ratio;
+                    splitter['side'] = side;
+                    splitter['orientation'] = orientation;
+                    _touchMuff(muff);
+                    await _persist();
+                    if (!mounted) {
+                      return;
+                    }
+                    setState(() {});
+                    navigator.pop();
+                  },
+                  icon: const Icon(Icons.save),
+                  label: const Text('Сохранить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteSplitter(int splitterId) async {
     final muff = _selectedMuff;
     if (muff == null) {
       return;
     }
 
-    if (cable1 == cable2) {
-      _showSnack('Нельзя соединять волокна одного кабеля');
-      return;
-    }
+    final splitters = List<Map<String, dynamic>>.from(
+      muff['splitters'] ?? const [],
+    )..removeWhere((splitter) => splitter['id'] == splitterId);
+    muff['splitters'] = splitters;
 
-    final connections = List<Map<String, dynamic>>.from(
-      muff['connections'] ?? [],
-    );
-    if (_isFiberBusy(connections, cable1, fiber1) ||
-        _isFiberBusy(connections, cable2, fiber2)) {
-      _showSnack('Волокно уже используется (без сплиттера)');
-      return;
-    }
-
-    final exists = connections.any((c) {
-      final c1 = c['cable1'];
-      final f1 = c['fiber1'];
-      final c2 = c['cable2'];
-      final f2 = c['fiber2'];
-      final same = c1 == cable1 && f1 == fiber1 && c2 == cable2 && f2 == fiber2;
-      final reverse =
-          c1 == cable2 && f1 == fiber2 && c2 == cable1 && f2 == fiber1;
-      return same || reverse;
-    });
-
-    if (exists) {
-      _showSnack('Такое соединение уже есть');
-      return;
-    }
-
-    connections.add({
-      'cable1': cable1,
-      'fiber1': fiber1,
-      'cable2': cable2,
-      'fiber2': fiber2,
-    });
+    final connections = _normalizedConnections(muff)
+      ..removeWhere((connection) {
+        final endpoint1 = Map<String, dynamic>.from(
+          connection['endpoint1'] as Map,
+        );
+        final endpoint2 = Map<String, dynamic>.from(
+          connection['endpoint2'] as Map,
+        );
+        return endpoint1['splitterId'] == splitterId ||
+            endpoint2['splitterId'] == splitterId;
+      });
     muff['connections'] = connections;
+
     _touchMuff(muff);
     await _persist();
     if (mounted) {
       setState(() {});
     }
-  }
-
-  bool _isFiberBusy(
-    List<Map<String, dynamic>> connections,
-    int cableId,
-    int fiberIndex,
-  ) {
-    if (_fiberHasSpliter(cableId, fiberIndex)) {
-      return false;
-    }
-
-    return connections.any((c) {
-      final c1 = c['cable1'];
-      final f1 = c['fiber1'];
-      final c2 = c['cable2'];
-      final f2 = c['fiber2'];
-      return (c1 == cableId && f1 == fiberIndex) ||
-          (c2 == cableId && f2 == fiberIndex);
-    });
-  }
-
-  bool _fiberHasSpliter(int cableId, int fiberIndex) {
-    final cable = _getCableById(cableId);
-    if (cable == null || cable.isEmpty) {
-      return false;
-    }
-
-    final spliters = List<int>.from(cable['spliters'] ?? []);
-    if (fiberIndex < 0 || fiberIndex >= spliters.length) {
-      return false;
-    }
-
-    return spliters[fiberIndex] > 0;
   }
 
   void _showSnack(String message) {
@@ -1492,9 +1855,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     }
 
     final muff = _selectedMuff!;
-    final connections = List<Map<String, dynamic>>.from(
-      muff['connections'] ?? [],
-    );
+    final connections = _normalizedConnections(muff);
     _currentFiberKeys.clear();
     _fiberColorByKey.clear();
     _fiberSideByKey.clear();
@@ -1602,6 +1963,23 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             ),
           ),
           Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Row(
+              children: [
+                const Text(
+                  'Делители',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _addSplitter,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Добавить делитель'),
+                ),
+              ],
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Stack(
               key: _fiberAreaKey,
@@ -1669,8 +2047,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           else
             Column(
               children: connections.map((connection) {
-                final cable1 = _getCableById(connection['cable1']);
-                final cable2 = _getCableById(connection['cable2']);
                 return ListTile(
                   dense: true,
                   leading: IconButton(
@@ -1686,8 +2062,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     icon: const Icon(Icons.delete_outline),
                   ),
                   title: Text(
-                    '${cable1?['name'] ?? 'Кабель'}[${(connection['fiber1'] as int) + 1}] '
-                    '<--> ${cable2?['name'] ?? 'Кабель'}[${(connection['fiber2'] as int) + 1}]',
+                    '${_endpointLabel(Map<String, dynamic>.from(connection['endpoint1'] as Map))} '
+                    '<--> '
+                    '${_endpointLabel(Map<String, dynamic>.from(connection['endpoint2'] as Map))}',
                   ),
                 );
               }).toList(),
@@ -1700,6 +2077,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
 
   Widget _buildCableColumn(int side) {
     final cables = _getCablesBySide(side);
+    final splitters = _getSplittersBySide(side);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1709,7 +2087,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        if (cables.isEmpty) const Text('Нет кабелей'),
+        if (cables.isEmpty && splitters.isEmpty) const Text('Нет элементов'),
         ...cables.map((cable) {
           final isSelected = _selectedCableId == cable['id'];
           return Card(
@@ -1774,12 +2152,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                         final colors =
                             _fiberSchemes[scheme] ?? _fiberSchemes.values.first;
                         final color = colors[index % colors.length];
-                        final spliters = List<int>.from(
-                          cable['spliters'] ?? [],
-                        );
-                        final spliter = index < spliters.length
-                            ? spliters[index]
-                            : 0;
                         final keyId = _fiberKey(cable['id'] as int, index);
                         _currentFiberKeys.add(keyId);
                         _fiberColorByKey[keyId] = color;
@@ -1789,24 +2161,26 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                           () => GlobalKey(),
                         );
 
-                        final fiberWidget = DragTarget<Map<String, int>>(
+                        final endpoint = _cableEndpoint(
+                          cable['id'] as int,
+                          index,
+                        );
+
+                        final fiberWidget = DragTarget<Map<String, dynamic>>(
                           onWillAcceptWithDetails: (_) => true,
                           onAcceptWithDetails: (details) {
-                            final data = details.data;
+                            final data = Map<String, dynamic>.from(
+                              details.data,
+                            );
                             _addConnectionDirect(
-                              cable1: data['cableId']!,
-                              fiber1: data['fiberIndex']!,
-                              cable2: cable['id'] as int,
-                              fiber2: index,
+                              endpoint1: data,
+                              endpoint2: endpoint,
                             );
                           },
                           builder: (context, candidateData, rejectedData) {
                             final isHover = candidateData.isNotEmpty;
-                            return Draggable<Map<String, int>>(
-                              data: {
-                                'cableId': cable['id'] as int,
-                                'fiberIndex': index,
-                              },
+                            return Draggable<Map<String, dynamic>>(
+                              data: endpoint,
                               feedback: Material(
                                 color: Colors.transparent,
                                 child: Container(
@@ -1844,7 +2218,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                                   color,
                                   index + 1,
                                   isHover,
-                                  key: spliter > 0 ? null : anchorKey,
+                                  key: anchorKey,
                                 ),
                               ),
                             );
@@ -1856,15 +2230,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (side == 1 && spliter > 0)
-                                _spliterBadge(spliter, key: anchorKey),
-                              if (side == 1 && spliter > 0)
-                                const SizedBox(width: 6),
                               fiberWidget,
-                              if (side == 0 && spliter > 0)
-                                const SizedBox(width: 6),
-                              if (side == 0 && spliter > 0)
-                                _spliterBadge(spliter, key: anchorKey),
                             ],
                           ),
                         );
@@ -1876,7 +2242,282 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             ),
           );
         }),
+        ...splitters.map((splitter) => _buildSplitterCard(splitter, side)),
       ],
+    );
+  }
+
+  Widget _buildSplitterCard(Map<String, dynamic> splitter, int side) {
+    final ratio = (splitter['ratio'] as int?) ?? 8;
+    final splitterId = splitter['id'] as int;
+    final orientation =
+        (splitter['orientation'] as String?) == 'horizontal'
+        ? 'horizontal'
+        : 'vertical';
+    final panelColor = Colors.teal.shade50;
+    final accentColor = Colors.teal.shade700;
+    final inputEndpoint = _splitterEndpoint(splitterId, 'input', 0);
+    final inputKeyId = _endpointKey(inputEndpoint);
+    _currentFiberKeys.add(inputKeyId);
+    _fiberColorByKey[inputKeyId] = accentColor;
+    _fiberSideByKey[inputKeyId] = side == 0 ? 1 : 0;
+    final inputKey = _fiberKeys.putIfAbsent(inputKeyId, () => GlobalKey());
+
+    final outputs = List.generate(ratio, (index) {
+      final endpoint = _splitterEndpoint(splitterId, 'output', index);
+      final keyId = _endpointKey(endpoint);
+      _currentFiberKeys.add(keyId);
+      _fiberColorByKey[keyId] = accentColor;
+      _fiberSideByKey[keyId] = side == 0 ? 0 : 1;
+      final key = _fiberKeys.putIfAbsent(keyId, () => GlobalKey());
+      return _buildSplitterPort(
+        endpoint: endpoint,
+        key: key,
+        label: index + 1,
+        accentColor: accentColor,
+      );
+    });
+
+    final outputsWidget = orientation == 'horizontal'
+        ? Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: outputs,
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: outputs
+                .map(
+                  (port) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: port,
+                  ),
+                )
+                .toList(growable: false),
+          );
+
+    return Card(
+      color: panelColor,
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        splitter['name'] ?? 'Делитель',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'PON 1:$ratio',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: accentColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _editSplitter(splitterId);
+                    }
+                    if (value == 'delete') {
+                      _deleteSplitter(splitterId);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Редактировать'),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Удалить'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: accentColor.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (side == 1)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Выходные порты',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          outputsWidget,
+                        ],
+                      ),
+                    ),
+                  if (side == 1) const SizedBox(width: 12),
+                  _buildSplitterInput(
+                    endpoint: inputEndpoint,
+                    key: inputKey,
+                    accentColor: accentColor,
+                  ),
+                  if (side == 0)
+                    const SizedBox(width: 12),
+                  if (side == 0)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Выходные порты',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          outputsWidget,
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              orientation == 'horizontal'
+                  ? 'Порты: горизонтально'
+                  : 'Порты: вертикально',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSplitterInput({
+    required Map<String, dynamic> endpoint,
+    required Key key,
+    required Color accentColor,
+  }) {
+    return Column(
+      children: [
+        Text(
+          'IN',
+          style: TextStyle(
+            fontSize: 11,
+            color: accentColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 6),
+        _buildSplitterPort(
+          endpoint: endpoint,
+          key: key,
+          label: null,
+          accentColor: accentColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSplitterPort({
+    required Map<String, dynamic> endpoint,
+    required Key key,
+    required int? label,
+    required Color accentColor,
+  }) {
+    return DragTarget<Map<String, dynamic>>(
+      onWillAcceptWithDetails: (_) => true,
+      onAcceptWithDetails: (details) {
+        _addConnectionDirect(
+          endpoint1: Map<String, dynamic>.from(details.data),
+          endpoint2: endpoint,
+        );
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isHover = candidateData.isNotEmpty;
+        return Draggable<Map<String, dynamic>>(
+          data: endpoint,
+          feedback: Material(
+            color: Colors.transparent,
+            child: _splitterPortChip(
+              accentColor: accentColor,
+              label: label,
+              highlight: true,
+            ),
+          ),
+          childWhenDragging: Opacity(
+            opacity: 0.3,
+            child: _splitterPortChip(
+              key: key,
+              accentColor: accentColor,
+              label: label,
+              highlight: isHover,
+            ),
+          ),
+          child: _splitterPortChip(
+            key: key,
+            accentColor: accentColor,
+            label: label,
+            highlight: isHover,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _splitterPortChip({
+    Key? key,
+    required Color accentColor,
+    required int? label,
+    required bool highlight,
+  }) {
+    return Container(
+      key: key,
+      constraints: const BoxConstraints(minWidth: 34),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: highlight ? Colors.deepOrange : accentColor,
+          width: highlight ? 2 : 1.4,
+        ),
+      ),
+      child: Text(
+        label == null ? 'IN' : 'OUT ${label}',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 11,
+          color: accentColor,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 
@@ -1913,21 +2554,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     );
   }
 
-  Widget _spliterBadge(int spliter, {Key? key}) {
-    return Container(
-      key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        '1:$spliter',
-        style: const TextStyle(color: Colors.white, fontSize: 10),
-      ),
-    );
-  }
-
   Widget _buildSelectedCableDetails() {
     final cable = _getCableById(_selectedCableId!);
     if (cable == null || cable.isEmpty) {
@@ -1935,7 +2561,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     }
 
     final comments = List<String>.from(cable['fiber_comments'] ?? []);
-    final spliters = List<int>.from(cable['spliters'] ?? []);
 
     final commentItems = comments
         .asMap()
@@ -1946,20 +2571,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             children: [
               Text('[${entry.key + 1}]: '),
               Expanded(child: Text(entry.value)),
-            ],
-          ),
-        )
-        .toList();
-
-    final spliterItems = spliters
-        .asMap()
-        .entries
-        .where((entry) => entry.value != 0)
-        .map(
-          (entry) => Row(
-            children: [
-              Text('[${entry.key + 1}]: '),
-              Text('Сплиттер ${entry.value}'),
             ],
           ),
         )
@@ -1978,11 +2589,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             const SizedBox(height: 6),
             const Text('Комментарии по волокнам:'),
             ...commentItems,
-          ],
-          if (spliterItems.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            const Text('Сплиттеры:'),
-            ...spliterItems,
           ],
         ],
       ),
@@ -2020,7 +2626,13 @@ class _ConnectionsPainter extends CustomPainter {
   final Map<String, Offset> positions;
   final Map<String, Color> colors;
 
-  String _key(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
+  String _key(Map<String, dynamic> endpoint) {
+    if (endpoint['type'] == 'splitter') {
+      return 'splitter:${endpoint['splitterId']}:${endpoint['portType']}:${endpoint['portIndex']}';
+    }
+
+    return '${endpoint['cableId']}:${endpoint['fiberIndex']}';
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2030,23 +2642,23 @@ class _ConnectionsPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     for (final connection in connections) {
-      final c1 = connection['cable1'] as int?;
-      final f1 = connection['fiber1'] as int?;
-      final c2 = connection['cable2'] as int?;
-      final f2 = connection['fiber2'] as int?;
-      if (c1 == null || f1 == null || c2 == null || f2 == null) {
+      final endpoint1Raw = connection['endpoint1'];
+      final endpoint2Raw = connection['endpoint2'];
+      if (endpoint1Raw is! Map || endpoint2Raw is! Map) {
         continue;
       }
 
-      final p1 = positions[_key(c1, f1)];
-      final p2 = positions[_key(c2, f2)];
+      final endpoint1 = Map<String, dynamic>.from(endpoint1Raw);
+      final endpoint2 = Map<String, dynamic>.from(endpoint2Raw);
+      final key1 = _key(endpoint1);
+      final key2 = _key(endpoint2);
+      final p1 = positions[key1];
+      final p2 = positions[key2];
       if (p1 == null || p2 == null) {
         continue;
       }
 
-      paint.color = (colors[_key(c1, f1)] ?? Colors.deepOrange).withValues(
-        alpha: 0.75,
-      );
+      paint.color = (colors[key1] ?? Colors.deepOrange).withValues(alpha: 0.75);
 
       final midX = (p1.dx + p2.dx) / 2;
       final path = ui.Path()
