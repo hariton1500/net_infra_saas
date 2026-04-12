@@ -2254,12 +2254,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         (splitter['orientation'] as String?) == 'horizontal'
         ? 'horizontal'
         : 'vertical';
-    final panelColor = Colors.teal.shade50;
-    final accentColor = Colors.teal.shade700;
+    final inputColor = Colors.teal;
+    final outputColor = Colors.indigo;
     final inputEndpoint = _splitterEndpoint(splitterId, 'input', 0);
     final inputKeyId = _endpointKey(inputEndpoint);
     _currentFiberKeys.add(inputKeyId);
-    _fiberColorByKey[inputKeyId] = accentColor;
+    _fiberColorByKey[inputKeyId] = inputColor;
     _fiberSideByKey[inputKeyId] = side == 0 ? 1 : 0;
     final inputKey = _fiberKeys.putIfAbsent(inputKeyId, () => GlobalKey());
 
@@ -2267,14 +2267,15 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       final endpoint = _splitterEndpoint(splitterId, 'output', index);
       final keyId = _endpointKey(endpoint);
       _currentFiberKeys.add(keyId);
-      _fiberColorByKey[keyId] = accentColor;
+      _fiberColorByKey[keyId] = outputColor;
       _fiberSideByKey[keyId] = side == 0 ? 0 : 1;
       final key = _fiberKeys.putIfAbsent(keyId, () => GlobalKey());
       return _buildSplitterPort(
         endpoint: endpoint,
         key: key,
         label: index + 1,
-        accentColor: accentColor,
+        accentColor: outputColor,
+        isInput: false,
       );
     });
 
@@ -2297,9 +2298,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           );
 
     return Card(
-      color: panelColor,
+      margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2313,15 +2314,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                         splitter['name'] ?? 'Делитель',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'PON 1:$ratio',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: accentColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      //const SizedBox(height: 2),
+                      //Text('PON 1:$ratio • ${orientation == 'vertical' ? 'вертикально' : 'горизонтально'}', style: Theme.of(context).textTheme.bodySmall,),
                     ],
                   ),
                 ),
@@ -2347,71 +2341,41 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: accentColor.withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (side == 1)
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Выходные порты',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          outputsWidget,
-                        ],
-                      ),
-                    ),
-                  if (side == 1) const SizedBox(width: 12),
-                  _buildSplitterInput(
-                    endpoint: inputEndpoint,
-                    key: inputKey,
-                    accentColor: accentColor,
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  'IN',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: inputColor.shade700,
                   ),
-                  if (side == 0)
-                    const SizedBox(width: 12),
-                  if (side == 0)
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Выходные порты',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          outputsWidget,
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                _buildSplitterInput(
+                  endpoint: inputEndpoint,
+                  key: inputKey,
+                  accentColor: inputColor,
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            Text(
-              orientation == 'horizontal'
-                  ? 'Порты: горизонтально'
-                  : 'Порты: вертикально',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'OUT',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: outputColor.shade700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: outputsWidget),
+              ],
             ),
           ],
         ),
@@ -2424,24 +2388,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     required Key key,
     required Color accentColor,
   }) {
-    return Column(
-      children: [
-        Text(
-          'IN',
-          style: TextStyle(
-            fontSize: 11,
-            color: accentColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 6),
-        _buildSplitterPort(
-          endpoint: endpoint,
-          key: key,
-          label: null,
-          accentColor: accentColor,
-        ),
-      ],
+    return _buildSplitterPort(
+      endpoint: endpoint,
+      key: key,
+      label: null,
+      accentColor: accentColor,
+      isInput: true,
     );
   }
 
@@ -2450,9 +2402,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     required Key key,
     required int? label,
     required Color accentColor,
+    required bool isInput,
   }) {
     return DragTarget<Map<String, dynamic>>(
-      onWillAcceptWithDetails: (_) => true,
+      onWillAcceptWithDetails: (details) =>
+          !_sameEndpoint(Map<String, dynamic>.from(details.data), endpoint),
       onAcceptWithDetails: (details) {
         _addConnectionDirect(
           endpoint1: Map<String, dynamic>.from(details.data),
@@ -2469,6 +2423,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               accentColor: accentColor,
               label: label,
               highlight: true,
+              isInput: isInput,
             ),
           ),
           childWhenDragging: Opacity(
@@ -2478,6 +2433,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               accentColor: accentColor,
               label: label,
               highlight: isHover,
+              isInput: isInput,
             ),
           ),
           child: _splitterPortChip(
@@ -2485,6 +2441,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             accentColor: accentColor,
             label: label,
             highlight: isHover,
+            isInput: isInput,
           ),
         );
       },
@@ -2496,26 +2453,29 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     required Color accentColor,
     required int? label,
     required bool highlight,
+    required bool isInput,
   }) {
     return Container(
       key: key,
-      constraints: const BoxConstraints(minWidth: 34),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      width: isInput ? 42 : 34,
+      height: 26,
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
+        color: isInput ? Colors.teal.shade50 : Colors.indigo.shade50,
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: highlight ? Colors.deepOrange : accentColor,
-          width: highlight ? 2 : 1.4,
+          width: highlight ? 2 : 1,
         ),
       ),
-      child: Text(
-        label == null ? 'IN' : 'OUT ${label}',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 11,
-          color: accentColor,
-          fontWeight: FontWeight.w700,
+      child: Center(
+        child: Text(
+          label == null ? 'IN' : '$label',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11,
+            color: isInput ? Colors.teal.shade900 : Colors.indigo.shade900,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
