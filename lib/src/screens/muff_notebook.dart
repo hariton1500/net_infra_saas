@@ -1682,6 +1682,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
+        crs: mapCrsById(_selectedTileLayerId),
         initialCenter: center,
         initialZoom: _mapZoom,
         maxZoom: 19,

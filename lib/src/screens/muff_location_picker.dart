@@ -73,6 +73,7 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
+              crs: mapCrsById(_selectedTileLayerId),
               initialCenter: center,
               initialZoom: _zoom,
               maxZoom: 19,

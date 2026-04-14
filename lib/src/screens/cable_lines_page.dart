@@ -870,6 +870,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(
+            crs: mapCrsById(_selectedTileLayerId),
             initialCenter: initialPoint,
             initialZoom: _mapZoom,
             maxZoom: 19,

@@ -47,13 +47,33 @@ class _CableRoute {
     required this.id,
     required this.name,
     required this.points,
+    double? lengthMeters,
     required this.meta,
     required this.raw,
-  });
+  }) : _lengthMeters = lengthMeters;
 
   final int id;
   final String name;
   final List<LatLng> points;
+  final double? _lengthMeters;
+  double get lengthMeters {
+    final length = _lengthMeters;
+    if (length != null) {
+      return length;
+    }
+    if (points.length < 2) {
+      return 0;
+    }
+
+    var total = 0.0;
+    for (var i = 0; i < points.length - 1; i++) {
+      total += _InfrastructureMapPageState._geoDistance(
+        points[i],
+        points[i + 1],
+      );
+    }
+    return total;
+  }
   final Map<String, String> meta;
   final Map<String, dynamic> raw;
 }
@@ -63,6 +83,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   static const _cabinetsCacheKey = 'network_cabinet.cabinets.v1';
   static const _routesCacheKey = 'cable_lines.routes.v1';
   static const _routesModuleKey = 'cable_lines';
+  static const Distance _geoDistance = Distance();
   final MapController _mapController = MapController();
   late final CompanyModuleSyncRepository _syncRepository;
 
@@ -301,12 +322,15 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     final note = (record['note'] as String?)?.trim();
     final startAnchor = _extractAnchor(record['start_anchor']);
     final endAnchor = _extractAnchor(record['end_anchor']);
+    final lengthMeters = _routeLengthMeters(points);
 
     return _CableRoute(
       id: (record['id'] as int?) ?? 0,
       name: name?.isNotEmpty == true ? name! : 'Кабельная линия',
       points: points,
+      lengthMeters: lengthMeters,
       meta: {
+        'Длина': _formatRouteLength(lengthMeters),
         'Точек': '${points.length}',
         if (startAnchor != null) 'Начало': startAnchor['name'] ?? 'Привязано',
         if (endAnchor != null) 'Конец': endAnchor['name'] ?? 'Привязано',
@@ -360,6 +384,26 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     return double.tryParse(value?.toString() ?? '');
   }
 
+  double _routeLengthMeters(List<LatLng> points) {
+    if (points.length < 2) {
+      return 0;
+    }
+
+    var total = 0.0;
+    for (var i = 0; i < points.length - 1; i++) {
+      total += _geoDistance(points[i], points[i + 1]);
+    }
+    return total;
+  }
+
+  String _formatRouteLength(double lengthMeters) {
+    if (lengthMeters >= 1000) {
+      final kilometers = lengthMeters / 1000;
+      return '${kilometers.toStringAsFixed(kilometers >= 10 ? 1 : 2)} км';
+    }
+    return '${lengthMeters.toStringAsFixed(lengthMeters >= 100 ? 0 : 1)} м';
+  }
+
   String _entityKey(_InfrastructureEntityType type, int entityId) {
     final typeCode = switch (type) {
       _InfrastructureEntityType.muff => 'muff',
@@ -401,43 +445,167 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     return null;
   }
 
+  bool _anchorMatchesEntity(Map<String, dynamic>? anchor, _InfrastructureEntity entity) {
+    if (anchor == null) {
+      return false;
+    }
+    return anchor['type'] == _entityTypeCode(entity.type) &&
+        anchor['entity_id'] == entity.id;
+  }
+
+  List<_CableRoute> _routesForEntity(_InfrastructureEntity entity) {
+    return _routes.where((route) {
+      final startAnchor = _extractAnchor(route.raw['start_anchor']);
+      final endAnchor = _extractAnchor(route.raw['end_anchor']);
+      return _anchorMatchesEntity(startAnchor, entity) ||
+          _anchorMatchesEntity(endAnchor, entity);
+    }).toList(growable: false);
+  }
+
   void _showEntitySheet(_InfrastructureEntity entity) {
+    final relatedRoutes = _routesForEntity(entity);
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _entityChip(entity),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      entity.name,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+        final initialSize = relatedRoutes.isEmpty ? 0.34 : 0.5;
+        return SafeArea(
+          child: DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: initialSize,
+            minChildSize: 0.28,
+            maxChildSize: 0.8,
+            builder: (context, scrollController) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: CustomScrollView(
+                  controller: scrollController,
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (entity.location.isNotEmpty) Text(entity.location),
-              const SizedBox(height: 6),
-              Text(
-                '${entity.point.latitude.toStringAsFixed(6)}, ${entity.point.longitude.toStringAsFixed(6)}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 14),
-              for (final entry in entity.meta.entries) ...[
-                _MapMetaRow(label: entry.key, value: entry.value),
-                const SizedBox(height: 8),
-              ],
-            ],
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(
+                      child: Row(
+                        children: [
+                          _entityChip(entity),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              entity.name,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    if (entity.location.isNotEmpty)
+                      SliverToBoxAdapter(child: Text(entity.location)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 6)),
+                    SliverToBoxAdapter(
+                      child: Text(
+                        '${entity.point.latitude.toStringAsFixed(6)}, ${entity.point.longitude.toStringAsFixed(6)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final entry = entity.meta.entries.elementAt(index);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _MapMetaRow(label: entry.key, value: entry.value),
+                        );
+                      }, childCount: entity.meta.length),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                    SliverToBoxAdapter(
+                      child: Text(
+                        relatedRoutes.isEmpty
+                            ? 'У этого объекта пока нет привязанных маршрутов.'
+                            : 'Маршруты от этого объекта',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                    if (relatedRoutes.isEmpty)
+                      const SliverToBoxAdapter(
+                        child: Text(
+                          'Список пуст. Когда маршрут будет начинаться или заканчиваться на этом объекте, он появится здесь.',
+                        ),
+                      )
+                    else
+                      SliverList.separated(
+                        itemCount: relatedRoutes.length,
+                        itemBuilder: (context, index) {
+                          final route = relatedRoutes[index];
+                          final startAnchor = _extractAnchor(
+                            route.raw['start_anchor'],
+                          );
+                          final endAnchor = _extractAnchor(route.raw['end_anchor']);
+                          final role = _anchorMatchesEntity(startAnchor, entity)
+                              ? 'Начало'
+                              : _anchorMatchesEntity(endAnchor, entity)
+                                  ? 'Конец'
+                                  : 'Маршрут';
+
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              radius: 18,
+                              backgroundColor:
+                                  (route.id == _selectedRouteId
+                                          ? const Color(0xFF1EDDC5)
+                                          : const Color(0xFF60A5FA))
+                                      .withValues(alpha: 0.16),
+                              child: Icon(
+                                Icons.timeline_rounded,
+                                color: route.id == _selectedRouteId
+                                    ? const Color(0xFF1EDDC5)
+                                    : const Color(0xFF60A5FA),
+                              ),
+                            ),
+                            title: Text(
+                              route.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              '$role • ${_formatRouteLength(route.lengthMeters)} • Точек: ${route.points.length}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: route.id == _selectedRouteId
+                                ? const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Color(0xFF1EDDC5),
+                                  )
+                                : const Icon(Icons.chevron_right_rounded),
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              _selectRoute(route);
+                            },
+                          );
+                        },
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                      ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
@@ -885,6 +1053,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   }
 
   Widget _buildLegendCard() {
+    final selectedRoute = _selectedRoute;
+
     return Align(
       alignment: Alignment.topRight,
       child: Padding(
@@ -941,6 +1111,13 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                       'Тапните рядом с линией, чтобы вставить точку. Промежуточные точки можно перетаскивать.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  if (_routeEditMode && selectedRoute != null)
+                    Text(
+                      'Длина маршрута: ${_formatRouteLength(selectedRoute.lengthMeters)}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  if (_routeEditMode && selectedRoute != null)
+                    const SizedBox(height: 10),
                   if (_routeCreateMode || _routeEditMode)
                     const SizedBox(height: 10),
                   Text(
@@ -956,7 +1133,221 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     );
   }
 
-  Widget _buildRouteList() {
+  /*
+  Widget _buildSelectedRouteCard(_CableRoute route) {
+    return _buildRouteListCard(route, selected: true, dense: true);
+  }
+
+  Widget _buildRouteListCard(
+    _CableRoute route, {
+    required bool selected,
+    bool dense = false,
+  }) {
+    final color = selected
+        ? const Color(0xFF1EDDC5)
+        : const Color(0xFF60A5FA);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => _selectRoute(route),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: selected ? 0.16 : 0.08),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: color.withValues(alpha: selected ? 0.55 : 0.24),
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(dense ? 14 : 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.timeline_rounded, color: color),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      route.name,
+                      maxLines: dense ? 1 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (selected)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Активный',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (final entry in route.meta.entries.take(dense ? 2 : 3)) ...[
+                _MapMetaRow(label: entry.key, value: entry.value),
+                const SizedBox(height: 6),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoutePanel() {
+    if (_routes.isEmpty) {
+      return DraggableScrollableSheet(
+        initialChildSize: 0.22,
+        minChildSize: 0.18,
+        maxChildSize: 0.4,
+        builder: (context, scrollController) {
+          return _RoutePanelShell(
+            child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: const [
+                Text(
+                  'Маршрутов пока нет. Нажмите "+" и выберите сначала начало, затем конец по существующим муфтам или шкафам.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    final filteredRoutes = _filteredRoutes;
+    final selectedRoute = _selectedRoute;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.26,
+      minChildSize: 0.18,
+      maxChildSize: 0.72,
+      snap: true,
+      snapSizes: const [0.26, 0.5, 0.72],
+      builder: (context, scrollController) {
+        return _RoutePanelShell(
+          child: CustomScrollView(
+            controller: scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Маршруты',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${filteredRoutes.length} из ${_routes.length}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _routeSearchController,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Поиск по названию, началу, концу, примечанию',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _routeSearchQuery.trim().isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Очистить поиск',
+                                  onPressed: _clearRouteSearch,
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          filled: true,
+                          fillColor: const Color(0xFF0B1D31),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF1D3F63),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF1D3F63),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (selectedRoute != null) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          'Выбранный маршрут',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildSelectedRouteCard(selectedRoute),
+                      ],
+                      const SizedBox(height: 14),
+                    ],
+                  ),
+                ),
+              ),
+              if (filteredRoutes.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(24, 16, 24, 32),
+                    child: Center(
+                      child: Text(
+                        'По этому запросу маршруты не найдены.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  sliver: SliverList.separated(
+                    itemCount: filteredRoutes.length,
+                    itemBuilder: (context, index) {
+                      final route = filteredRoutes[index];
+                      return _buildRouteListCard(
+                        route,
+                        selected: route.id == _selectedRouteId,
+                      );
+                    },
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget buildRouteListLegacy() {
     if (_routes.isEmpty) {
       return Container(
         decoration: const BoxDecoration(
@@ -1041,6 +1432,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     );
   }
 
+  */
   Widget _buildBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -1109,91 +1501,87 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
 
     return Stack(
       children: [
-        Column(
-          children: [
-            Expanded(
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: center,
-                  initialZoom: _mapZoom,
-                  maxZoom: 19,
-                  onTap: _handleMapTap,
-                  onPositionChanged: (position, _) {
-                    _mapZoom = position.zoom;
-                  },
+        Positioned.fill(
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              crs: mapCrsById(_selectedTileLayerId),
+              initialCenter: center,
+              initialZoom: _mapZoom,
+              maxZoom: 19,
+              onTap: _handleMapTap,
+              onPositionChanged: (position, _) {
+                _mapZoom = position.zoom;
+              },
+            ),
+            children: [
+              tileLayerById(_selectedTileLayerId),
+              if (_routes.isNotEmpty)
+                PolylineLayer(
+                  polylines: _routes
+                      .map(
+                        (route) => Polyline(
+                          points: route.points,
+                          strokeWidth: route.id == _selectedRouteId ? 5 : 3,
+                          color:
+                              (route.id == _selectedRouteId
+                                      ? const Color(0xFF1EDDC5)
+                                      : const Color(0xFF60A5FA))
+                                  .withValues(
+                                    alpha: route.id == _selectedRouteId
+                                        ? 0.95
+                                        : 0.72,
+                                  ),
+                        ),
+                      )
+                      .toList(growable: false),
                 ),
-                children: [
-                  tileLayerById(_selectedTileLayerId),
-                  if (_routes.isNotEmpty)
-                    PolylineLayer(
-                      polylines: _routes
-                          .map(
-                            (route) => Polyline(
-                              points: route.points,
-                              strokeWidth: route.id == _selectedRouteId ? 5 : 3,
-                              color:
-                                  (route.id == _selectedRouteId
-                                          ? const Color(0xFF1EDDC5)
-                                          : const Color(0xFF60A5FA))
-                                      .withValues(
-                                        alpha: route.id == _selectedRouteId
-                                            ? 0.95
-                                            : 0.72,
-                                      ),
+              MarkerLayer(
+                markers: [
+                  ..._entities.map((entity) {
+                    final color = _entityColor(entity.type);
+                    final isPending = entity.key == _pendingStartEntityKey;
+                    return Marker(
+                      point: entity.point,
+                      width: 46,
+                      height: 46,
+                      child: GestureDetector(
+                        onTap: () => _handleEntityTap(entity),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isPending
+                                  ? const Color(0xFFFFA629)
+                                  : color.withValues(alpha: 0.6),
+                              width: isPending ? 3 : 2,
                             ),
-                          )
-                          .toList(growable: false),
-                    ),
-                  MarkerLayer(
-                    markers: [
-                      ..._entities.map((entity) {
-                        final color = _entityColor(entity.type);
-                        final isPending = entity.key == _pendingStartEntityKey;
-                        return Marker(
-                          point: entity.point,
-                          width: 46,
-                          height: 46,
-                          child: GestureDetector(
-                            onTap: () => _handleEntityTap(entity),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.16),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isPending
-                                      ? const Color(0xFFFFA629)
-                                      : color.withValues(alpha: 0.6),
-                                  width: isPending ? 3 : 2,
-                                ),
-                                boxShadow: isPending
-                                    ? const [
-                                        BoxShadow(
-                                          color: Color(0x55FFA629),
-                                          blurRadius: 18,
-                                          offset: Offset(0, 6),
-                                        ),
-                                      ]
-                                    : const [],
-                              ),
-                              child: Icon(
-                                _entityIcon(entity.type),
-                                color: isPending
-                                    ? const Color(0xFFFFA629)
-                                    : color,
-                              ),
-                            ),
+                            boxShadow: isPending
+                                ? const [
+                                    BoxShadow(
+                                      color: Color(0x55FFA629),
+                                      blurRadius: 18,
+                                      offset: Offset(0, 6),
+                                    ),
+                                  ]
+                                : const [],
                           ),
-                        );
-                      }),
-                      ...dragMarkers,
-                    ],
-                  ),
+                          child: Icon(
+                            _entityIcon(entity.type),
+                            color: isPending
+                                ? const Color(0xFFFFA629)
+                                : color,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  ...dragMarkers,
                 ],
               ),
-            ),
-            SizedBox(height: 180, child: _buildRouteList()),
-          ],
+            ],
+          ),
         ),
         _buildLegendCard(),
       ],
@@ -1310,6 +1698,39 @@ class _LegendRow extends StatelessWidget {
   }
 }
 
+/*
+class _RoutePanelShell extends StatelessWidget {
+  const _RoutePanelShell({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Color(0xFF071526),
+        border: Border(top: BorderSide(color: Color(0xFF1D3F63))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+*/
 class _MapMetaRow extends StatelessWidget {
   const _MapMetaRow({required this.label, required this.value});
 
