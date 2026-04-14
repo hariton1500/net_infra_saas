@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -78,10 +79,26 @@ class _CableRoute {
   final Map<String, dynamic> raw;
 }
 
+class _RouteCableChoice {
+  const _RouteCableChoice({
+    required this.entity,
+    required this.cableId,
+    required this.cableName,
+    required this.fibers,
+  });
+
+  final _InfrastructureEntity entity;
+  final int cableId;
+  final String cableName;
+  final int fibers;
+}
+
 class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   static const _muffsCacheKey = 'muff_notebook.muffs.v3';
   static const _cabinetsCacheKey = 'network_cabinet.cabinets.v1';
   static const _routesCacheKey = 'cable_lines.routes.v1';
+  static const _muffsModuleKey = 'muff_notebook';
+  static const _cabinetsModuleKey = 'network_cabinet';
   static const _routesModuleKey = 'cable_lines';
   static const Distance _geoDistance = Distance();
   final MapController _mapController = MapController();
@@ -94,11 +111,15 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   String? _errorMessage;
   double _mapZoom = 13;
   String _selectedTileLayerId = 'osm';
+  List<Map<String, dynamic>> _muffRecords = const [];
+  List<Map<String, dynamic>> _cabinetRecords = const [];
   List<_InfrastructureEntity> _entities = const [];
   List<Map<String, dynamic>> _routeRecords = const [];
   List<_CableRoute> _routes = const [];
   int? _selectedRouteId;
   String? _pendingStartEntityKey;
+  int? _pendingStartCableId;
+  int? _pendingRequiredFibers;
 
   @override
   void initState() {
@@ -199,6 +220,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       }
 
       setState(() {
+        _muffRecords = muffs
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true);
+        _cabinetRecords = cabinets
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true);
         _entities = nextEntities;
         _routeRecords = nextRouteRecords;
         _routes = nextRoutes;
@@ -445,6 +472,184 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     return null;
   }
 
+  List<_InfrastructureEntity> get _visibleEntities {
+    if (!_routeCreateMode ||
+        _pendingStartEntityKey == null ||
+        _pendingRequiredFibers == null) {
+      return _entities;
+    }
+
+    return _entities.where((entity) {
+      if (entity.key == _pendingStartEntityKey) {
+        return true;
+      }
+      return _freeCableChoicesForEntity(
+        entity,
+        fibers: _pendingRequiredFibers,
+      ).isNotEmpty;
+    }).toList(growable: false);
+  }
+
+  Map<String, dynamic>? _entityRecord(_InfrastructureEntity entity) {
+    final records = entity.type == _InfrastructureEntityType.cabinet
+        ? _cabinetRecords
+        : _muffRecords;
+
+    for (final record in records) {
+      if ((record['id'] as int?) == entity.id && record['deleted'] != true) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  List<_RouteCableChoice> _freeCableChoicesForEntity(
+    _InfrastructureEntity entity, {
+    int? fibers,
+  }) {
+    final record = _entityRecord(entity);
+    if (record == null) {
+      return const [];
+    }
+
+    final cables = List<Map<String, dynamic>>.from(record['cables'] ?? const []);
+    return cables.where((cable) {
+      if (cable['deleted'] == true) {
+        return false;
+      }
+      final cableFibers = (cable['fibers'] as int?) ?? 1;
+      if (fibers != null && cableFibers != fibers) {
+        return false;
+      }
+      return cable['route_id'] == null;
+    }).map((cable) {
+      final cableId = (cable['id'] as int?) ?? 0;
+      final cableFibers = (cable['fibers'] as int?) ?? 1;
+      final cableName = (cable['name'] as String?)?.trim();
+      return _RouteCableChoice(
+        entity: entity,
+        cableId: cableId,
+        cableName: cableName?.isNotEmpty == true ? cableName! : 'Кабель #$cableId',
+        fibers: cableFibers,
+      );
+    }).toList(growable: false);
+  }
+
+  Future<_RouteCableChoice?> _pickCableForEntity(
+    _InfrastructureEntity entity, {
+    required String title,
+    int? fibers,
+  }) async {
+    final choices = _freeCableChoicesForEntity(entity, fibers: fibers);
+    if (choices.isEmpty) {
+      return null;
+    }
+
+    return showModalBottomSheet<_RouteCableChoice>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(entity.name),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 320),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: choices.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final choice = choices[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(choice.cableName),
+                        subtitle: Text('Волокон: ${choice.fibers}'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.of(context).pop(choice),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _touchRecord(Map<String, dynamic> record) {
+    record['updated_at'] = DateTime.now();
+    record['dirty'] = true;
+    record['deleted'] = false;
+  }
+
+  void _bindCableToRoute(
+    Map<String, dynamic> record, {
+    required int cableId,
+    required int routeId,
+    required _InfrastructureEntity peerEntity,
+    required _RouteCableChoice peerCable,
+    required String role,
+  }) {
+    final cables = List<Map<String, dynamic>>.from(record['cables'] ?? const []);
+    final index = cables.indexWhere((cable) => cable['id'] == cableId);
+    if (index == -1) {
+      return;
+    }
+
+    final cable = Map<String, dynamic>.from(cables[index]);
+    cable['route_id'] = routeId;
+    cable['route_role'] = role;
+    cable['peer_entity_type'] = _entityTypeCode(peerEntity.type);
+    cable['peer_entity_id'] = peerEntity.id;
+    cable['peer_entity_name'] = peerEntity.name;
+    cable['peer_cable_id'] = peerCable.cableId;
+    cable['peer_cable_name'] = peerCable.cableName;
+    cables[index] = cable;
+    record['cables'] = cables;
+    _touchRecord(record);
+  }
+
+  void _unbindCableFromRoute(
+    Map<String, dynamic> record, {
+    required int cableId,
+    required int routeId,
+  }) {
+    final cables = List<Map<String, dynamic>>.from(record['cables'] ?? const []);
+    final index = cables.indexWhere((cable) => cable['id'] == cableId);
+    if (index == -1) {
+      return;
+    }
+
+    final cable = Map<String, dynamic>.from(cables[index]);
+    if (cable['route_id'] != routeId) {
+      return;
+    }
+    cable.remove('route_id');
+    cable.remove('route_role');
+    cable.remove('peer_entity_type');
+    cable.remove('peer_entity_id');
+    cable.remove('peer_entity_name');
+    cable.remove('peer_cable_id');
+    cable.remove('peer_cable_name');
+    cables[index] = cable;
+    record['cables'] = cables;
+    _touchRecord(record);
+  }
+
   bool _anchorMatchesEntity(Map<String, dynamic>? anchor, _InfrastructureEntity entity) {
     if (anchor == null) {
       return false;
@@ -659,6 +864,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _selectedRouteId = route.id;
       _routeCreateMode = false;
       _pendingStartEntityKey = null;
+      _pendingStartCableId = null;
+      _pendingRequiredFibers = null;
     });
     _mapController.move(route.points.first, _mapZoom < 15 ? 15 : _mapZoom);
   }
@@ -668,6 +875,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeCreateMode = !_routeCreateMode;
       _routeEditMode = false;
       _pendingStartEntityKey = null;
+      _pendingStartCableId = null;
+      _pendingRequiredFibers = null;
     });
   }
 
@@ -679,10 +888,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeEditMode = !_routeEditMode;
       _routeCreateMode = false;
       _pendingStartEntityKey = null;
+      _pendingStartCableId = null;
+      _pendingRequiredFibers = null;
     });
   }
 
-  void _handleEntityTap(_InfrastructureEntity entity) {
+  void handleEntityTapLegacy(_InfrastructureEntity entity) {
     if (_routeCreateMode) {
       if (_pendingStartEntityKey == null) {
         setState(() {
@@ -707,6 +918,96 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       }
 
       _createRouteBetween(start, entity);
+      return;
+    }
+
+    _showEntitySheet(entity);
+  }
+
+  void _handleEntityTapV2(_InfrastructureEntity entity) {
+    if (_routeCreateMode) {
+      if (_pendingStartEntityKey == null) {
+        unawaited(() async {
+          final startCable = await _pickCableForEntity(
+            entity,
+            title: 'Выберите свободный кабель начала маршрута',
+          );
+          if (startCable == null || !mounted) {
+            return;
+          }
+          setState(() {
+            _pendingStartEntityKey = entity.key;
+            _pendingStartCableId = startCable.cableId;
+            _pendingRequiredFibers = startCable.fibers;
+          });
+          _showSnackBar(
+            'Начало и кабель выбраны. Теперь выберите объект с таким же количеством волокон.',
+          );
+        }());
+        return;
+      }
+
+      if (_pendingStartEntityKey == entity.key) {
+        _showSnackBar('Начало и конец маршрута должны быть разными.');
+        return;
+      }
+
+      final start = _entityByKey(_pendingStartEntityKey);
+      if (start == null) {
+        _showSnackBar('Не удалось найти начальную точку маршрута.');
+        setState(() {
+          _pendingStartEntityKey = null;
+          _pendingStartCableId = null;
+          _pendingRequiredFibers = null;
+        });
+        return;
+      }
+
+      final requiredFibers = _pendingRequiredFibers;
+      final startCableId = _pendingStartCableId;
+      if (requiredFibers == null || startCableId == null) {
+        _showSnackBar('Сначала выберите стартовый кабель.');
+        return;
+      }
+
+      _RouteCableChoice? startCable;
+      for (final choice
+          in _freeCableChoicesForEntity(start, fibers: requiredFibers)) {
+        if (choice.cableId == startCableId) {
+          startCable = choice;
+          break;
+        }
+      }
+      if (startCable == null) {
+        _showSnackBar(
+          'Стартовый кабель больше недоступен. Выберите начало маршрута заново.',
+        );
+        setState(() {
+          _pendingStartEntityKey = null;
+          _pendingStartCableId = null;
+          _pendingRequiredFibers = null;
+        });
+        return;
+      }
+
+      if (_freeCableChoicesForEntity(entity, fibers: requiredFibers).isEmpty) {
+        _showSnackBar(
+          'У этого объекта нет свободных кабелей на $requiredFibers волокон.',
+        );
+        return;
+      }
+
+      unawaited(() async {
+        final endCable = await _pickCableForEntity(
+          entity,
+          title: 'Выберите свободный кабель конца маршрута',
+          fibers: requiredFibers,
+        );
+        if (endCable == null) {
+          return;
+        }
+        await _createRouteBetweenWithBindings(start, entity, startCable!, endCable);
+      }());
       return;
     }
 
@@ -787,6 +1088,126 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     _showSnackBar('Маршрут создан. Тапните по сегменту, чтобы добавить точку.');
   }
 
+  Future<void> _createRouteBetweenWithBindings(
+    _InfrastructureEntity start,
+    _InfrastructureEntity end,
+    _RouteCableChoice startCable,
+    _RouteCableChoice endCable,
+  ) async {
+    final startSource = _entityRecord(start);
+    final endSource = _entityRecord(end);
+    if (startSource == null || endSource == null) {
+      _showSnackBar('Не удалось найти записи объектов для привязки кабелей.');
+      return;
+    }
+
+    final routeId = _nextRouteId();
+    final now = DateTime.now();
+    final routeRecord = <String, dynamic>{
+      'id': routeId,
+      'name': '${start.name} - ${end.name}',
+      'note': '',
+      'start_anchor': {
+        'type': _entityTypeCode(start.type),
+        'entity_id': start.id,
+        'name': start.name,
+        'subtitle': start.subtitle,
+        'location': start.location,
+        'lat': start.point.latitude,
+        'lng': start.point.longitude,
+      },
+      'end_anchor': {
+        'type': _entityTypeCode(end.type),
+        'entity_id': end.id,
+        'name': end.name,
+        'subtitle': end.subtitle,
+        'location': end.location,
+        'lat': end.point.latitude,
+        'lng': end.point.longitude,
+      },
+      'start_cable': {
+        'id': startCable.cableId,
+        'name': startCable.cableName,
+        'fibers': startCable.fibers,
+      },
+      'end_cable': {
+        'id': endCable.cableId,
+        'name': endCable.cableName,
+        'fibers': endCable.fibers,
+      },
+      'route_points': [
+        {'lat': start.point.latitude, 'lng': start.point.longitude},
+        {'lat': end.point.latitude, 'lng': end.point.longitude},
+      ],
+      'updated_at': now,
+      'dirty': true,
+      'deleted': false,
+    };
+
+    final nextRouteRecords =
+        _routeRecords
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true)
+          ..add(routeRecord);
+    final nextMuffRecords = _muffRecords
+        .map((record) => _syncRepository.clone(record))
+        .toList(growable: true);
+    final nextCabinetRecords = _cabinetRecords
+        .map((record) => _syncRepository.clone(record))
+        .toList(growable: true);
+
+    void replaceEntityRecord(
+      _InfrastructureEntity entity,
+      Map<String, dynamic> record,
+    ) {
+      final records = entity.type == _InfrastructureEntityType.cabinet
+          ? nextCabinetRecords
+          : nextMuffRecords;
+      final index = records.indexWhere((item) => item['id'] == entity.id);
+      if (index != -1) {
+        records[index] = record;
+      }
+    }
+
+    final startRecord = _syncRepository.clone(startSource);
+    final endRecord = _syncRepository.clone(endSource);
+    _bindCableToRoute(
+      startRecord,
+      cableId: startCable.cableId,
+      routeId: routeId,
+      peerEntity: end,
+      peerCable: endCable,
+      role: 'start',
+    );
+    _bindCableToRoute(
+      endRecord,
+      cableId: endCable.cableId,
+      routeId: routeId,
+      peerEntity: start,
+      peerCable: startCable,
+      role: 'end',
+    );
+    replaceEntityRecord(start, startRecord);
+    replaceEntityRecord(end, endRecord);
+
+    await _persistAllRecords(
+      nextRouteRecords: nextRouteRecords,
+      nextMuffRecords: nextMuffRecords,
+      nextCabinetRecords: nextCabinetRecords,
+      selectedRouteId: routeId,
+      preserveModes: false,
+    );
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _routeEditMode = true;
+      _selectedRouteId = routeId;
+    });
+    _showSnackBar('Маршрут и привязки кабелей созданы.');
+  }
+
   Future<void> _deleteSelectedRoute() async {
     final route = _selectedRoute;
     if (route == null) {
@@ -827,9 +1248,48 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             'dirty': true,
             'deleted': true,
           });
+    final nextMuffRecords = _muffRecords
+        .map((record) => _syncRepository.clone(record))
+        .toList(growable: true);
+    final nextCabinetRecords = _cabinetRecords
+        .map((record) => _syncRepository.clone(record))
+        .toList(growable: true);
 
-    await _persistRoutes(
-      nextRecords,
+    void unbindFromEntity(Map<String, dynamic>? anchor, Map<String, dynamic>? cable) {
+      if (anchor == null || cable == null) {
+        return;
+      }
+      final entityId = anchor['entity_id'] as int?;
+      final cableId = cable['id'] as int?;
+      if (entityId == null || cableId == null) {
+        return;
+      }
+      final entityType = anchor['type'];
+      final records = entityType == _entityTypeCode(_InfrastructureEntityType.cabinet)
+          ? nextCabinetRecords
+          : nextMuffRecords;
+      final index = records.indexWhere((record) => record['id'] == entityId);
+      if (index == -1) {
+        return;
+      }
+      final record = _syncRepository.clone(records[index]);
+      _unbindCableFromRoute(record, cableId: cableId, routeId: route.id);
+      records[index] = record;
+    }
+
+    unbindFromEntity(
+      _extractAnchor(route.raw['start_anchor']),
+      _extractAnchor(route.raw['start_cable']),
+    );
+    unbindFromEntity(
+      _extractAnchor(route.raw['end_anchor']),
+      _extractAnchor(route.raw['end_cable']),
+    );
+
+    await _persistAllRecords(
+      nextRouteRecords: nextRecords,
+      nextMuffRecords: nextMuffRecords,
+      nextCabinetRecords: nextCabinetRecords,
       selectedRouteId: null,
       preserveModes: false,
     );
@@ -897,6 +1357,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           _routeCreateMode = false;
           _routeEditMode = false;
           _pendingStartEntityKey = null;
+          _pendingStartCableId = null;
+          _pendingRequiredFibers = null;
         }
       });
     } catch (error, stackTrace) {
@@ -913,6 +1375,115 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         _syncingRoutes = false;
       });
       _showSnackBar('Не удалось сохранить маршрут.');
+    }
+  }
+
+  Future<void> _persistAllRecords({
+    required List<Map<String, dynamic>> nextRouteRecords,
+    required List<Map<String, dynamic>> nextMuffRecords,
+    required List<Map<String, dynamic>> nextCabinetRecords,
+    required int? selectedRouteId,
+    required bool preserveModes,
+  }) async {
+    final companyId = widget.controller.membership?.companyId;
+    if (companyId == null) {
+      return;
+    }
+
+    setState(() {
+      _syncingRoutes = true;
+      _errorMessage = null;
+    });
+
+    try {
+      var routes = nextRouteRecords;
+      var muffs = nextMuffRecords;
+      var cabinets = nextCabinetRecords;
+
+      await _syncRepository.writeCache(_routesCacheKey, routes);
+      await _syncRepository.writeCache(_muffsCacheKey, muffs);
+      await _syncRepository.writeCache(_cabinetsCacheKey, cabinets);
+
+      if (routes.any((record) => record['dirty'] == true)) {
+        routes = await _syncRepository.syncAll(
+          companyId: companyId,
+          moduleKey: _routesModuleKey,
+          cacheKey: _routesCacheKey,
+          localRecords: routes,
+        );
+      }
+      if (muffs.any((record) => record['dirty'] == true)) {
+        muffs = await _syncRepository.syncAll(
+          companyId: companyId,
+          moduleKey: _muffsModuleKey,
+          cacheKey: _muffsCacheKey,
+          localRecords: muffs,
+        );
+      }
+      if (cabinets.any((record) => record['dirty'] == true)) {
+        cabinets = await _syncRepository.syncAll(
+          companyId: companyId,
+          moduleKey: _cabinetsModuleKey,
+          cacheKey: _cabinetsCacheKey,
+          localRecords: cabinets,
+        );
+      }
+
+      final nextEntities = <_InfrastructureEntity>[
+        ..._muffEntities(muffs),
+        ..._cabinetEntities(cabinets),
+      ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+      final nextRoutes =
+          routes
+              .where((record) => record['deleted'] != true)
+              .map(_routeFromRecord)
+              .whereType<_CableRoute>()
+              .toList(growable: false)
+            ..sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _routeRecords = routes
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true);
+        _muffRecords = muffs
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true);
+        _cabinetRecords = cabinets
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true);
+        _entities = nextEntities;
+        _routes = nextRoutes;
+        _selectedRouteId = selectedRouteId;
+        _syncingRoutes = false;
+        if (!preserveModes) {
+          _routeCreateMode = false;
+          _routeEditMode = false;
+          _pendingStartEntityKey = null;
+          _pendingStartCableId = null;
+          _pendingRequiredFibers = null;
+        }
+      });
+    } catch (error, stackTrace) {
+      logUserFacingError(
+        'Не удалось сохранить маршрут и привязки кабелей.',
+        source: 'infrastructure_map.persist_all',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _syncingRoutes = false;
+      });
+      _showSnackBar('Не удалось сохранить маршрут и привязки.');
     }
   }
 
@@ -1463,6 +2034,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     final center = _entities.isNotEmpty
         ? _entities.first.point
         : _routes.first.points.first;
+    final visibleEntities = _visibleEntities;
     final selectedRoute = _selectedRoute;
     final dragMarkers =
         _routeEditMode &&
@@ -1538,7 +2110,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                 ),
               MarkerLayer(
                 markers: [
-                  ..._entities.map((entity) {
+                  ...visibleEntities.map((entity) {
                     final color = _entityColor(entity.type);
                     final isPending = entity.key == _pendingStartEntityKey;
                     return Marker(
@@ -1546,7 +2118,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                       width: 46,
                       height: 46,
                       child: GestureDetector(
-                        onTap: () => _handleEntityTap(entity),
+                        onTap: () => _handleEntityTapV2(entity),
                         child: Container(
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.16),
