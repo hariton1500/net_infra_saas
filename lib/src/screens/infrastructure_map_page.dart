@@ -10,10 +10,27 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 
+class InfrastructureSignalTraceRequest {
+  const InfrastructureSignalTraceRequest({
+    required this.cabinetId,
+    required this.switchId,
+    required this.portIndex,
+  });
+
+  final int cabinetId;
+  final int switchId;
+  final int portIndex;
+}
+
 class InfrastructureMapPage extends StatefulWidget {
-  const InfrastructureMapPage({super.key, required this.controller});
+  const InfrastructureMapPage({
+    super.key,
+    required this.controller,
+    this.initialTraceRequest,
+  });
 
   final AuthController controller;
+  final InfrastructureSignalTraceRequest? initialTraceRequest;
 
   @override
   State<InfrastructureMapPage> createState() => _InfrastructureMapPageState();
@@ -93,6 +110,99 @@ class _RouteCableChoice {
   final int fibers;
 }
 
+enum _TraceEndpointKind { cabinetPort, cableFiber, splitterPort }
+
+class _TraceEndpoint {
+  const _TraceEndpoint.cabinetPort({
+    required this.entityTypeCode,
+    required this.entityId,
+    required this.switchId,
+    required this.portIndex,
+  }) : kind = _TraceEndpointKind.cabinetPort,
+       cableId = null,
+       fiberIndex = null,
+       splitterId = null,
+       splitterPortType = null,
+       splitterPortIndex = null;
+
+  const _TraceEndpoint.cableFiber({
+    required this.entityTypeCode,
+    required this.entityId,
+    required this.cableId,
+    required this.fiberIndex,
+  }) : kind = _TraceEndpointKind.cableFiber,
+       switchId = null,
+       portIndex = null,
+       splitterId = null,
+       splitterPortType = null,
+       splitterPortIndex = null;
+
+  const _TraceEndpoint.splitterPort({
+    required this.entityTypeCode,
+    required this.entityId,
+    required this.splitterId,
+    required this.splitterPortType,
+    required this.splitterPortIndex,
+  }) : kind = _TraceEndpointKind.splitterPort,
+       switchId = null,
+       portIndex = null,
+       cableId = null,
+       fiberIndex = null;
+
+  final _TraceEndpointKind kind;
+  final String entityTypeCode;
+  final int entityId;
+  final int? switchId;
+  final int? portIndex;
+  final int? cableId;
+  final int? fiberIndex;
+  final int? splitterId;
+  final String? splitterPortType;
+  final int? splitterPortIndex;
+
+  String get visitKey {
+    return switch (kind) {
+      _TraceEndpointKind.cabinetPort =>
+        '$entityTypeCode:$entityId:port:$switchId:$portIndex',
+      _TraceEndpointKind.cableFiber =>
+        '$entityTypeCode:$entityId:fiber:$cableId:$fiberIndex',
+      _TraceEndpointKind.splitterPort =>
+        '$entityTypeCode:$entityId:splitter:$splitterId:$splitterPortType:$splitterPortIndex',
+    };
+  }
+}
+
+class _TraceTransition {
+  const _TraceTransition(this.endpoint, {this.routeId});
+
+  final _TraceEndpoint endpoint;
+  final int? routeId;
+}
+
+class _TraceStep {
+  const _TraceStep({
+    required this.endpoint,
+    this.color,
+  });
+
+  final _TraceEndpoint endpoint;
+  final Color? color;
+}
+
+class _TraceResult {
+  const _TraceResult({
+    required this.entityKeys,
+    required this.routeIds,
+    required this.routeColors,
+    required this.visitedEndpoints,
+  });
+
+  final Set<String> entityKeys;
+  final Set<int> routeIds;
+  final Map<int, Color> routeColors;
+  final Set<String> visitedEndpoints;
+}
+
 class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   static const _muffsCacheKey = 'muff_notebook.muffs.v3';
   static const _cabinetsCacheKey = 'network_cabinet.cabinets.v1';
@@ -101,6 +211,36 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   static const _cabinetsModuleKey = 'network_cabinet';
   static const _routesModuleKey = 'cable_lines';
   static const Distance _geoDistance = Distance();
+  static const Map<String, List<Color>> _fiberSchemes = {
+    'default': [
+      Colors.blue,
+      Colors.orange,
+      Colors.green,
+      Colors.brown,
+      Colors.grey,
+      Colors.white,
+      Colors.red,
+      Colors.black,
+      Colors.yellow,
+      Colors.purple,
+      Colors.pink,
+      Colors.cyan,
+    ],
+    'odessa': [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.yellow,
+      Colors.white,
+      Colors.grey,
+      Colors.brown,
+      Colors.purple,
+      Colors.orange,
+      Colors.black,
+      Colors.pink,
+      Colors.cyan,
+    ],
+  };
   final MapController _mapController = MapController();
   late final CompanyModuleSyncRepository _syncRepository;
 
@@ -120,10 +260,16 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   String? _pendingStartEntityKey;
   int? _pendingStartCableId;
   int? _pendingRequiredFibers;
+  InfrastructureSignalTraceRequest? _activeTraceRequest;
+  Set<String> _highlightedEntityKeys = const {};
+  Set<int> _highlightedRouteIds = const {};
+  Map<int, Color> _highlightedRouteColors = const {};
+  String? _traceSummary;
 
   @override
   void initState() {
     super.initState();
+    _activeTraceRequest = widget.initialTraceRequest;
     _syncRepository = CompanyModuleSyncRepository(
       client: widget.controller.client,
     );
@@ -234,6 +380,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         }
         _loading = false;
       });
+      _refreshTraceHighlight();
     } catch (error, stackTrace) {
       logUserFacingError(
         'Не удалось загрузить сущности инфраструктуры.',
@@ -472,22 +619,478 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     return null;
   }
 
+  _InfrastructureEntity? _entityByTypeAndId(String typeCode, int entityId) {
+    for (final entity in _entities) {
+      if (_entityTypeCode(entity.type) == typeCode && entity.id == entityId) {
+        return entity;
+      }
+    }
+    return null;
+  }
+
+  void _clearTraceHighlight() {
+    if (_highlightedEntityKeys.isEmpty &&
+        _highlightedRouteIds.isEmpty &&
+        _traceSummary == null &&
+        _activeTraceRequest == null) {
+      return;
+    }
+    setState(() {
+      _activeTraceRequest = null;
+      _highlightedEntityKeys = const {};
+      _highlightedRouteIds = const {};
+      _highlightedRouteColors = const {};
+      _traceSummary = null;
+    });
+  }
+
+  void _refreshTraceHighlight() {
+    final request = _activeTraceRequest;
+    if (request == null) {
+      if (_highlightedEntityKeys.isEmpty &&
+          _highlightedRouteIds.isEmpty &&
+          _traceSummary == null) {
+        return;
+      }
+      setState(() {
+        _highlightedEntityKeys = const {};
+        _highlightedRouteIds = const {};
+        _highlightedRouteColors = const {};
+        _traceSummary = null;
+      });
+      return;
+    }
+
+    final result = _buildTraceFromRequest(request);
+    final cabinet = _entityByTypeAndId('cabinet', request.cabinetId);
+    final portLabel = request.portIndex + 1;
+    final summary = result == null
+        ? 'Трассу от порта $portLabel построить не удалось.'
+        : 'Трасса от ${cabinet?.name ?? 'шкафа'} порт $portLabel: объектов ${result.entityKeys.length}, маршрутов ${result.routeIds.length}.';
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _highlightedEntityKeys = result?.entityKeys ?? const {};
+      _highlightedRouteIds = result?.routeIds ?? const {};
+      _highlightedRouteColors = result?.routeColors ?? const {};
+      _traceSummary = summary;
+    });
+
+    if (result != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _focusTrace(result);
+      });
+    }
+  }
+
+  _TraceResult? _buildTraceFromRequest(InfrastructureSignalTraceRequest request) {
+    final cabinet = _entityByTypeAndId('cabinet', request.cabinetId);
+    if (cabinet == null) {
+      return null;
+    }
+
+    final start = _TraceEndpoint.cabinetPort(
+      entityTypeCode: 'cabinet',
+      entityId: request.cabinetId,
+      switchId: request.switchId,
+      portIndex: request.portIndex,
+    );
+
+    final queue = <_TraceStep>[_TraceStep(endpoint: start)];
+    final visited = <String>{};
+    final entityKeys = <String>{};
+    final routeIds = <int>{};
+    final routeColors = <int, Color>{};
+
+    while (queue.isNotEmpty) {
+      final step = queue.removeAt(0);
+      final current = step.endpoint;
+      if (!visited.add(current.visitKey)) {
+        continue;
+      }
+
+      entityKeys.add('${current.entityTypeCode}:${current.entityId}');
+      final currentColor = step.color ?? _traceColorForEndpoint(current);
+
+      for (final transition in _traceNeighbors(current)) {
+        if (transition.routeId != null) {
+          routeIds.add(transition.routeId!);
+          routeColors.putIfAbsent(transition.routeId!, () {
+            return currentColor ?? const Color(0xFFFFB347);
+          });
+        }
+        if (!visited.contains(transition.endpoint.visitKey)) {
+          queue.add(
+            _TraceStep(
+              endpoint: transition.endpoint,
+              color: currentColor,
+            ),
+          );
+        }
+      }
+    }
+
+    return _TraceResult(
+      entityKeys: entityKeys,
+      routeIds: routeIds,
+      routeColors: routeColors,
+      visitedEndpoints: visited,
+    );
+  }
+
+  Iterable<_TraceTransition> _traceNeighbors(_TraceEndpoint endpoint) sync* {
+    switch (endpoint.entityTypeCode) {
+      case 'cabinet':
+        yield* _traceCabinetNeighbors(endpoint);
+      case 'muff':
+      case 'pon_box':
+        yield* _traceMuffNeighbors(endpoint);
+    }
+
+    if (endpoint.kind == _TraceEndpointKind.cableFiber) {
+      final routeTransition = _traceRouteNeighbor(endpoint);
+      if (routeTransition != null) {
+        yield routeTransition;
+      }
+    }
+  }
+
+  Iterable<_TraceTransition> _traceCabinetNeighbors(
+    _TraceEndpoint endpoint,
+  ) sync* {
+    final record = _recordByTypeAndId(endpoint.entityTypeCode, endpoint.entityId);
+    if (record == null) {
+      return;
+    }
+
+    final connections = List<Map<String, dynamic>>.from(
+      record['connections'] ?? const [],
+    );
+
+    for (final connection in connections) {
+      final left = _cabinetEndpointFromConnection(
+        endpoint.entityTypeCode,
+        endpoint.entityId,
+        connection,
+        true,
+      );
+      final right = _cabinetEndpointFromConnection(
+        endpoint.entityTypeCode,
+        endpoint.entityId,
+        connection,
+        false,
+      );
+      if (left != null && right != null && _traceEndpointEquals(left, endpoint)) {
+        yield _TraceTransition(right);
+      } else if (left != null &&
+          right != null &&
+          _traceEndpointEquals(right, endpoint)) {
+        yield _TraceTransition(left);
+      }
+    }
+  }
+
+  Iterable<_TraceTransition> _traceMuffNeighbors(_TraceEndpoint endpoint) sync* {
+    final record = _recordByTypeAndId(endpoint.entityTypeCode, endpoint.entityId);
+    if (record == null) {
+      return;
+    }
+
+    final connections = List<Map<String, dynamic>>.from(
+      record['connections'] ?? const [],
+    );
+    for (final connection in connections) {
+      if (connection['endpoint1'] is! Map || connection['endpoint2'] is! Map) {
+        continue;
+      }
+      final left = _muffEndpointFromMap(
+        endpoint.entityTypeCode,
+        endpoint.entityId,
+        Map<String, dynamic>.from(connection['endpoint1'] as Map),
+      );
+      final right = _muffEndpointFromMap(
+        endpoint.entityTypeCode,
+        endpoint.entityId,
+        Map<String, dynamic>.from(connection['endpoint2'] as Map),
+      );
+      if (left != null && right != null && _traceEndpointEquals(left, endpoint)) {
+        yield _TraceTransition(right);
+      } else if (left != null &&
+          right != null &&
+          _traceEndpointEquals(right, endpoint)) {
+        yield _TraceTransition(left);
+      }
+    }
+
+    if (endpoint.kind == _TraceEndpointKind.splitterPort) {
+      final splitters = List<Map<String, dynamic>>.from(
+        record['splitters'] ?? const [],
+      );
+      final splitter = splitters.cast<Map<String, dynamic>?>().firstWhere(
+        (item) => item?['id'] == endpoint.splitterId,
+        orElse: () => null,
+      );
+      if (splitter == null) {
+        return;
+      }
+      final ratio = (splitter['ratio'] as int?) ?? 8;
+      if (endpoint.splitterPortType == 'input') {
+        for (var index = 0; index < ratio; index++) {
+          yield _TraceTransition(
+            _TraceEndpoint.splitterPort(
+              entityTypeCode: endpoint.entityTypeCode,
+              entityId: endpoint.entityId,
+              splitterId: endpoint.splitterId!,
+              splitterPortType: 'output',
+              splitterPortIndex: index,
+            ),
+          );
+        }
+      } else {
+        yield _TraceTransition(
+          _TraceEndpoint.splitterPort(
+            entityTypeCode: endpoint.entityTypeCode,
+            entityId: endpoint.entityId,
+            splitterId: endpoint.splitterId!,
+            splitterPortType: 'input',
+            splitterPortIndex: 0,
+          ),
+        );
+      }
+    }
+  }
+
+  _TraceTransition? _traceRouteNeighbor(_TraceEndpoint endpoint) {
+    final record = _recordByTypeAndId(endpoint.entityTypeCode, endpoint.entityId);
+    if (record == null) {
+      return null;
+    }
+
+    final cable = _cableById(record, endpoint.cableId!);
+    if (cable == null) {
+      return null;
+    }
+
+    final routeId = cable['route_id'] as int?;
+    final peerEntityType = cable['peer_entity_type'] as String?;
+    final peerEntityId = cable['peer_entity_id'] as int?;
+    final peerCableId = cable['peer_cable_id'] as int?;
+    if (routeId == null ||
+        peerEntityType == null ||
+        peerEntityId == null ||
+        peerCableId == null) {
+      return null;
+    }
+
+    return _TraceTransition(
+      _TraceEndpoint.cableFiber(
+        entityTypeCode: peerEntityType,
+        entityId: peerEntityId,
+        cableId: peerCableId,
+        fiberIndex: endpoint.fiberIndex!,
+      ),
+      routeId: routeId,
+    );
+  }
+
+  _TraceEndpoint? _cabinetEndpointFromConnection(
+    String entityTypeCode,
+    int entityId,
+    Map<String, dynamic> connection,
+    bool first,
+  ) {
+    final switchId = connection[first ? 'switch1' : 'switch2'] as int?;
+    final portIndex = connection[first ? 'port1' : 'port2'] as int?;
+    if (switchId != null && portIndex != null) {
+      return _TraceEndpoint.cabinetPort(
+        entityTypeCode: entityTypeCode,
+        entityId: entityId,
+        switchId: switchId,
+        portIndex: portIndex,
+      );
+    }
+
+    final cableId = connection[first ? 'cable1' : 'cable2'] as int?;
+    final fiberIndex = connection[first ? 'fiber1' : 'fiber2'] as int?;
+    if (cableId != null && fiberIndex != null) {
+      return _TraceEndpoint.cableFiber(
+        entityTypeCode: entityTypeCode,
+        entityId: entityId,
+        cableId: cableId,
+        fiberIndex: fiberIndex,
+      );
+    }
+
+    return null;
+  }
+
+  _TraceEndpoint? _muffEndpointFromMap(
+    String entityTypeCode,
+    int entityId,
+    Map<String, dynamic> endpoint,
+  ) {
+    if (endpoint['type'] == 'splitter') {
+      final splitterId = endpoint['splitterId'] as int?;
+      final portType = endpoint['portType'] as String?;
+      final portIndex = endpoint['portIndex'] as int?;
+      if (splitterId == null || portType == null || portIndex == null) {
+        return null;
+      }
+      return _TraceEndpoint.splitterPort(
+        entityTypeCode: entityTypeCode,
+        entityId: entityId,
+        splitterId: splitterId,
+        splitterPortType: portType,
+        splitterPortIndex: portIndex,
+      );
+    }
+
+    final cableId = endpoint['cableId'] as int?;
+    final fiberIndex = endpoint['fiberIndex'] as int?;
+    if (cableId == null || fiberIndex == null) {
+      return null;
+    }
+    return _TraceEndpoint.cableFiber(
+      entityTypeCode: entityTypeCode,
+      entityId: entityId,
+      cableId: cableId,
+      fiberIndex: fiberIndex,
+    );
+  }
+
+  bool _traceEndpointEquals(_TraceEndpoint left, _TraceEndpoint right) {
+    return left.visitKey == right.visitKey;
+  }
+
+  Map<String, dynamic>? _recordByTypeAndId(String typeCode, int entityId) {
+    final records = typeCode == 'cabinet' ? _cabinetRecords : _muffRecords;
+    for (final record in records) {
+      if ((record['id'] as int?) == entityId && record['deleted'] != true) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _cableById(Map<String, dynamic> record, int cableId) {
+    final cables = List<Map<String, dynamic>>.from(record['cables'] ?? const []);
+    for (final cable in cables) {
+      if ((cable['id'] as int?) == cableId && cable['deleted'] != true) {
+        return cable;
+      }
+    }
+    return null;
+  }
+
+  Color? _traceColorForEndpoint(_TraceEndpoint endpoint) {
+    if (endpoint.kind != _TraceEndpointKind.cableFiber) {
+      return null;
+    }
+    final record = _recordByTypeAndId(endpoint.entityTypeCode, endpoint.entityId);
+    if (record == null) {
+      return null;
+    }
+    final cable = _cableById(record, endpoint.cableId!);
+    if (cable == null) {
+      return null;
+    }
+    final scheme = (cable['color_scheme'] as String?) ?? 'default';
+    final colors = _fiberSchemes[scheme] ?? _fiberSchemes.values.first;
+    if (colors.isEmpty) {
+      return null;
+    }
+    final fiberIndex = endpoint.fiberIndex ?? 0;
+    return colors[fiberIndex % colors.length];
+  }
+
+  void _focusTrace(_TraceResult result) {
+    final points = <LatLng>[];
+    for (final key in result.entityKeys) {
+      final entity = _entityByKey(key);
+      if (entity != null) {
+        points.add(entity.point);
+      }
+    }
+    for (final routeId in result.routeIds) {
+      for (final route in _routes) {
+        if (route.id == routeId) {
+          points.addAll(route.points);
+        }
+      }
+    }
+    if (points.isEmpty) {
+      return;
+    }
+    final bounds = LatLngBounds.fromPoints(points);
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(48),
+      ),
+    );
+  }
+
   List<_InfrastructureEntity> get _visibleEntities {
-    if (!_routeCreateMode ||
-        _pendingStartEntityKey == null ||
-        _pendingRequiredFibers == null) {
+    if (!_routeCreateMode) {
       return _entities;
+    }
+
+    if (_pendingStartEntityKey == null) {
+      return _routeCandidateEntities;
+    }
+
+    return _entities;
+  }
+
+  List<_InfrastructureEntity> get _routeCandidateEntities {
+    if (!_routeCreateMode) {
+      return const [];
+    }
+
+    if (_pendingStartEntityKey == null) {
+      return _entities.where(_hasAnyFreeCable).toList(growable: false);
+    }
+
+    final fibers = _pendingRequiredFibers;
+    if (fibers == null) {
+      return const [];
     }
 
     return _entities.where((entity) {
       if (entity.key == _pendingStartEntityKey) {
         return true;
       }
-      return _freeCableChoicesForEntity(
-        entity,
-        fibers: _pendingRequiredFibers,
-      ).isNotEmpty;
+      return _freeCableChoicesForEntity(entity, fibers: fibers).isNotEmpty;
     }).toList(growable: false);
+  }
+
+  bool _hasAnyFreeCable(_InfrastructureEntity entity) =>
+      _freeCableChoicesForEntity(entity).isNotEmpty;
+
+  bool _isEntityCandidateForCurrentStep(_InfrastructureEntity entity) {
+    if (!_routeCreateMode) {
+      return true;
+    }
+
+    if (_pendingStartEntityKey == null) {
+      return _hasAnyFreeCable(entity);
+    }
+
+    if (entity.key == _pendingStartEntityKey) {
+      return true;
+    }
+
+    final fibers = _pendingRequiredFibers;
+    if (fibers == null) {
+      return false;
+    }
+    return _freeCableChoicesForEntity(entity, fibers: fibers).isNotEmpty;
   }
 
   Map<String, dynamic>? _entityRecord(_InfrastructureEntity entity) {
@@ -1691,6 +2294,23 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                     const SizedBox(height: 10),
                   if (_routeCreateMode || _routeEditMode)
                     const SizedBox(height: 10),
+                  if (_traceSummary != null)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFB347).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFFFB347).withValues(alpha: 0.45),
+                        ),
+                      ),
+                      child: Text(
+                        _traceSummary!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
                   Text(
                     'Точек: ${_entities.length} • Маршрутов: ${_routes.length}',
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -2092,19 +2712,23 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                 PolylineLayer(
                   polylines: _routes
                       .map(
-                        (route) => Polyline(
-                          points: route.points,
-                          strokeWidth: route.id == _selectedRouteId ? 5 : 3,
-                          color:
-                              (route.id == _selectedRouteId
-                                      ? const Color(0xFF1EDDC5)
-                                      : const Color(0xFF60A5FA))
-                                  .withValues(
-                                    alpha: route.id == _selectedRouteId
-                                        ? 0.95
-                                        : 0.72,
-                                  ),
-                        ),
+                        (route) {
+                          final isSelected = route.id == _selectedRouteId;
+                          final isTraced = _highlightedRouteIds.contains(route.id);
+                          final traceColor = _highlightedRouteColors[route.id];
+                          final color = isTraced
+                              ? (traceColor ?? const Color(0xFFFFB347))
+                              : isSelected
+                                  ? const Color(0xFF1EDDC5)
+                                  : const Color(0xFF60A5FA);
+                          return Polyline(
+                            points: route.points,
+                            strokeWidth: isTraced ? 6 : (isSelected ? 5 : 3),
+                            color: color.withValues(
+                              alpha: isTraced ? 0.98 : (isSelected ? 0.95 : 0.72),
+                            ),
+                          );
+                        },
                       )
                       .toList(growable: false),
                 ),
@@ -2113,6 +2737,19 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                   ...visibleEntities.map((entity) {
                     final color = _entityColor(entity.type);
                     final isPending = entity.key == _pendingStartEntityKey;
+                    final isCandidate = _isEntityCandidateForCurrentStep(entity);
+                    final isTraced = _highlightedEntityKeys.contains(entity.key);
+                    final isDimmed =
+                        _routeCreateMode &&
+                        _pendingStartEntityKey != null &&
+                        !isCandidate;
+                    final borderColor = isPending
+                        ? const Color(0xFFFFA629)
+                        : isTraced
+                            ? const Color(0xFFFFB347)
+                        : isCandidate
+                            ? color.withValues(alpha: 0.8)
+                            : Colors.white24;
                     return Marker(
                       point: entity.point,
                       width: 46,
@@ -2121,20 +2758,29 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                         onTap: () => _handleEntityTapV2(entity),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.16),
+                            color: isTraced
+                                ? const Color(0xFFFFB347).withValues(alpha: 0.22)
+                                : isDimmed
+                                ? const Color(0xFF6B7280).withValues(alpha: 0.18)
+                                : color.withValues(alpha: isCandidate ? 0.22 : 0.12),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isPending
-                                  ? const Color(0xFFFFA629)
-                                  : color.withValues(alpha: 0.6),
+                              color: borderColor,
                               width: isPending ? 3 : 2,
                             ),
-                            boxShadow: isPending
-                                ? const [
+                            boxShadow: isPending ||
+                                    isTraced ||
+                                    (_routeCreateMode && isCandidate && !isDimmed)
+                                ? [
                                     BoxShadow(
-                                      color: Color(0x55FFA629),
+                                      color: (isPending
+                                              ? const Color(0xFFFFA629)
+                                              : isTraced
+                                                  ? const Color(0xFFFFB347)
+                                              : color)
+                                          .withValues(alpha: 0.35),
                                       blurRadius: 18,
-                                      offset: Offset(0, 6),
+                                      offset: const Offset(0, 6),
                                     ),
                                   ]
                                 : const [],
@@ -2143,7 +2789,13 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                             _entityIcon(entity.type),
                             color: isPending
                                 ? const Color(0xFFFFA629)
-                                : color,
+                                : isTraced
+                                    ? const Color(0xFFFFB347)
+                                : isDimmed
+                                    ? Colors.white38
+                                    : (_routeCreateMode && isCandidate
+                                        ? color.withValues(alpha: 0.95)
+                                        : color),
                           ),
                         ),
                       ),
@@ -2172,6 +2824,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       appBar: AppBar(
         title: const Text('Карта инфраструктуры'),
         actions: [
+          if (_activeTraceRequest != null)
+            IconButton(
+              tooltip: 'Очистить подсветку трассы',
+              onPressed: _clearTraceHighlight,
+              icon: const Icon(Icons.alt_route_rounded),
+            ),
           IconButton(
             tooltip: _routeCreateMode
                 ? 'Отменить создание маршрута'

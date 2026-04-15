@@ -9,6 +9,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
+import 'infrastructure_map_page.dart';
 import 'muff_location_picker.dart';
 
 class CabinetNotebookPage extends StatefulWidget {
@@ -100,6 +101,29 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
 
   String _portKey(int switchId, int portIndex) => 's$switchId:$portIndex';
+
+  Future<void> _openPortTraceOnMap({
+    required int switchId,
+    required int portIndex,
+  }) async {
+    final cabinetId = _selectedCabinet?['id'] as int?;
+    if (cabinetId == null) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => InfrastructureMapPage(
+          controller: widget.controller,
+          initialTraceRequest: InfrastructureSignalTraceRequest(
+            cabinetId: cabinetId,
+            switchId: switchId,
+            portIndex: portIndex,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -1938,12 +1962,19 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           portType,
                         ),
                       ),
-                      child: _portSquare(
-                        index + 1,
-                        hover,
-                        portColor,
-                        portType,
-                        key: anchorKey,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _openPortTraceOnMap(
+                          switchId: sw['id'] as int,
+                          portIndex: index,
+                        ),
+                        child: _portSquare(
+                          index + 1,
+                          hover,
+                          portColor,
+                          portType,
+                          key: anchorKey,
+                        ),
                       ),
                     );
                   },

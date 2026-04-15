@@ -20,13 +20,13 @@ class MapTileOption {
   final TileLayerFactory buildLayer;
 }
 
-final BaseClient _httpClient = RetryClient(Client());
+BaseClient _buildHttpClient() => RetryClient(Client());
 
 TileLayer _openStreetMapLayer() {
   return TileLayer(
     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     userAgentPackageName: 'net_infra_saas',
-    tileProvider: NetworkTileProvider(httpClient: _httpClient),
+    tileProvider: NetworkTileProvider(httpClient: _buildHttpClient()),
   );
 }
 
@@ -35,7 +35,7 @@ TileLayer _openTopoMapLayer() {
     urlTemplate: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     subdomains: const ['a', 'b', 'c'],
     userAgentPackageName: 'net_infra_saas',
-    tileProvider: NetworkTileProvider(httpClient: _httpClient),
+    tileProvider: NetworkTileProvider(httpClient: _buildHttpClient()),
   );
 }
 
@@ -44,7 +44,7 @@ TileLayer _yandexMapLayer() {
     urlTemplate:
         'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&lang=ru_RU',
     subdomains: const ['01', '02', '03', '04'],
-    tileProvider: NetworkTileProvider(httpClient: _httpClient),
+    tileProvider: NetworkTileProvider(httpClient: _buildHttpClient()),
   );
 }
 
@@ -53,7 +53,7 @@ TileLayer _yandexSatelliteLayer() {
     urlTemplate:
         'https://core-sat.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&lang=ru_RU',
     subdomains: const ['01', '02', '03', '04'],
-    tileProvider: NetworkTileProvider(httpClient: _httpClient),
+    tileProvider: NetworkTileProvider(httpClient: _buildHttpClient()),
   );
 }
 
