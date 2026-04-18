@@ -28,10 +28,12 @@ class InfrastructureMapPage extends StatefulWidget {
     super.key,
     required this.controller,
     this.initialTraceRequest,
+    this.initialRouteId,
   });
 
   final AuthController controller;
   final InfrastructureSignalTraceRequest? initialTraceRequest;
+  final int? initialRouteId;
 
   @override
   State<InfrastructureMapPage> createState() => _InfrastructureMapPageState();
@@ -272,6 +274,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   @override
   void initState() {
     super.initState();
+    _selectedRouteId = widget.initialRouteId;
     _activeTraceRequest = widget.initialTraceRequest;
     _syncRepository = CompanyModuleSyncRepository(
       client: widget.controller.client,
@@ -286,6 +289,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   Future<void> _recordTaskAddition({
     required String kind,
     required String summary,
+    int? targetRecordId,
   }) async {
     final companyId = widget.controller.membership?.companyId;
     if (companyId == null || _activeProject == null) {
@@ -298,6 +302,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       actorEmail: _actorEmail,
       kind: kind,
       summary: summary,
+      targetScreen: 'infrastructure_map',
+      targetRecordId: targetRecordId,
     );
   }
 
@@ -1747,7 +1753,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     );
     await _recordTaskAddition(
       kind: 'Добавлен маршрут',
-      summary: routeRecord['name']?.toString() ?? 'Маршрут',
+      summary: [
+        routeRecord['name']?.toString() ?? 'Маршрут',
+        if ((start.location).trim().isNotEmpty) 'старт: ${start.location}',
+        if ((end.location).trim().isNotEmpty) 'финиш: ${end.location}',
+      ].join(' • '),
+      targetRecordId: routeId,
     );
 
     if (!mounted) {
@@ -1874,7 +1885,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     );
     await _recordTaskAddition(
       kind: 'Добавлен маршрут',
-      summary: routeRecord['name']?.toString() ?? 'Маршрут',
+      summary: [
+        routeRecord['name']?.toString() ?? 'Маршрут',
+        'кабель старта: ${startCable.cableName} (${startCable.fibers} вол.)',
+        'кабель финиша: ${endCable.cableName} (${endCable.fibers} вол.)',
+      ].join(' • '),
+      targetRecordId: routeId,
     );
 
     if (!mounted) {

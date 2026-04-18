@@ -116,20 +116,9 @@ class CompanyModuleSyncRepository {
     required String actorEmail,
     required String kind,
     required String summary,
+    String? targetScreen,
+    int? targetRecordId,
   }) async {
-    final normalizedActorEmail = actorEmail.trim().toLowerCase();
-    final normalizedAuthorUserId = activeProject.authorUserId?.trim() ?? '';
-    final normalizedAuthorEmail =
-        activeProject.authorEmail?.trim().toLowerCase() ?? '';
-    final matchesAuthor =
-        (normalizedAuthorUserId.isNotEmpty &&
-            normalizedAuthorUserId == actorUserId.trim()) ||
-        (normalizedAuthorEmail.isNotEmpty &&
-            normalizedAuthorEmail == normalizedActorEmail);
-    if (!matchesAuthor) {
-      return false;
-    }
-
     final records = await readCache(projectsCacheKey);
     final index = records.indexWhere((record) => record['id'] == activeProject.id);
     if (index == -1) {
@@ -141,11 +130,54 @@ class CompanyModuleSyncRepository {
       return false;
     }
 
+    final normalizedActorEmail = actorEmail.trim().toLowerCase();
+    final normalizedAuthorUserId =
+        (activeProject.authorUserId?.trim().isNotEmpty == true
+                ? activeProject.authorUserId
+                : task['created_by_user_id']?.toString())
+            ?.trim() ??
+        '';
+    final normalizedAuthorEmail =
+        (activeProject.authorEmail?.trim().isNotEmpty == true
+                ? activeProject.authorEmail
+                : task['created_by_email']?.toString())
+            ?.trim()
+            .toLowerCase() ??
+        '';
+    final matchesAuthor =
+        (normalizedAuthorUserId.isNotEmpty &&
+            normalizedAuthorUserId == actorUserId.trim()) ||
+        (normalizedAuthorEmail.isNotEmpty &&
+            normalizedAuthorEmail == normalizedActorEmail);
+    if (!matchesAuthor) {
+      return false;
+    }
+
+    if ((activeProject.authorUserId?.trim().isEmpty ?? true) ||
+        (activeProject.authorEmail?.trim().isEmpty ?? true)) {
+      await writeActiveProject(
+        ProjectSelection(
+          id: activeProject.id,
+          name: activeProject.name,
+          authorUserId:
+              normalizedAuthorUserId.isEmpty ? null : normalizedAuthorUserId,
+          authorEmail:
+              normalizedAuthorEmail.isEmpty ? null : normalizedAuthorEmail,
+        ),
+      );
+    }
+
+    final normalizedTargetScreen = targetScreen?.trim();
     final workLog = List<Map<String, dynamic>>.from(task['work_log'] ?? const []);
     workLog.add({
       'at': DateTime.now(),
       'kind': kind,
       'summary': summary.trim(),
+      if (normalizedTargetScreen?.isNotEmpty == true)
+        'target_screen': normalizedTargetScreen,
+      ...?targetRecordId == null
+          ? null
+          : <String, dynamic>{'target_record_id': targetRecordId},
     });
     task['work_log'] = workLog;
     task['updated_at'] = DateTime.now();

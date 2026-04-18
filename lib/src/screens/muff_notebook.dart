@@ -13,9 +13,14 @@ import '../core/project_scope.dart';
 import 'muff_location_picker.dart';
 
 class MuffNotebookPage extends StatefulWidget {
-  const MuffNotebookPage({super.key, required this.controller});
+  const MuffNotebookPage({
+    super.key,
+    required this.controller,
+    this.initialMuffId,
+  });
 
   final AuthController controller;
+  final int? initialMuffId;
 
   @override
   State<MuffNotebookPage> createState() => _MuffNotebookPageState();
@@ -334,6 +339,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   Future<void> _recordTaskAddition({
     required String kind,
     required String summary,
+    int? targetRecordId,
   }) async {
     if (_companyId == null || _activeProject == null) {
       return;
@@ -345,6 +351,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       actorEmail: _actorEmail,
       kind: kind,
       summary: summary,
+      targetScreen: 'muff_notebook',
+      targetRecordId: targetRecordId,
     );
   }
 
@@ -356,7 +364,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   }
 
   Future<void> _loadFromStorage() async {
-    final selectedMuffId = _selectedMuff?['id'] as int?;
+    final selectedMuffId = (_selectedMuff?['id'] as int?) ?? widget.initialMuffId;
     final selectedCableId = _selectedCableId;
     _activeProject = await _syncRepository.readActiveProject();
 
@@ -782,10 +790,29 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     if (muff == null) {
                       await _recordTaskAddition(
                         kind: 'Добавлена муфта',
-                        summary: payload['name']?.toString().trim().isNotEmpty ==
-                                true
-                            ? payload['name'].toString().trim()
-                            : 'Без названия',
+                        summary: [
+                          if (payload['name']?.toString().trim().isNotEmpty ==
+                              true)
+                            payload['name'].toString().trim()
+                          else
+                            'Без названия',
+                          if ((payload['district'] ?? '')
+                              .toString()
+                              .trim()
+                              .isNotEmpty)
+                            'район: ${payload['district'].toString().trim()}',
+                          if ((payload['location'] ?? '')
+                              .toString()
+                              .trim()
+                              .isNotEmpty)
+                            payload['location'].toString().trim(),
+                          if ((payload['comment'] ?? '')
+                              .toString()
+                              .trim()
+                              .isNotEmpty)
+                            'примечание: ${payload['comment'].toString().trim()}',
+                        ].join(' • '),
+                        targetRecordId: payload['id'] as int?,
                       );
                     }
                     navigator.pop();
@@ -990,8 +1017,18 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     }
                     await _recordTaskAddition(
                       kind: 'Добавлен кабель в муфту',
-                      summary:
-                          '${muff['name'] ?? 'Муфта'} - ${cables.last['name'] ?? 'Кабель'}',
+                      summary: [
+                        '${muff['name'] ?? 'Муфта'}',
+                        '${cables.last['name'] ?? 'Кабель'}',
+                        'волокон: ${cables.last['fibers'] ?? fibersNumber}',
+                        'сторона: ${((cables.last['side'] as int?) ?? side) == 0 ? 'слева' : 'справа'}',
+                        if ((cables.last['color_scheme'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty)
+                          'маркировка: ${cables.last['color_scheme']}',
+                      ].join(' • '),
+                      targetRecordId: muff['id'] as int?,
                     );
                     setState(() {});
                     navigator.pop();
@@ -1324,7 +1361,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     if (mounted) {
       await _recordTaskAddition(
         kind: 'Добавлено соединение в муфту',
-        summary: muff['name']?.toString() ?? 'Муфта',
+        summary: [
+          muff['name']?.toString() ?? 'Муфта',
+          '${_endpointLabel(endpoint1)} ↔ ${_endpointLabel(endpoint2)}',
+        ].join(' • '),
+        targetRecordId: muff['id'] as int?,
       );
       setState(() {});
     }
@@ -1475,8 +1516,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     }
                     await _recordTaskAddition(
                       kind: 'Добавлен делитель в муфту',
-                      summary:
-                          '${muff['name'] ?? 'Муфта'} - ${splitters.last['name'] ?? 'Делитель'}',
+                      summary: [
+                        '${muff['name'] ?? 'Муфта'}',
+                        '${splitters.last['name'] ?? 'Делитель'}',
+                        '1:${splitters.last['ratio'] ?? ratio}',
+                        'сторона: ${((splitters.last['side'] as int?) ?? side) == 0 ? 'слева' : 'справа'}',
+                        'ориентация: ${((splitters.last['orientation'] ?? orientation) == 'vertical') ? 'вертикально' : 'горизонтально'}',
+                      ].join(' • '),
+                      targetRecordId: muff['id'] as int?,
                     );
                     setState(() {});
                     navigator.pop();

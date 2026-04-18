@@ -21,6 +21,8 @@ class StartPage extends StatefulWidget {
 
 class _StartPageState extends State<StartPage> {
   static const String _legacyWorkOrdersCacheKey = 'work_orders.records.v1';
+  static const String _taskListFilterAll = 'all';
+  static const String _taskListFilterMine = 'mine';
 
   late final CompanyModuleSyncRepository _syncRepository;
   final _inviteFormKey = GlobalKey<FormState>();
@@ -31,6 +33,7 @@ class _StartPageState extends State<StartPage> {
   bool _syncingProjects = false;
   List<Map<String, dynamic>> _projectRecords = const [];
   ProjectSelection? _activeProject;
+  String _taskListFilter = _taskListFilterMine;
 
   @override
   void initState() {
@@ -72,6 +75,21 @@ class _StartPageState extends State<StartPage> {
 
   List<Map<String, dynamic>> get _projects =>
       _normalizeProjectRecords(_projectRecords);
+
+  bool get _canSwitchTaskListFilter => _canManageProjects;
+
+  String get _effectiveTaskListFilter =>
+      _canSwitchTaskListFilter ? _taskListFilter : _taskListFilterMine;
+
+  List<Map<String, dynamic>> get _visibleProjects {
+    final projects = _projects;
+    if (_effectiveTaskListFilter != _taskListFilterMine) {
+      return projects;
+    }
+    return projects
+        .where((project) => _isTaskAssignee(project))
+        .toList(growable: false);
+  }
 
   List<Map<String, dynamic>> _normalizeProjectRecords(
     List<Map<String, dynamic>> source,
@@ -295,6 +313,8 @@ class _StartPageState extends State<StartPage> {
             'at': _syncRepository.parseTime(entry['at']),
             'kind': entry['kind']?.toString() ?? '',
             'summary': entry['summary']?.toString() ?? '',
+            'target_screen': entry['target_screen']?.toString() ?? '',
+            'target_record_id': entry['target_record_id'],
           },
         )
         .toList(growable: false);
@@ -306,11 +326,117 @@ class _StartPageState extends State<StartPage> {
     return entries;
   }
 
+  List<String> _workLogDetailsOf(Map<String, dynamic> entry) {
+    final summary = entry['summary']?.toString().trim() ?? '';
+    if (summary.isEmpty) {
+      return const [];
+    }
+    return summary
+        .split(' • ')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  int? _workLogTargetRecordIdOf(Map<String, dynamic> entry) {
+    final value = entry['target_record_id'];
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  String? _workLogTargetScreenOf(Map<String, dynamic> entry) {
+    final value = entry['target_screen']?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  String? _workLogTargetButtonLabel(Map<String, dynamic> entry) {
+    switch (_workLogTargetScreenOf(entry)) {
+      case 'muff_notebook':
+        return 'Открыть муфту';
+      case 'network_cabinet':
+        return 'Открыть шкаф';
+      case 'infrastructure_map':
+        return 'Открыть маршрут';
+      default:
+        return null;
+    }
+  }
+
+  Future<void> _openWorkLogTarget(Map<String, dynamic> entry) async {
+    final targetScreen = _workLogTargetScreenOf(entry);
+    final targetRecordId = _workLogTargetRecordIdOf(entry);
+    if (targetScreen == null || targetRecordId == null || !mounted) {
+      return;
+    }
+
+    switch (targetScreen) {
+      case 'muff_notebook':
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MuffNotebookPage(
+              controller: widget.controller,
+              initialMuffId: targetRecordId,
+            ),
+          ),
+        );
+        if (mounted) {
+          await _loadProjects();
+        }
+        return;
+      case 'network_cabinet':
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => CabinetNotebookPage(
+              controller: widget.controller,
+              initialCabinetId: targetRecordId,
+            ),
+          ),
+        );
+        if (mounted) {
+          await _loadProjects();
+        }
+        return;
+      case 'infrastructure_map':
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => InfrastructureMapPage(
+              controller: widget.controller,
+              initialRouteId: targetRecordId,
+            ),
+          ),
+        );
+        if (mounted) {
+          await _loadProjects();
+        }
+        return;
+    }
+  }
+
+  Map<String, dynamic> _currentTaskSnapshot(Map<String, dynamic> task) {
+    final id = projectIdOf(task);
+    if (id != null) {
+      for (final record in _projectRecords) {
+        if (projectIdOf(record) == id) {
+          return _syncRepository.clone(record);
+        }
+      }
+    }
+    return _syncRepository.clone(task);
+  }
+
   Future<void> _updateTaskRecord(
     Map<String, dynamic> task,
     void Function(Map<String, dynamic> updatedTask) mutate,
   ) async {
-    final updatedTask = _syncRepository.clone(task);
+    final updatedTask = _currentTaskSnapshot(task);
     mutate(updatedTask);
     updatedTask['updated_at'] = DateTime.now();
     updatedTask['updated_by'] = widget.controller.currentUser?.email ?? '';
@@ -526,7 +652,8 @@ class _StartPageState extends State<StartPage> {
   }
 
   Future<void> _showTaskDetailsDialog(Map<String, dynamic> task) async {
-    final assignees = _assignedEmployeesOf(task)
+    final currentTask = _currentTaskSnapshot(task);
+    final assignees = _assignedEmployeesOf(currentTask)
         .map(
           (employee) => _employeeDisplayName(
             fullName: employee['full_name'] ?? '',
@@ -534,25 +661,27 @@ class _StartPageState extends State<StartPage> {
           ),
         )
         .toList(growable: false);
-    final workLog = _taskWorkLogOf(task);
-    final isActive = _activeProject?.id == projectIdOf(task);
-    final isCompleted = _isTaskCompleted(task);
-    final isVerified = _isTaskVerified(task);
-    final canManageAssignees = _canAdministrateTask(task);
+    final workLog = _taskWorkLogOf(currentTask);
+    final isActive = _activeProject?.id == projectIdOf(currentTask);
+    final isCompleted = _isTaskCompleted(currentTask);
+    final isVerified = _isTaskVerified(currentTask);
+    final canManageAssignees = _canAdministrateTask(currentTask);
     final canMarkCompleted =
-        _isTaskAssignee(task) &&
+        _isTaskAssignee(currentTask) &&
         !isCompleted &&
-        !_isTaskArchived(task);
+        !_isTaskArchived(currentTask);
     final canMarkVerified =
-        _canAdministrateTask(task) && isCompleted && !isVerified;
+        _canAdministrateTask(currentTask) && isCompleted && !isVerified;
     final canMarkArchived =
-        _canAdministrateTask(task) && isVerified && !_isTaskArchived(task);
+        _canAdministrateTask(currentTask) &&
+        isVerified &&
+        !_isTaskArchived(currentTask);
 
     await showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(projectNameOf(task) ?? 'Задача'),
+          title: Text(projectNameOf(currentTask) ?? 'Задача'),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -560,8 +689,9 @@ class _StartPageState extends State<StartPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if ((task['description'] as String?)?.trim().isNotEmpty == true)
-                    Text((task['description'] as String).trim())
+                  if ((currentTask['description'] as String?)?.trim().isNotEmpty ==
+                      true)
+                    Text((currentTask['description'] as String).trim())
                   else
                     const Text('Описание не заполнено.'),
                   const SizedBox(height: 16),
@@ -589,13 +719,13 @@ class _StartPageState extends State<StartPage> {
                         ),
                     ],
                   ),
-                  if (_taskCompletedBy(task) != null) ...[
+                  if (_taskCompletedBy(currentTask) != null) ...[
                     const SizedBox(height: 12),
-                    Text('Выполнил: ${_taskCompletedBy(task)}'),
+                    Text('Выполнил: ${_taskCompletedBy(currentTask)}'),
                   ],
-                  if (_taskVerifiedBy(task) != null) ...[
+                  if (_taskVerifiedBy(currentTask) != null) ...[
                     const SizedBox(height: 6),
-                    Text('Проверил: ${_taskVerifiedBy(task)}'),
+                    Text('Проверил: ${_taskVerifiedBy(currentTask)}'),
                   ],
                   const SizedBox(height: 16),
                   Text(
@@ -623,7 +753,7 @@ class _StartPageState extends State<StartPage> {
                   ],
                   const SizedBox(height: 20),
                   Text(
-                    'История работ',
+                    'Перечень работ',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -638,7 +768,7 @@ class _StartPageState extends State<StartPage> {
                           Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: const Color(0xFF0C1D33),
                               borderRadius: BorderRadius.circular(14),
@@ -651,18 +781,52 @@ class _StartPageState extends State<StartPage> {
                                   _formatDate(
                                     _syncRepository.parseTime(entry['at']),
                                   ),
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: const Color(0xFF9FB7CC)),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Text(
                                   entry['kind']?.toString() ?? '',
-                                  style: Theme.of(context).textTheme.bodyMedium
+                                  style: Theme.of(context).textTheme.bodyLarge
                                       ?.copyWith(fontWeight: FontWeight.w700),
                                 ),
-                                if ((entry['summary']?.toString().trim() ?? '')
-                                    .isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(entry['summary'].toString().trim()),
+                                for (final detail in _workLogDetailsOf(entry)) ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 6),
+                                        child: Icon(
+                                          Icons.circle,
+                                          size: 6,
+                                          color: Color(0xFF53B6D9),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          detail,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (_workLogTargetButtonLabel(entry) != null) ...[
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _openWorkLogTarget(entry),
+                                      icon: const Icon(Icons.open_in_new_rounded),
+                                      label: Text(
+                                        _workLogTargetButtonLabel(entry)!,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ],
                             ),
@@ -681,24 +845,12 @@ class _StartPageState extends State<StartPage> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      if (!isActive)
-                        TextButton(
-                          onPressed: () async {
-                            final navigator = Navigator.of(context);
-                            await _activateProject(task);
-                            if (!mounted) {
-                              return;
-                            }
-                            navigator.pop();
-                          },
-                          child: const Text('Активировать'),
-                        ),
                       if (canManageAssignees)
                         TextButton(
                           onPressed: () async {
                             final navigator = Navigator.of(context);
                             navigator.pop();
-                            await _showTaskAssigneesEditor(task);
+                            await _showTaskAssigneesEditor(currentTask);
                           },
                           child: const Text('Исполнители'),
                         ),
@@ -706,7 +858,7 @@ class _StartPageState extends State<StartPage> {
                         FilledButton.tonal(
                           onPressed: () async {
                             final navigator = Navigator.of(context);
-                            await _markTaskCompleted(task);
+                            await _markTaskCompleted(currentTask);
                             if (!mounted) {
                               return;
                             }
@@ -718,7 +870,7 @@ class _StartPageState extends State<StartPage> {
                         FilledButton.tonal(
                           onPressed: () async {
                             final navigator = Navigator.of(context);
-                            await _markTaskVerified(task);
+                            await _markTaskVerified(currentTask);
                             if (!mounted) {
                               return;
                             }
@@ -730,7 +882,7 @@ class _StartPageState extends State<StartPage> {
                         FilledButton.tonal(
                           onPressed: () async {
                             final navigator = Navigator.of(context);
-                            await _markTaskArchived(task);
+                            await _markTaskArchived(currentTask);
                             if (!mounted) {
                               return;
                             }
@@ -738,8 +890,7 @@ class _StartPageState extends State<StartPage> {
                           },
                           child: const Text('В архив'),
                         ),
-                      if (isActive &&
-                          !canManageAssignees &&
+                      if (!canManageAssignees &&
                           !canMarkCompleted &&
                           !canMarkVerified &&
                           !canMarkArchived)
@@ -921,7 +1072,7 @@ class _StartPageState extends State<StartPage> {
   }
 
   Widget _buildProjectsCard(BuildContext context) {
-    final projects = _projects;
+    final projects = _visibleProjects;
 
     return Card(
       child: Padding(
@@ -946,6 +1097,27 @@ class _StartPageState extends State<StartPage> {
                   ),
               ],
             ),
+            if (_canSwitchTaskListFilter) ...[
+              const SizedBox(height: 12),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment<String>(
+                    value: _taskListFilterAll,
+                    label: Text('Все'),
+                  ),
+                  ButtonSegment<String>(
+                    value: _taskListFilterMine,
+                    label: Text('Мои'),
+                  ),
+                ],
+                selected: {_effectiveTaskListFilter},
+                onSelectionChanged: (selection) {
+                  setState(() {
+                    _taskListFilter = selection.first;
+                  });
+                },
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -967,7 +1139,11 @@ class _StartPageState extends State<StartPage> {
             if (_loadingProjects)
               const Center(child: CircularProgressIndicator())
             else if (projects.isEmpty)
-              const Text('Задач пока нет.')
+              Text(
+                _effectiveTaskListFilter == _taskListFilterMine
+                    ? 'У вас пока нет назначенных задач.'
+                    : 'Задач пока нет.',
+              )
             else
               Column(
                 children: [
@@ -1101,14 +1277,17 @@ class _StartPageState extends State<StartPage> {
                           title: 'Карта инфраструктуры',
                           description:
                               'Быстрый переход к карте муфт, PON боксов, кабельных маршрутов и точек подключения.',
-                          onTap: () {
-                            Navigator.of(context).push(
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => InfrastructureMapPage(
                                   controller: controller,
                                 ),
                               ),
                             );
+                            if (mounted) {
+                              await _loadProjects();
+                            }
                           },
                         ),
                         _ActionCard(
@@ -1116,13 +1295,16 @@ class _StartPageState extends State<StartPage> {
                           title: 'Блокнот муфт',
                           description:
                               'Оперативная работа с монтажными узлами, заметками и обслуживанием.',
-                          onTap: () {
-                            Navigator.of(context).push(
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
                                     MuffNotebookPage(controller: controller),
                               ),
                             );
+                            if (mounted) {
+                              await _loadProjects();
+                            }
                           },
                         ),
                         _ActionCard(
@@ -1130,14 +1312,17 @@ class _StartPageState extends State<StartPage> {
                           title: 'Кабельные линии',
                           description:
                               'Построение и редактирование кабельных маршрутов теперь выполняется прямо на карте инфраструктуры.',
-                          onTap: () {
-                            Navigator.of(context).push(
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => InfrastructureMapPage(
                                   controller: controller,
                                 ),
                               ),
                             );
+                            if (mounted) {
+                              await _loadProjects();
+                            }
                           },
                         ),
                         _ActionCard(
@@ -1145,13 +1330,16 @@ class _StartPageState extends State<StartPage> {
                           title: 'Сетевые шкафы',
                           description:
                               'Просмотр шкафов, оборудования и состояния точек размещения.',
-                          onTap: () {
-                            Navigator.of(context).push(
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
                                     CabinetNotebookPage(controller: controller),
                               ),
                             );
+                            if (mounted) {
+                              await _loadProjects();
+                            }
                           },
                         ),
                       ];
@@ -1398,10 +1586,15 @@ class _StartPageState extends State<StartPage> {
             else
               for (final member in team) ...[
                 _InfoRow(
-                  title: _memberTitle(member.fullName, member.email),
+                  title: _memberTitle(
+                    member.fullName,
+                    member.email,
+                    member.userId,
+                  ),
                   subtitle: _memberSubtitle(
                     email: member.email,
                     position: member.position,
+                    userId: member.userId,
                   ),
                   role: member.role,
                   position: member.position,
@@ -1479,22 +1672,33 @@ class _StartPageState extends State<StartPage> {
     return '$day.$month.${value.year} $hour:$minute';
   }
 
-  String _memberTitle(String fullName, String email) {
+  String _memberTitle(String fullName, String email, String userId) {
     final normalizedName = fullName.trim();
     final normalizedEmail = email.trim();
+    final normalizedUserId = userId.trim();
     if (normalizedName.isNotEmpty) {
       return normalizedName;
     }
     if (normalizedEmail.isNotEmpty) {
       return normalizedEmail;
     }
-    return 'Сотрудник без имени';
+    if (normalizedUserId.isNotEmpty) {
+      return 'Сотрудник ${normalizedUserId.substring(0, normalizedUserId.length < 8 ? normalizedUserId.length : 8)}';
+    }
+    return 'Сотрудник';
   }
 
-  String _memberSubtitle({required String email, required String position}) {
+  String _memberSubtitle({
+    required String email,
+    required String position,
+    String userId = '',
+  }) {
     final parts = <String>[
       if (email.trim().isNotEmpty) email.trim(),
       if (position.trim().isNotEmpty) position.trim(),
+      if (email.trim().isEmpty &&
+          userId.trim().isNotEmpty)
+        'ID: ${userId.trim()}',
     ];
     if (parts.isEmpty) {
       return 'Профиль сотрудника';

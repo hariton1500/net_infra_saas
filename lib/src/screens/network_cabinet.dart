@@ -14,9 +14,14 @@ import 'infrastructure_map_page.dart';
 import 'muff_location_picker.dart';
 
 class CabinetNotebookPage extends StatefulWidget {
-  const CabinetNotebookPage({super.key, required this.controller});
+  const CabinetNotebookPage({
+    super.key,
+    required this.controller,
+    this.initialCabinetId,
+  });
 
   final AuthController controller;
+  final int? initialCabinetId;
 
   @override
   State<CabinetNotebookPage> createState() => _CabinetNotebookPageState();
@@ -111,6 +116,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Future<void> _recordTaskAddition({
     required String kind,
     required String summary,
+    int? targetRecordId,
   }) async {
     if (_companyId == null || _activeProject == null) {
       return;
@@ -122,6 +128,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       actorEmail: _actorEmail,
       kind: kind,
       summary: summary,
+      targetScreen: 'network_cabinet',
+      targetRecordId: targetRecordId,
     );
   }
 
@@ -176,7 +184,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   }
 
   Future<void> _loadFromStorage() async {
-    final selectedCabinetId = _selectedCabinet?['id'] as int?;
+    final selectedCabinetId =
+        (_selectedCabinet?['id'] as int?) ?? widget.initialCabinetId;
     final selectedCableId = _selectedCableId;
     _activeProject = await _syncRepository.readActiveProject();
 
@@ -571,10 +580,24 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     if (cabinet == null) {
                       await _recordTaskAddition(
                         kind: 'Добавлен шкаф',
-                        summary: payload['name']?.toString().trim().isNotEmpty ==
-                                true
-                            ? payload['name'].toString().trim()
-                            : 'Без названия',
+                        summary: [
+                          if (payload['name']?.toString().trim().isNotEmpty ==
+                              true)
+                            payload['name'].toString().trim()
+                          else
+                            'Без названия',
+                          if ((payload['location'] ?? '')
+                              .toString()
+                              .trim()
+                              .isNotEmpty)
+                            payload['location'].toString().trim(),
+                          if ((payload['comment'] ?? '')
+                              .toString()
+                              .trim()
+                              .isNotEmpty)
+                            'примечание: ${payload['comment'].toString().trim()}',
+                        ].join(' • '),
+                        targetRecordId: payload['id'] as int?,
                       );
                     }
                     navigator.pop();
@@ -789,8 +812,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     }
                     await _recordTaskAddition(
                       kind: 'Добавлен коммутатор в шкаф',
-                      summary:
-                          '${cabinet['name'] ?? 'Шкаф'} - ${switches.last['name'] ?? 'Коммутатор'}',
+                      summary: [
+                        '${cabinet['name'] ?? 'Шкаф'}',
+                        '${switches.last['name'] ?? 'Коммутатор'}',
+                        if ((switches.last['model'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty)
+                          'модель: ${switches.last['model']}',
+                        'портов: ${switches.last['ports'] ?? ports}',
+                      ].join(' • '),
+                      targetRecordId: cabinet['id'] as int?,
                     );
                     setState(() {});
                     navigator.pop();
@@ -1036,8 +1068,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     }
                     await _recordTaskAddition(
                       kind: 'Добавлен кабель в шкаф',
-                      summary:
-                          '${cabinet['name'] ?? 'Шкаф'} - ${cables.last['name'] ?? 'Кабель'}',
+                      summary: [
+                        '${cabinet['name'] ?? 'Шкаф'}',
+                        '${cables.last['name'] ?? 'Кабель'}',
+                        'волокон: ${cables.last['fibers'] ?? fibersNumber}',
+                        if ((cables.last['color_scheme'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty)
+                          'маркировка: ${cables.last['color_scheme']}',
+                      ].join(' • '),
+                      targetRecordId: cabinet['id'] as int?,
                     );
                     setState(() {});
                     navigator.pop();
@@ -1420,7 +1461,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     if (mounted) {
       await _recordTaskAddition(
         kind: 'Добавлено соединение в шкаф',
-        summary: cabinet['name']?.toString() ?? 'Шкаф',
+        summary: [
+          cabinet['name']?.toString() ?? 'Шкаф',
+          '${_connectionLabelPart(connection, true)} ↔ ${_connectionLabelPart(connection, false)}',
+        ].join(' • '),
+        targetRecordId: cabinet['id'] as int?,
       );
       setState(() {});
     }
@@ -1738,7 +1783,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     }
                     await _recordTaskAddition(
                       kind: 'Добавлено соединение в шкаф',
-                      summary: cabinet['name']?.toString() ?? 'Шкаф',
+                      summary: [
+                        cabinet['name']?.toString() ?? 'Шкаф',
+                        '${_connectionLabelPart(payload, true)} ↔ ${_connectionLabelPart(payload, false)}',
+                      ].join(' • '),
+                      targetRecordId: cabinet['id'] as int?,
                     );
                     setState(() {});
                     navigator.pop();

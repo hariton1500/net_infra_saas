@@ -9,9 +9,14 @@ import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
 
 class CableLinesPage extends StatefulWidget {
-  const CableLinesPage({super.key, required this.controller});
+  const CableLinesPage({
+    super.key,
+    required this.controller,
+    this.initialRouteId,
+  });
 
   final AuthController controller;
+  final int? initialRouteId;
 
   @override
   State<CableLinesPage> createState() => _CableLinesPageState();
@@ -106,6 +111,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
   Future<void> _recordTaskAddition({
     required String kind,
     required String summary,
+    int? targetRecordId,
   }) async {
     final companyId = widget.controller.membership?.companyId;
     if (companyId == null || _activeProject == null) {
@@ -118,6 +124,8 @@ class _CableLinesPageState extends State<CableLinesPage> {
       actorEmail: _actorEmail,
       kind: kind,
       summary: summary,
+      targetScreen: 'infrastructure_map',
+      targetRecordId: targetRecordId,
     );
   }
 
@@ -236,9 +244,17 @@ class _CableLinesPageState extends State<CableLinesPage> {
     final previousSelected = preserveSelection ? _selectedRouteId : null;
     final previousEditing = preserveSelection ? _editingRouteId : null;
 
-    final nextSelected = nextRoutes.any((route) => route.id == previousSelected)
-        ? previousSelected
-        : (nextRoutes.isEmpty ? null : nextRoutes.first.id);
+    final initialSelected =
+        !preserveSelection &&
+            widget.initialRouteId != null &&
+            nextRoutes.any((route) => route.id == widget.initialRouteId)
+        ? widget.initialRouteId
+        : null;
+    final nextSelected =
+        initialSelected ??
+        (nextRoutes.any((route) => route.id == previousSelected)
+            ? previousSelected
+            : (nextRoutes.isEmpty ? null : nextRoutes.first.id));
 
     final nextEditing = nextRoutes.any((route) => route.id == previousEditing)
         ? previousEditing
@@ -676,7 +692,20 @@ class _CableLinesPageState extends State<CableLinesPage> {
     if (_editingRouteId == null) {
       await _recordTaskAddition(
         kind: 'Добавлен маршрут',
-        summary: routeRecord['name']?.toString() ?? 'Маршрут',
+        summary: [
+          routeRecord['name']?.toString() ?? 'Маршрут',
+          if ((_anchorByKey(_draftStartAnchorKey)?.location ?? '')
+              .trim()
+              .isNotEmpty)
+            'старт: ${_anchorByKey(_draftStartAnchorKey)!.location}',
+          if ((_anchorByKey(_draftEndAnchorKey)?.location ?? '')
+              .trim()
+              .isNotEmpty)
+            'финиш: ${_anchorByKey(_draftEndAnchorKey)!.location}',
+          if (_noteController.text.trim().isNotEmpty)
+            'примечание: ${_noteController.text.trim()}',
+        ].join(' • '),
+        targetRecordId: recordId,
       );
     }
   }

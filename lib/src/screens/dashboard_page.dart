@@ -325,10 +325,14 @@ class _DashboardPageState extends State<DashboardPage> {
             else
               for (final member in team) ...[
                 _PersonRow(
-                  title: member.fullName.isEmpty
-                      ? member.email
-                      : member.fullName,
-                  subtitle: member.email,
+                  title: member.fullName.trim().isNotEmpty
+                      ? member.fullName.trim()
+                      : member.email.trim().isNotEmpty
+                      ? member.email.trim()
+                      : 'Сотрудник ${member.userId.substring(0, member.userId.length < 8 ? member.userId.length : 8)}',
+                  subtitle: member.email.trim().isNotEmpty
+                      ? member.email.trim()
+                      : 'ID: ${member.userId}',
                   role: member.role,
                   position: member.position,
                 ),
