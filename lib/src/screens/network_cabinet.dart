@@ -9,6 +9,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
+import '../core/project_scope.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_location_picker.dart';
 
@@ -80,6 +81,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   bool _mapView = false;
   Map<String, dynamic>? _selectedCabinet;
   int? _selectedCableId;
+  int? _projectFilterId;
+  ProjectSelection? _activeProject;
   double _mapZoom = 14;
   String _selectedTileLayerId = 'osm';
   Timer? _syncTimer;
@@ -94,9 +97,33 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
   String? get _companyId => widget.controller.membership?.companyId;
 
+  String get _actorEmail =>
+      widget.controller.currentUser?.email?.trim() ??
+      widget.controller.profile?.email ??
+      '';
+
+  String get _actorUserId => widget.controller.currentUser?.id ?? '';
+
   bool get _hasDirtyRecords => _cabinets.any(
     (cabinet) => cabinet['deleted'] != true && cabinet['dirty'] == true,
   );
+
+  Future<void> _recordTaskAddition({
+    required String kind,
+    required String summary,
+  }) async {
+    if (_companyId == null || _activeProject == null) {
+      return;
+    }
+    await _syncRepository.appendTaskWorkLog(
+      companyId: _companyId!,
+      activeProject: _activeProject!,
+      actorUserId: _actorUserId,
+      actorEmail: _actorEmail,
+      kind: kind,
+      summary: summary,
+    );
+  }
 
   String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
 
@@ -151,6 +178,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Future<void> _loadFromStorage() async {
     final selectedCabinetId = _selectedCabinet?['id'] as int?;
     final selectedCableId = _selectedCableId;
+    _activeProject = await _syncRepository.readActiveProject();
 
     _cabinets
       ..clear()
@@ -190,6 +218,18 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       selectedCableId: selectedCableId,
       loading: false,
     );
+  }
+
+  void _applyProjectFilter(String value) {
+    final nextFilter = value == '__all_projects__' ? null : int.tryParse(value);
+    setState(() {
+      _projectFilterId = nextFilter;
+      _selectedCableId = null;
+      if (_selectedCabinet != null &&
+          !matchesProjectFilter(_selectedCabinet!, _projectFilterId)) {
+        _selectedCabinet = null;
+      }
+    });
   }
 
   Future<void> _persist() async {
@@ -288,7 +328,23 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
   List<Map<String, dynamic>> get _visibleCabinets => _cabinets
       .where((cabinet) => cabinet['deleted'] != true)
+      .where((cabinet) => matchesProjectFilter(cabinet, _projectFilterId))
       .toList(growable: false);
+
+  Map<int, String> get _projectOptions {
+    final options = <int, String>{};
+    for (final cabinet in _cabinets) {
+      if (cabinet['deleted'] == true) {
+        continue;
+      }
+      final id = projectIdOf(cabinet);
+      final name = projectNameOf(cabinet);
+      if (id != null && name != null) {
+        options[id] = name;
+      }
+    }
+    return options;
+  }
 
   void _touchCabinet(Map<String, dynamic> cabinet) {
     cabinet['updated_at'] = DateTime.now();
@@ -370,6 +426,16 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
     double? lat = cabinet?['location_lat'] as double?;
     double? lng = cabinet?['location_lng'] as double?;
+    if (lat == null || lng == null) {
+      final lastLocation = await _syncRepository.readLastPickedLocation();
+      if (lastLocation != null) {
+        lat = lastLocation.latitude;
+        lng = lastLocation.longitude;
+      }
+    }
+    if (!mounted) {
+      return;
+    }
 
     await showDialog<void>(
       context: context,
@@ -435,6 +501,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                                   lat = result.latitude;
                                   lng = result.longitude;
                                 });
+                                await _syncRepository.writeLastPickedLocation(
+                                  result,
+                                );
                               }
                             },
                             icon: const Icon(Icons.map),
@@ -472,6 +541,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       payload['connections'] = <Map<String, dynamic>>[];
                       payload['deleted'] = false;
                       payload['dirty'] = true;
+                      applyProjectSelection(payload, _activeProject);
                       _cabinets.add(payload);
                     } else {
                       payload['id'] = cabinet['id'];
@@ -482,6 +552,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           cabinet['cables'] ?? <Map<String, dynamic>>[];
                       payload['connections'] =
                           cabinet['connections'] ?? <Map<String, dynamic>>[];
+                      payload['project_id'] = cabinet['project_id'];
+                      payload['project_name'] = cabinet['project_name'];
                       payload['deleted'] = cabinet['deleted'] == true;
                       payload['dirty'] = true;
                       final index = _cabinets.indexWhere(
@@ -496,7 +568,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     if (!mounted) {
                       return;
                     }
-
+                    if (cabinet == null) {
+                      await _recordTaskAddition(
+                        kind: 'Добавлен шкаф',
+                        summary: payload['name']?.toString().trim().isNotEmpty ==
+                                true
+                            ? payload['name'].toString().trim()
+                            : 'Без названия',
+                      );
+                    }
                     navigator.pop();
                     await _selectCabinet(payload);
                     setState(() {});
@@ -534,10 +614,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Future<void> _openCabinetLocation(Map<String, dynamic> cabinet) async {
     final lat = cabinet['location_lat'] as double?;
     final lng = cabinet['location_lng'] as double?;
+    final initial =
+        lat != null && lng != null
+            ? LatLng(lat, lng)
+            : await _syncRepository.readLastPickedLocation();
+    if (!mounted) {
+      return;
+    }
     final result = await Navigator.of(context).push<LatLng>(
       MaterialPageRoute(
         builder: (_) => MuffLocationPickerPage(
-          initial: lat != null && lng != null ? LatLng(lat, lng) : null,
+          initial: initial,
         ),
       ),
     );
@@ -546,6 +633,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       return;
     }
 
+    await _syncRepository.writeLastPickedLocation(result);
     cabinet['location_lat'] = result.latitude;
     cabinet['location_lng'] = result.longitude;
     _touchCabinet(cabinet);
@@ -692,12 +780,18 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         _portTypeOptical,
                       ),
                     });
+                    applyProjectSelection(switches.last, _activeProject);
                     cabinet['switches'] = switches;
                     _touchCabinet(cabinet);
                     await _persist();
                     if (!mounted) {
                       return;
                     }
+                    await _recordTaskAddition(
+                      kind: 'Добавлен коммутатор в шкаф',
+                      summary:
+                          '${cabinet['name'] ?? 'Шкаф'} - ${switches.last['name'] ?? 'Коммутатор'}',
+                    );
                     setState(() {});
                     navigator.pop();
                   },
@@ -933,12 +1027,18 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       'fiber_comments': List<String>.filled(fibersNumber, ''),
                       'spliters': List<int>.filled(fibersNumber, 0),
                     });
+                    applyProjectSelection(cables.last, _activeProject);
                     cabinet['cables'] = cables;
                     _touchCabinet(cabinet);
                     await _persist();
                     if (!mounted) {
                       return;
                     }
+                    await _recordTaskAddition(
+                      kind: 'Добавлен кабель в шкаф',
+                      summary:
+                          '${cabinet['name'] ?? 'Шкаф'} - ${cables.last['name'] ?? 'Кабель'}',
+                    );
                     setState(() {});
                     navigator.pop();
                   },
@@ -1313,10 +1413,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     }
 
     connections.add(Map<String, dynamic>.from(connection));
+    applyProjectSelection(connections.last, _activeProject);
     cabinet['connections'] = connections;
     _touchCabinet(cabinet);
     await _persist();
     if (mounted) {
+      await _recordTaskAddition(
+        kind: 'Добавлено соединение в шкаф',
+        summary: cabinet['name']?.toString() ?? 'Шкаф',
+      );
       setState(() {});
     }
   }
@@ -1624,12 +1729,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     }
 
                     connections.add(payload);
+                    applyProjectSelection(connections.last, _activeProject);
                     cabinet['connections'] = connections;
                     _touchCabinet(cabinet);
                     await _persist();
                     if (!mounted) {
                       return;
                     }
+                    await _recordTaskAddition(
+                      kind: 'Добавлено соединение в шкаф',
+                      summary: cabinet['name']?.toString() ?? 'Шкаф',
+                    );
                     setState(() {});
                     navigator.pop();
                   },
@@ -1795,7 +1905,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           child: ListTile(
             leading: _statusDot(cabinet['dirty'] == true),
             title: Text(cabinet['name'] ?? 'Без названия'),
-            subtitle: Text(cabinet['location'] ?? ''),
+            subtitle: Text(
+              [
+                if (projectNameOf(cabinet) != null)
+                  'Задача: ${projectNameOf(cabinet)}',
+                (cabinet['location'] ?? '').toString(),
+              ].where((line) => line.trim().isNotEmpty).join('\n'),
+            ),
+            isThreeLine: projectNameOf(cabinet) != null,
             trailing: PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
@@ -2542,6 +2659,29 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               color: _hasDirtyRecords ? Colors.redAccent : Colors.greenAccent,
             ),
             tooltip: 'Синхронизировать',
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Фильтр по задаче',
+            icon: Icon(
+              _projectFilterId == null
+                  ? Icons.workspaces_outline
+                  : Icons.workspaces_rounded,
+            ),
+            onSelected: _applyProjectFilter,
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem<String>(
+                value: '__all_projects__',
+                checked: _projectFilterId == null,
+                child: const Text('Все задачи'),
+              ),
+              ..._projectOptions.entries.map(
+                (entry) => CheckedPopupMenuItem<String>(
+                  value: '${entry.key}',
+                  checked: _projectFilterId == entry.key,
+                  child: Text(entry.value),
+                ),
+              ),
+            ],
           ),
           IconButton(
             onPressed: () {

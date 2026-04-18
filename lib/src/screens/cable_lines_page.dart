@@ -6,6 +6,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
+import '../core/project_scope.dart';
 
 class CableLinesPage extends StatefulWidget {
   const CableLinesPage({super.key, required this.controller});
@@ -78,8 +79,13 @@ class _CableLinesPageState extends State<CableLinesPage> {
   List<LatLng> _draftPoints = const [];
   int? _selectedRouteId;
   int? _editingRouteId;
+  ProjectSelection? _activeProject;
   String? _draftStartAnchorKey;
   String? _draftEndAnchorKey;
+
+  String get _actorEmail => widget.controller.currentUser?.email?.trim() ?? '';
+
+  String get _actorUserId => widget.controller.currentUser?.id ?? '';
 
   @override
   void initState() {
@@ -95,6 +101,24 @@ class _CableLinesPageState extends State<CableLinesPage> {
     _nameController.dispose();
     _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _recordTaskAddition({
+    required String kind,
+    required String summary,
+  }) async {
+    final companyId = widget.controller.membership?.companyId;
+    if (companyId == null || _activeProject == null) {
+      return;
+    }
+    await _syncRepository.appendTaskWorkLog(
+      companyId: companyId,
+      activeProject: _activeProject!,
+      actorUserId: _actorUserId,
+      actorEmail: _actorEmail,
+      kind: kind,
+      summary: summary,
+    );
   }
 
   Future<void> _loadRoutes() async {
@@ -113,6 +137,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
     });
 
     try {
+      _activeProject = await _syncRepository.readActiveProject();
       var records = await _syncRepository.readCache(_cacheKey);
       var muffs = await _syncRepository.readCache(_muffsCacheKey);
       var cabinets = await _syncRepository.readCache(_cabinetsCacheKey);
@@ -630,6 +655,15 @@ class _CableLinesPageState extends State<CableLinesPage> {
       'dirty': true,
       'deleted': false,
     };
+    if (_editingRouteId == null) {
+      applyProjectSelection(routeRecord, _activeProject);
+    } else {
+      final current = _selectedRoute?.raw;
+      if (current != null) {
+        routeRecord['project_id'] = current['project_id'];
+        routeRecord['project_name'] = current['project_name'];
+      }
+    }
 
     final nextRecords =
         _records
@@ -639,6 +673,12 @@ class _CableLinesPageState extends State<CableLinesPage> {
           ..add(routeRecord);
 
     await _persistRecords(nextRecords, selectId: recordId, keepEditing: false);
+    if (_editingRouteId == null) {
+      await _recordTaskAddition(
+        kind: 'Добавлен маршрут',
+        summary: routeRecord['name']?.toString() ?? 'Маршрут',
+      );
+    }
   }
 
   Future<void> _deleteRoute(_CableLineRoute route) async {

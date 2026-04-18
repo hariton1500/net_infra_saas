@@ -9,6 +9,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
+import '../core/project_scope.dart';
 
 class InfrastructureSignalTraceRequest {
   const InfrastructureSignalTraceRequest({
@@ -256,6 +257,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   List<_InfrastructureEntity> _entities = const [];
   List<Map<String, dynamic>> _routeRecords = const [];
   List<_CableRoute> _routes = const [];
+  int? _projectFilterId;
+  ProjectSelection? _activeProject;
   int? _selectedRouteId;
   String? _pendingStartEntityKey;
   int? _pendingStartCableId;
@@ -276,8 +279,31 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     _loadMapData();
   }
 
+  String get _actorEmail => widget.controller.currentUser?.email?.trim() ?? '';
+
+  String get _actorUserId => widget.controller.currentUser?.id ?? '';
+
+  Future<void> _recordTaskAddition({
+    required String kind,
+    required String summary,
+  }) async {
+    final companyId = widget.controller.membership?.companyId;
+    if (companyId == null || _activeProject == null) {
+      return;
+    }
+    await _syncRepository.appendTaskWorkLog(
+      companyId: companyId,
+      activeProject: _activeProject!,
+      actorUserId: _actorUserId,
+      actorEmail: _actorEmail,
+      kind: kind,
+      summary: summary,
+    );
+  }
+
   Future<void> _loadMapData() async {
     final companyId = widget.controller.membership?.companyId;
+    _activeProject = await _syncRepository.readActiveProject();
     if (companyId == null) {
       setState(() {
         _loading = false;
@@ -436,6 +462,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ),
             subtitle: isPonBox ? 'PON бокс' : 'Муфта',
             meta: {
+              if (projectNameOf(record) != null)
+                'Задача': projectNameOf(record)!,
               if (district.isNotEmpty) 'Район': district,
               'Кабели': '${cables.length}',
               'Соединения': '${connections.length}',
@@ -478,6 +506,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ),
             subtitle: 'Сетевой шкаф',
             meta: {
+              if (projectNameOf(record) != null)
+                'Задача': projectNameOf(record)!,
               'Коммутаторы': '${switches.length}',
               'Кабели': '${cables.length}',
             },
@@ -504,6 +534,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       points: points,
       lengthMeters: lengthMeters,
       meta: {
+        if (projectNameOf(record) != null) 'Задача': projectNameOf(record)!,
         'Длина': _formatRouteLength(lengthMeters),
         'Точек': '${points.length}',
         if (startAnchor != null) 'Начало': startAnchor['name'] ?? 'Привязано',
@@ -1037,24 +1068,48 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   }
 
   List<_InfrastructureEntity> get _visibleEntities {
+    final visible = _entities.where((entity) {
+      final record = _entityRecord(entity);
+      return record != null && matchesProjectFilter(record, _projectFilterId);
+    }).toList(growable: false);
     if (!_routeCreateMode) {
-      return _entities;
+      return visible;
     }
 
     if (_pendingStartEntityKey == null) {
       return _routeCandidateEntities;
     }
 
-    return _entities;
+    return visible;
+  }
+
+  List<_CableRoute> get _filteredRoutesByProject => _routes
+      .where((route) => matchesProjectFilter(route.raw, _projectFilterId))
+      .toList(growable: false);
+
+  Map<int, String> get _projectOptions {
+    final options = <int, String>{};
+    for (final record in [..._muffRecords, ..._cabinetRecords, ..._routeRecords]) {
+      final id = projectIdOf(record);
+      final name = projectNameOf(record);
+      if (id != null && name != null) {
+        options[id] = name;
+      }
+    }
+    return options;
   }
 
   List<_InfrastructureEntity> get _routeCandidateEntities {
+    final visible = _entities.where((entity) {
+      final record = _entityRecord(entity);
+      return record != null && matchesProjectFilter(record, _projectFilterId);
+    }).toList(growable: false);
     if (!_routeCreateMode) {
       return const [];
     }
 
     if (_pendingStartEntityKey == null) {
-      return _entities.where(_hasAnyFreeCable).toList(growable: false);
+      return visible.where(_hasAnyFreeCable).toList(growable: false);
     }
 
     final fibers = _pendingRequiredFibers;
@@ -1062,12 +1117,23 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       return const [];
     }
 
-    return _entities.where((entity) {
+    return visible.where((entity) {
       if (entity.key == _pendingStartEntityKey) {
         return true;
       }
       return _freeCableChoicesForEntity(entity, fibers: fibers).isNotEmpty;
     }).toList(growable: false);
+  }
+
+  void _applyProjectFilter(String value) {
+    final nextFilter = value == '__all_projects__' ? null : int.tryParse(value);
+    setState(() {
+      _projectFilterId = nextFilter;
+      if (_selectedRoute != null &&
+          !matchesProjectFilter(_selectedRoute!.raw, _projectFilterId)) {
+        _selectedRouteId = null;
+      }
+    });
   }
 
   bool _hasAnyFreeCable(_InfrastructureEntity entity) =>
@@ -1666,6 +1732,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       'dirty': true,
       'deleted': false,
     };
+    applyProjectSelection(routeRecord, _activeProject);
 
     final nextRecords =
         _routeRecords
@@ -1677,6 +1744,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       nextRecords,
       selectedRouteId: routeId,
       preserveModes: false,
+    );
+    await _recordTaskAddition(
+      kind: 'Добавлен маршрут',
+      summary: routeRecord['name']?.toString() ?? 'Маршрут',
     );
 
     if (!mounted) {
@@ -1746,6 +1817,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       'dirty': true,
       'deleted': false,
     };
+    applyProjectSelection(routeRecord, _activeProject);
 
     final nextRouteRecords =
         _routeRecords
@@ -1799,6 +1871,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       nextCabinetRecords: nextCabinetRecords,
       selectedRouteId: routeId,
       preserveModes: false,
+    );
+    await _recordTaskAddition(
+      kind: 'Добавлен маршрут',
+      summary: routeRecord['name']?.toString() ?? 'Маршрут',
     );
 
     if (!mounted) {
@@ -2424,7 +2500,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       );
     }
 
-    final filteredRoutes = _filteredRoutes;
+    final filteredRoutes = _filteredRoutesByProject;
     final selectedRoute = _selectedRoute;
 
     return DraggableScrollableSheet(
@@ -2638,7 +2714,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       );
     }
 
-    if (_entities.isEmpty && _routes.isEmpty) {
+    final visibleRoutes = _filteredRoutesByProject;
+    if (_visibleEntities.isEmpty && visibleRoutes.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -2651,9 +2728,9 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       );
     }
 
-    final center = _entities.isNotEmpty
-        ? _entities.first.point
-        : _routes.first.points.first;
+    final center = _visibleEntities.isNotEmpty
+        ? _visibleEntities.first.point
+        : visibleRoutes.first.points.first;
     final visibleEntities = _visibleEntities;
     final selectedRoute = _selectedRoute;
     final dragMarkers =
@@ -2708,9 +2785,9 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ),
             children: [
               tileLayerById(_selectedTileLayerId),
-              if (_routes.isNotEmpty)
+              if (visibleRoutes.isNotEmpty)
                 PolylineLayer(
-                  polylines: _routes
+                  polylines: visibleRoutes
                       .map(
                         (route) {
                           final isSelected = route.id == _selectedRouteId;
@@ -2877,6 +2954,29 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                   ),
                 )
                 .toList(growable: false),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Фильтр по задаче',
+            icon: Icon(
+              _projectFilterId == null
+                  ? Icons.workspaces_outline
+                  : Icons.workspaces_rounded,
+            ),
+            onSelected: _applyProjectFilter,
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem<String>(
+                value: '__all_projects__',
+                checked: _projectFilterId == null,
+                child: const Text('Все задачи'),
+              ),
+              ..._projectOptions.entries.map(
+                (entry) => CheckedPopupMenuItem<String>(
+                  value: '${entry.key}',
+                  checked: _projectFilterId == entry.key,
+                  child: Text(entry.value),
+                ),
+              ),
+            ],
           ),
           IconButton(
             tooltip: 'Обновить',

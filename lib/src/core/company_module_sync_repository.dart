@@ -3,11 +3,23 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'project_scope.dart';
 
 typedef NotebookRecord = Map<String, dynamic>;
 
 class CompanyModuleSyncRepository {
+  static const String _lastLocationLatKey = 'map.last_location.lat.v1';
+  static const String _lastLocationLngKey = 'map.last_location.lng.v1';
+  static const String _activeProjectIdKey = 'projects.active.id.v1';
+  static const String _activeProjectNameKey = 'projects.active.name.v1';
+  static const String _activeProjectAuthorUserIdKey =
+      'projects.active.author_user_id.v1';
+  static const String _activeProjectAuthorEmailKey =
+      'projects.active.author_email.v1';
+
   const CompanyModuleSyncRepository({required SupabaseClient client})
     : _client = client;
 
@@ -29,6 +41,125 @@ class CompanyModuleSyncRepository {
   Future<void> writeCache(String cacheKey, List<NotebookRecord> records) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(cacheKey, jsonEncode(_jsonSafe(records)));
+  }
+
+  Future<void> removeCache(String cacheKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(cacheKey);
+  }
+
+  Future<LatLng?> readLastPickedLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble(_lastLocationLatKey);
+    final lng = prefs.getDouble(_lastLocationLngKey);
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return LatLng(lat, lng);
+  }
+
+  Future<void> writeLastPickedLocation(LatLng point) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_lastLocationLatKey, point.latitude);
+    await prefs.setDouble(_lastLocationLngKey, point.longitude);
+  }
+
+  Future<ProjectSelection?> readActiveProject() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getInt(_activeProjectIdKey);
+    final name = prefs.getString(_activeProjectNameKey)?.trim();
+    if (id == null || name == null || name.isEmpty) {
+      return null;
+    }
+    return ProjectSelection(
+      id: id,
+      name: name,
+      authorUserId: prefs.getString(_activeProjectAuthorUserIdKey)?.trim(),
+      authorEmail:
+          prefs.getString(_activeProjectAuthorEmailKey)?.trim().toLowerCase(),
+    );
+  }
+
+  Future<void> writeActiveProject(ProjectSelection project) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_activeProjectIdKey, project.id);
+    await prefs.setString(_activeProjectNameKey, project.name);
+    if ((project.authorUserId ?? '').trim().isNotEmpty) {
+      await prefs.setString(
+        _activeProjectAuthorUserIdKey,
+        project.authorUserId!.trim(),
+      );
+    } else {
+      await prefs.remove(_activeProjectAuthorUserIdKey);
+    }
+    final normalizedAuthorEmail =
+        project.authorEmail?.trim().toLowerCase() ?? '';
+    if (normalizedAuthorEmail.isNotEmpty) {
+      await prefs.setString(_activeProjectAuthorEmailKey, normalizedAuthorEmail);
+    } else {
+      await prefs.remove(_activeProjectAuthorEmailKey);
+    }
+  }
+
+  Future<void> clearActiveProject() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_activeProjectIdKey);
+    await prefs.remove(_activeProjectNameKey);
+    await prefs.remove(_activeProjectAuthorUserIdKey);
+    await prefs.remove(_activeProjectAuthorEmailKey);
+  }
+
+  Future<bool> appendTaskWorkLog({
+    required String companyId,
+    required ProjectSelection activeProject,
+    required String actorUserId,
+    required String actorEmail,
+    required String kind,
+    required String summary,
+  }) async {
+    final normalizedActorEmail = actorEmail.trim().toLowerCase();
+    final normalizedAuthorUserId = activeProject.authorUserId?.trim() ?? '';
+    final normalizedAuthorEmail =
+        activeProject.authorEmail?.trim().toLowerCase() ?? '';
+    final matchesAuthor =
+        (normalizedAuthorUserId.isNotEmpty &&
+            normalizedAuthorUserId == actorUserId.trim()) ||
+        (normalizedAuthorEmail.isNotEmpty &&
+            normalizedAuthorEmail == normalizedActorEmail);
+    if (!matchesAuthor) {
+      return false;
+    }
+
+    final records = await readCache(projectsCacheKey);
+    final index = records.indexWhere((record) => record['id'] == activeProject.id);
+    if (index == -1) {
+      return false;
+    }
+
+    final task = _cloneRecord(records[index]);
+    if (task['deleted'] == true || task['archived'] == true) {
+      return false;
+    }
+
+    final workLog = List<Map<String, dynamic>>.from(task['work_log'] ?? const []);
+    workLog.add({
+      'at': DateTime.now(),
+      'kind': kind,
+      'summary': summary.trim(),
+    });
+    task['work_log'] = workLog;
+    task['updated_at'] = DateTime.now();
+    task['updated_by'] = actorEmail.trim();
+    task['dirty'] = true;
+    records[index] = task;
+
+    await syncAll(
+      companyId: companyId,
+      moduleKey: projectsModuleKey,
+      cacheKey: projectsCacheKey,
+      localRecords: records,
+    );
+    return true;
   }
 
   Future<List<NotebookRecord>> pullMerge({
