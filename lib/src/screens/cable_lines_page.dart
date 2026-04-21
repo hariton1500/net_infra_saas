@@ -676,8 +676,11 @@ class _CableLinesPageState extends State<CableLinesPage> {
     } else {
       final current = _selectedRoute?.raw;
       if (current != null) {
-        routeRecord['project_id'] = current['project_id'];
-        routeRecord['project_name'] = current['project_name'];
+        if (projectIdOf(current) == null && _activeProject != null) {
+          applyProjectSelection(routeRecord, _activeProject);
+        } else {
+          routeRecord['task_id'] = current['task_id'];
+        }
       }
     }
 
@@ -763,6 +766,23 @@ class _CableLinesPageState extends State<CableLinesPage> {
     );
   }
 
+  Future<void> _refreshActiveProject() async {
+    _activeProject = await _syncRepository.readActiveProject();
+  }
+
+  void _hydrateDirtyRoutesWithActiveProject(List<Map<String, dynamic>> records) {
+    final activeProject = _activeProject;
+    if (activeProject == null) {
+      return;
+    }
+
+    for (final record in records) {
+      if (record['dirty'] == true && projectIdOf(record) == null) {
+        applyProjectSelection(record, activeProject);
+      }
+    }
+  }
+
   Future<void> _persistRecords(
     List<Map<String, dynamic>> records, {
     required int? selectId,
@@ -781,6 +801,8 @@ class _CableLinesPageState extends State<CableLinesPage> {
 
     try {
       var nextRecords = records;
+      await _refreshActiveProject();
+      _hydrateDirtyRoutesWithActiveProject(nextRecords);
       await _syncRepository.writeCache(_cacheKey, nextRecords);
 
       final shouldSync =
@@ -1337,7 +1359,63 @@ class _CableLinesPageState extends State<CableLinesPage> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          _buildActiveProjectBanner(),
+          Expanded(child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveProjectBanner() {
+    final activeProject = _activeProject;
+    final hasActiveProject =
+        activeProject != null && activeProject.name.trim().isNotEmpty;
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: hasActiveProject
+            ? const Color(0xFF123524)
+            : theme.colorScheme.surfaceContainerHighest,
+        border: Border(
+          bottom: BorderSide(
+            color: hasActiveProject
+                ? const Color(0xFF35C886)
+                : theme.dividerColor.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasActiveProject ? Icons.task_alt_rounded : Icons.workspaces_outline,
+            size: 18,
+            color: hasActiveProject
+                ? const Color(0xFF8BF0B8)
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              hasActiveProject
+                  ? 'Активная задача: ${activeProject.name}'
+                  : 'Активная задача не выбрана',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: hasActiveProject
+                    ? const Color(0xFFE9FFF1)
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

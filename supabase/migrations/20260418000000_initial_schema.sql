@@ -103,6 +103,7 @@ create table if not exists public.company_module_records (
   company_id uuid not null references public.companies (id) on delete cascade,
   module_key text not null,
   record_id bigint not null,
+  task_id bigint,
   payload jsonb,
   deleted boolean not null default false,
   updated_at timestamptz not null default timezone('utc', now()),
@@ -114,6 +115,9 @@ create table if not exists public.company_module_records (
 
 create index if not exists company_module_records_company_module_idx
   on public.company_module_records (company_id, module_key);
+
+create index if not exists company_module_records_company_module_task_idx
+  on public.company_module_records (company_id, module_key, task_id);
 
 create index if not exists company_module_records_updated_at_idx
   on public.company_module_records (updated_at desc);

@@ -204,7 +204,7 @@ class CompanyModuleSyncRepository {
     final response = await _runWithRetry(
       () => _client
           .from('company_module_records')
-          .select('record_id, payload, deleted, updated_at')
+          .select('record_id, task_id, payload, deleted, updated_at')
           .eq('company_id', companyId)
           .eq('module_key', moduleKey),
     );
@@ -228,6 +228,7 @@ class CompanyModuleSyncRepository {
         }
 
         payload['id'] = recordId;
+        payload['task_id'] = _asNullableInt(row['task_id']);
         merged.add(payload);
         continue;
       }
@@ -253,6 +254,7 @@ class CompanyModuleSyncRepository {
           continue;
         }
         payload['id'] = recordId;
+        payload['task_id'] = _asNullableInt(row['task_id']);
         merged[index] = payload;
       }
     }
@@ -283,6 +285,7 @@ class CompanyModuleSyncRepository {
             'company_id': companyId,
             'module_key': moduleKey,
             'record_id': recordId,
+            'task_id': _asNullableInt(record['task_id']),
             'payload': null,
             'deleted': true,
             'updated_at': timestamp,
@@ -299,6 +302,7 @@ class CompanyModuleSyncRepository {
           'company_id': companyId,
           'module_key': moduleKey,
           'record_id': recordId,
+          'task_id': _asNullableInt(record['task_id']),
           'payload': _payloadForDb(record),
           'deleted': false,
           'updated_at': timestamp,
@@ -359,6 +363,7 @@ class CompanyModuleSyncRepository {
   NotebookRecord _normalizeStoredRecord(NotebookRecord source) {
     final record = Map<String, dynamic>.from(source);
     record['updated_at'] = _parseTime(record['updated_at']);
+    record['task_id'] = _asNullableInt(record['task_id'] ?? record['project_id']);
     record['dirty'] = record['dirty'] == true;
     record['deleted'] = record['deleted'] == true;
     return record;
@@ -371,16 +376,20 @@ class CompanyModuleSyncRepository {
 
     final record = Map<String, dynamic>.from(payload);
     record['updated_at'] = _parseTime(record['updated_at']);
+    record['task_id'] = _asNullableInt(record['task_id'] ?? record['project_id']);
     record['dirty'] = false;
     record['deleted'] = false;
     return record;
   }
 
   NotebookRecord _payloadForDb(NotebookRecord record) {
-    final payload = _cloneRecord(record);
-    payload.remove('dirty');
-    payload.remove('deleted');
-    return payload;
+    final payload = _stripTaskMarkers(_cloneRecord(record));
+    if (payload is Map<String, dynamic>) {
+      payload.remove('dirty');
+      payload.remove('deleted');
+      return payload;
+    }
+    return <String, dynamic>{};
   }
 
   int _asInt(dynamic value) {
@@ -391,6 +400,44 @@ class CompanyModuleSyncRepository {
       return value.toInt();
     }
     return int.parse(value.toString());
+  }
+
+  int? _asNullableInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is String && value.trim().isEmpty) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value.toString());
+  }
+
+  dynamic _stripTaskMarkers(dynamic value) {
+    if (value is Map) {
+      final next = <String, dynamic>{};
+      for (final entry in value.entries) {
+        final key = '${entry.key}';
+        if (key == 'task_id' || key == 'project_id' || key == 'project_name') {
+          continue;
+        }
+        next[key] = _stripTaskMarkers(entry.value);
+      }
+      return next;
+    }
+
+    if (value is List) {
+      return value
+          .map(_stripTaskMarkers)
+          .toList(growable: false);
+    }
+
+    return value;
   }
 
   DateTime _parseTime(dynamic value) {

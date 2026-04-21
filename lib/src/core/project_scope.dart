@@ -25,7 +25,7 @@ bool canCreateProjectsForPosition(String position) {
 }
 
 int? projectIdOf(Map<String, dynamic> record) {
-  final value = record['project_id'] ?? record['id'];
+  final value = record['task_id'] ?? record['project_id'] ?? record['id'];
   if (value is int) {
     return value;
   }
@@ -56,11 +56,13 @@ void applyProjectSelection(
   ProjectSelection? project,
 ) {
   if (project == null) {
+    target.remove('task_id');
     target.remove('project_id');
     target.remove('project_name');
     return;
   }
 
-  target['project_id'] = project.id;
-  target['project_name'] = project.name;
+  target['task_id'] = project.id;
+  target.remove('project_id');
+  target.remove('project_name');
 }

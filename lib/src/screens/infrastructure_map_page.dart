@@ -256,6 +256,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   String _selectedTileLayerId = 'osm';
   List<Map<String, dynamic>> _muffRecords = const [];
   List<Map<String, dynamic>> _cabinetRecords = const [];
+  List<Map<String, dynamic>> _projectRecords = const [];
   List<_InfrastructureEntity> _entities = const [];
   List<Map<String, dynamic>> _routeRecords = const [];
   List<_CableRoute> _routes = const [];
@@ -285,6 +286,14 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   String get _actorEmail => widget.controller.currentUser?.email?.trim() ?? '';
 
   String get _actorUserId => widget.controller.currentUser?.id ?? '';
+
+  String? _projectNameFor(Map<String, dynamic> record) {
+    final projectId = projectIdOf(record);
+    if (projectId == null) {
+      return null;
+    }
+    return _projectOptions[projectId];
+  }
 
   Future<void> _recordTaskAddition({
     required String kind,
@@ -326,6 +335,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     try {
       var muffs = await _syncRepository.readCache(_muffsCacheKey);
       var cabinets = await _syncRepository.readCache(_cabinetsCacheKey);
+      var projects = await _syncRepository.readCache(projectsCacheKey);
       var routes = await _syncRepository.readCache(_routesCacheKey);
 
       try {
@@ -353,6 +363,21 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         logUserFacingError(
           'Не удалось обновить шкафы для карты.',
           source: 'infrastructure_map.cabinets',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+
+      try {
+        projects = await _syncRepository.pullMerge(
+          companyId: companyId,
+          moduleKey: projectsModuleKey,
+          localRecords: projects,
+        );
+      } catch (error, stackTrace) {
+        logUserFacingError(
+          'Не удалось обновить задачи для карты.',
+          source: 'infrastructure_map.projects',
           error: error,
           stackTrace: stackTrace,
         );
@@ -468,8 +493,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ),
             subtitle: isPonBox ? 'PON бокс' : 'Муфта',
             meta: {
-              if (projectNameOf(record) != null)
-                'Задача': projectNameOf(record)!,
+              if (_projectNameFor(record) != null)
+                'Задача': _projectNameFor(record)!,
               if (district.isNotEmpty) 'Район': district,
               'Кабели': '${cables.length}',
               'Соединения': '${connections.length}',
@@ -512,8 +537,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ),
             subtitle: 'Сетевой шкаф',
             meta: {
-              if (projectNameOf(record) != null)
-                'Задача': projectNameOf(record)!,
+              if (_projectNameFor(record) != null)
+                'Задача': _projectNameFor(record)!,
               'Коммутаторы': '${switches.length}',
               'Кабели': '${cables.length}',
             },
@@ -540,7 +565,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       points: points,
       lengthMeters: lengthMeters,
       meta: {
-        if (projectNameOf(record) != null) 'Задача': projectNameOf(record)!,
+        if (_projectNameFor(record) != null) 'Задача': _projectNameFor(record)!,
         'Длина': _formatRouteLength(lengthMeters),
         'Точек': '${points.length}',
         if (startAnchor != null) 'Начало': startAnchor['name'] ?? 'Привязано',
@@ -1095,9 +1120,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
 
   Map<int, String> get _projectOptions {
     final options = <int, String>{};
-    for (final record in [..._muffRecords, ..._cabinetRecords, ..._routeRecords]) {
-      final id = projectIdOf(record);
-      final name = projectNameOf(record);
+    for (final project in _projectRecords) {
+      if (project['deleted'] == true || project['archived'] == true) {
+        continue;
+      }
+      final id = projectIdOf(project);
+      final name = projectNameOf(project);
       if (id != null && name != null) {
         options[id] = name;
       }
@@ -2016,6 +2044,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
 
     try {
       var nextRecords = records;
+      await _refreshActiveProject();
+      _hydrateDirtyRouteRecordsWithActiveProject(nextRecords);
       await _syncRepository.writeCache(_routesCacheKey, nextRecords);
 
       if (forceSync || nextRecords.any((record) => record['dirty'] == true)) {
@@ -2094,7 +2124,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       var routes = nextRouteRecords;
       var muffs = nextMuffRecords;
       var cabinets = nextCabinetRecords;
-
+      await _refreshActiveProject();
+      _hydrateDirtyRouteRecordsWithActiveProject(routes);
+      _hydrateDirtyEntityRecordsWithActiveProject(muffs);
+      _hydrateDirtyEntityRecordsWithActiveProject(cabinets);
       await _syncRepository.writeCache(_routesCacheKey, routes);
       await _syncRepository.writeCache(_muffsCacheKey, muffs);
       await _syncRepository.writeCache(_cabinetsCacheKey, cabinets);
@@ -2179,6 +2212,40 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         _syncingRoutes = false;
       });
       _showSnackBar('Не удалось сохранить маршрут и привязки.');
+    }
+  }
+
+  Future<void> _refreshActiveProject() async {
+    _activeProject = await _syncRepository.readActiveProject();
+  }
+
+  void _hydrateDirtyRouteRecordsWithActiveProject(
+    List<Map<String, dynamic>> records,
+  ) {
+    final activeProject = _activeProject;
+    if (activeProject == null) {
+      return;
+    }
+
+    for (final record in records) {
+      if (record['dirty'] == true && projectIdOf(record) == null) {
+        applyProjectSelection(record, activeProject);
+      }
+    }
+  }
+
+  void _hydrateDirtyEntityRecordsWithActiveProject(
+    List<Map<String, dynamic>> records,
+  ) {
+    final activeProject = _activeProject;
+    if (activeProject == null) {
+      return;
+    }
+
+    for (final record in records) {
+      if (record['dirty'] == true && projectIdOf(record) == null) {
+        applyProjectSelection(record, activeProject);
+      }
     }
   }
 
@@ -2911,6 +2978,57 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Widget _buildActiveProjectBanner() {
+    final activeProject = _activeProject;
+    final hasActiveProject =
+        activeProject != null && activeProject.name.trim().isNotEmpty;
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: hasActiveProject
+            ? const Color(0xFF123524)
+            : theme.colorScheme.surfaceContainerHighest,
+        border: Border(
+          bottom: BorderSide(
+            color: hasActiveProject
+                ? const Color(0xFF35C886)
+                : theme.dividerColor.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasActiveProject ? Icons.task_alt_rounded : Icons.workspaces_outline,
+            size: 18,
+            color: hasActiveProject
+                ? const Color(0xFF8BF0B8)
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              hasActiveProject
+                  ? 'Активная задача: ${activeProject.name}'
+                  : 'Активная задача не выбрана',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: hasActiveProject
+                    ? const Color(0xFFE9FFF1)
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3007,7 +3125,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          _buildActiveProjectBanner(),
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 }

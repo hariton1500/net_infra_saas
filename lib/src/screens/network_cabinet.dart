@@ -72,6 +72,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   };
 
   final List<Map<String, dynamic>> _cabinets = [];
+  List<Map<String, dynamic>> _projectRecords = const [];
   final MapController _mapController = MapController();
   late final CompanyModuleSyncRepository _syncRepository;
   final GlobalKey _fiberAreaKey = GlobalKey();
@@ -188,6 +189,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         (_selectedCabinet?['id'] as int?) ?? widget.initialCabinetId;
     final selectedCableId = _selectedCableId;
     _activeProject = await _syncRepository.readActiveProject();
+    _projectRecords = await _syncRepository.readCache(projectsCacheKey);
 
     _cabinets
       ..clear()
@@ -201,6 +203,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     try {
       if (!_cabinets.any((record) => record['dirty'] == true) &&
           _companyId != null) {
+        _projectRecords = await _syncRepository.pullMerge(
+          companyId: _companyId!,
+          moduleKey: projectsModuleKey,
+          localRecords: _projectRecords,
+        );
+        await _syncRepository.writeCache(projectsCacheKey, _projectRecords);
         final merged = await _syncRepository.pullMerge(
           companyId: _companyId!,
           moduleKey: _moduleKey,
@@ -242,7 +250,26 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   }
 
   Future<void> _persist() async {
+    await _refreshActiveProject();
+    _hydrateDirtyCabinetsWithActiveProject();
     await _syncRepository.writeCache(_cacheKey, _cabinets);
+  }
+
+  Future<void> _refreshActiveProject() async {
+    _activeProject = await _syncRepository.readActiveProject();
+  }
+
+  void _hydrateDirtyCabinetsWithActiveProject() {
+    final activeProject = _activeProject;
+    if (activeProject == null) {
+      return;
+    }
+
+    for (final cabinet in _cabinets) {
+      if (cabinet['dirty'] == true && projectIdOf(cabinet) == null) {
+        applyProjectSelection(cabinet, activeProject);
+      }
+    }
   }
 
   Future<void> _syncAll() async {
@@ -258,6 +285,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     });
 
     try {
+      await _refreshActiveProject();
+      _hydrateDirtyCabinetsWithActiveProject();
       final merged = await _syncRepository.syncAll(
         companyId: _companyId!,
         moduleKey: _moduleKey,
@@ -342,12 +371,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
   Map<int, String> get _projectOptions {
     final options = <int, String>{};
-    for (final cabinet in _cabinets) {
-      if (cabinet['deleted'] == true) {
+    for (final project in _projectRecords) {
+      if (project['deleted'] == true || project['archived'] == true) {
         continue;
       }
-      final id = projectIdOf(cabinet);
-      final name = projectNameOf(cabinet);
+      final id = projectIdOf(project);
+      final name = projectNameOf(project);
       if (id != null && name != null) {
         options[id] = name;
       }
@@ -356,8 +385,19 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   }
 
   void _touchCabinet(Map<String, dynamic> cabinet) {
+    if (projectIdOf(cabinet) == null && _activeProject != null) {
+      applyProjectSelection(cabinet, _activeProject);
+    }
     cabinet['updated_at'] = DateTime.now();
     cabinet['dirty'] = true;
+  }
+
+  String? _projectNameFor(Map<String, dynamic> record) {
+    final projectId = projectIdOf(record);
+    if (projectId == null) {
+      return null;
+    }
+    return _projectOptions[projectId];
   }
 
   void _showSnack(String message) {
@@ -369,6 +409,57 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildActiveProjectBanner() {
+    final activeProject = _activeProject;
+    final hasActiveProject =
+        activeProject != null && activeProject.name.trim().isNotEmpty;
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: hasActiveProject
+            ? const Color(0xFF123524)
+            : theme.colorScheme.surfaceContainerHighest,
+        border: Border(
+          bottom: BorderSide(
+            color: hasActiveProject
+                ? const Color(0xFF35C886)
+                : theme.dividerColor.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasActiveProject ? Icons.task_alt_rounded : Icons.workspaces_outline,
+            size: 18,
+            color: hasActiveProject
+                ? const Color(0xFF8BF0B8)
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              hasActiveProject
+                  ? 'Активная задача: ${activeProject.name}'
+                  : 'Активная задача не выбрана',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: hasActiveProject
+                    ? const Color(0xFFE9FFF1)
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _scheduleFiberLayout() {
@@ -561,8 +652,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           cabinet['cables'] ?? <Map<String, dynamic>>[];
                       payload['connections'] =
                           cabinet['connections'] ?? <Map<String, dynamic>>[];
-                      payload['project_id'] = cabinet['project_id'];
-                      payload['project_name'] = cabinet['project_name'];
+                      if (projectIdOf(cabinet) == null && _activeProject != null) {
+                        applyProjectSelection(payload, _activeProject);
+                      } else {
+                        payload['task_id'] = cabinet['task_id'];
+                      }
                       payload['deleted'] = cabinet['deleted'] == true;
                       payload['dirty'] = true;
                       final index = _cabinets.indexWhere(
@@ -803,7 +897,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         _portTypeOptical,
                       ),
                     });
-                    applyProjectSelection(switches.last, _activeProject);
                     cabinet['switches'] = switches;
                     _touchCabinet(cabinet);
                     await _persist();
@@ -1059,7 +1152,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       'fiber_comments': List<String>.filled(fibersNumber, ''),
                       'spliters': List<int>.filled(fibersNumber, 0),
                     });
-                    applyProjectSelection(cables.last, _activeProject);
                     cabinet['cables'] = cables;
                     _touchCabinet(cabinet);
                     await _persist();
@@ -1454,7 +1546,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     }
 
     connections.add(Map<String, dynamic>.from(connection));
-    applyProjectSelection(connections.last, _activeProject);
     cabinet['connections'] = connections;
     _touchCabinet(cabinet);
     await _persist();
@@ -1774,7 +1865,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     }
 
                     connections.add(payload);
-                    applyProjectSelection(connections.last, _activeProject);
                     cabinet['connections'] = connections;
                     _touchCabinet(cabinet);
                     await _persist();
@@ -1956,12 +2046,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             title: Text(cabinet['name'] ?? 'Без названия'),
             subtitle: Text(
               [
-                if (projectNameOf(cabinet) != null)
-                  'Задача: ${projectNameOf(cabinet)}',
+                if (_projectNameFor(cabinet) != null)
+                  'Задача: ${_projectNameFor(cabinet)}',
                 (cabinet['location'] ?? '').toString(),
               ].where((line) => line.trim().isNotEmpty).join('\n'),
             ),
-            isThreeLine: projectNameOf(cabinet) != null,
+            isThreeLine: _projectNameFor(cabinet) != null,
             trailing: PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
@@ -2753,26 +2843,33 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (_mapView) {
-            return _buildMapPane();
-          }
+      body: Column(
+        children: [
+          _buildActiveProjectBanner(),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (_mapView) {
+                  return _buildMapPane();
+                }
 
-          if (constraints.maxWidth >= 960) {
-            return Row(
-              children: [
-                SizedBox(width: 320, child: _buildListPane()),
-                const VerticalDivider(width: 1),
-                Expanded(child: _buildDetailPane()),
-              ],
-            );
-          }
+                if (constraints.maxWidth >= 960) {
+                  return Row(
+                    children: [
+                      SizedBox(width: 320, child: _buildListPane()),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: _buildDetailPane()),
+                    ],
+                  );
+                }
 
-          return _selectedCabinet == null
-              ? _buildListPane()
-              : _buildDetailPane(showBack: true);
-        },
+                return _selectedCabinet == null
+                    ? _buildListPane()
+                    : _buildDetailPane(showBack: true);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

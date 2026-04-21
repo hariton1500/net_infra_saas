@@ -44,6 +44,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   static const String _muffsCacheKey = 'muff_notebook.muffs.v3';
 
   final List<Map<String, dynamic>> _muffs = [];
+  List<Map<String, dynamic>> _projectRecords = const [];
   late final CompanyModuleSyncRepository _syncRepository;
   bool _loadingMuffs = true;
   bool _syncing = false;
@@ -288,12 +289,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
 
   Map<int, String> get _projectOptions {
     final options = <int, String>{};
-    for (final muff in _muffs) {
-      if (muff['deleted'] == true) {
+    for (final project in _projectRecords) {
+      if (project['deleted'] == true || project['archived'] == true) {
         continue;
       }
-      final id = projectIdOf(muff);
-      final name = projectNameOf(muff);
+      final id = projectIdOf(project);
+      final name = projectNameOf(project);
       if (id != null && name != null) {
         options[id] = name;
       }
@@ -332,6 +333,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
 
   String get _actorUserId => widget.controller.currentUser?.id ?? '';
 
+  String? _projectNameFor(Map<String, dynamic> record) {
+    final projectId = projectIdOf(record);
+    if (projectId == null) {
+      return null;
+    }
+    return _projectOptions[projectId];
+  }
+
   bool get _hasDirtyRecords => _muffs.any(
     (record) => record['deleted'] != true && record['dirty'] == true,
   );
@@ -367,6 +376,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     final selectedMuffId = (_selectedMuff?['id'] as int?) ?? widget.initialMuffId;
     final selectedCableId = _selectedCableId;
     _activeProject = await _syncRepository.readActiveProject();
+    _projectRecords = await _syncRepository.readCache(projectsCacheKey);
 
     _muffs
       ..clear()
@@ -384,6 +394,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     try {
       if (!_muffs.any((record) => record['dirty'] == true) &&
           _companyId != null) {
+        _projectRecords = await _syncRepository.pullMerge(
+          companyId: _companyId!,
+          moduleKey: projectsModuleKey,
+          localRecords: _projectRecords,
+        );
+        await _syncRepository.writeCache(projectsCacheKey, _projectRecords);
         final merged = await _syncRepository.pullMerge(
           companyId: _companyId!,
           moduleKey: _moduleKey,
@@ -429,10 +445,32 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   }
 
   Future<void> _persist() async {
+    await _refreshActiveProject();
+    _hydrateDirtyMuffsWithActiveProject();
     await _syncRepository.writeCache(_muffsCacheKey, _muffs);
   }
 
+  Future<void> _refreshActiveProject() async {
+    _activeProject = await _syncRepository.readActiveProject();
+  }
+
+  void _hydrateDirtyMuffsWithActiveProject() {
+    final activeProject = _activeProject;
+    if (activeProject == null) {
+      return;
+    }
+
+    for (final muff in _muffs) {
+      if (muff['dirty'] == true && projectIdOf(muff) == null) {
+        applyProjectSelection(muff, activeProject);
+      }
+    }
+  }
+
   void _touchMuff(Map<String, dynamic> muff) {
+    if (projectIdOf(muff) == null && _activeProject != null) {
+      applyProjectSelection(muff, _activeProject);
+    }
     muff['updated_at'] = DateTime.now();
     muff['dirty'] = true;
   }
@@ -495,6 +533,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     });
 
     try {
+      await _refreshActiveProject();
+      _hydrateDirtyMuffsWithActiveProject();
       final merged = await _syncRepository.syncAll(
         companyId: _companyId!,
         moduleKey: _moduleKey,
@@ -772,8 +812,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                           muff['connections'] ?? <Map<String, dynamic>>[];
                       payload['splitters'] =
                           muff['splitters'] ?? <Map<String, dynamic>>[];
-                      payload['project_id'] = muff['project_id'];
-                      payload['project_name'] = muff['project_name'];
+                      if (projectIdOf(muff) == null && _activeProject != null) {
+                        applyProjectSelection(payload, _activeProject);
+                      } else {
+                        payload['task_id'] = muff['task_id'];
+                      }
                       payload['dirty'] = true;
                       final idx = _muffs.indexWhere(
                         (m) => m['id'] == muff['id'],
@@ -1008,7 +1051,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       'color_scheme': scheme,
                       'fiber_comments': List<String>.filled(fibersNumber, ''),
                     });
-                    applyProjectSelection(cables.last, _activeProject);
                     muff['cables'] = cables;
                     _touchMuff(muff);
                     await _persist();
@@ -1354,7 +1396,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       'endpoint1': Map<String, dynamic>.from(endpoint1),
       'endpoint2': Map<String, dynamic>.from(endpoint2),
     });
-    applyProjectSelection(connections.last, _activeProject);
     muff['connections'] = connections;
     _touchMuff(muff);
     await _persist();
@@ -1507,7 +1548,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       'side': side,
                       'orientation': orientation,
                     });
-                    applyProjectSelection(splitters.last, _activeProject);
                     muff['splitters'] = splitters;
                     _touchMuff(muff);
                     await _persist();
@@ -1710,6 +1750,57 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Widget _buildActiveProjectBanner() {
+    final activeProject = _activeProject;
+    final hasActiveProject =
+        activeProject != null && activeProject.name.trim().isNotEmpty;
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: hasActiveProject
+            ? const Color(0xFF123524)
+            : theme.colorScheme.surfaceContainerHighest,
+        border: Border(
+          bottom: BorderSide(
+            color: hasActiveProject
+                ? const Color(0xFF35C886)
+                : theme.dividerColor.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasActiveProject ? Icons.task_alt_rounded : Icons.workspaces_outline,
+            size: 18,
+            color: hasActiveProject
+                ? const Color(0xFF8BF0B8)
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              hasActiveProject
+                  ? 'Активная задача: ${activeProject.name}'
+                  : 'Активная задача не выбрана',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: hasActiveProject
+                    ? const Color(0xFFE9FFF1)
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _statusDot(bool dirty) {
     return Container(
       width: 10,
@@ -1821,26 +1912,33 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (_mapView) {
-            return _buildMapPane();
-          }
+      body: Column(
+        children: [
+          _buildActiveProjectBanner(),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (_mapView) {
+                  return _buildMapPane();
+                }
 
-          if (constraints.maxWidth >= 900) {
-            return Row(
-              children: [
-                SizedBox(width: 320, child: _buildListPane()),
-                const VerticalDivider(width: 1),
-                Expanded(child: _buildDetailPane()),
-              ],
-            );
-          }
+                if (constraints.maxWidth >= 900) {
+                  return Row(
+                    children: [
+                      SizedBox(width: 320, child: _buildListPane()),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: _buildDetailPane()),
+                    ],
+                  );
+                }
 
-          return _selectedMuff == null
-              ? _buildListPane()
-              : _buildDetailPane(showBack: true);
-        },
+                return _selectedMuff == null
+                    ? _buildListPane()
+                    : _buildDetailPane(showBack: true);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1988,8 +2086,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             subtitle: Text(
               [
                 if (_isPonBox(muff)) 'Тип: PON бокс',
-                if (projectNameOf(muff) != null)
-                  'Задача: ${projectNameOf(muff)}',
+                if (_projectNameFor(muff) != null)
+                  'Задача: ${_projectNameFor(muff)}',
                 if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
                   'Район: ${muff['district']}',
                 if ((muff['location'] ?? '').toString().trim().isNotEmpty)
