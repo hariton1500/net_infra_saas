@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
+import '../widgets/language_selector.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.controller});
@@ -42,7 +44,15 @@ class _ProfilePageState extends State<ProfilePage> {
     final role = controller.membership?.role ?? '-';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Профиль сотрудника')),
+      appBar: AppBar(
+        title: Text(tr('Профиль сотрудника')),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Center(child: LanguageSelector()),
+          ),
+        ],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -58,39 +68,41 @@ class _ProfilePageState extends State<ProfilePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Личные данные',
+                          tr('Личные данные'),
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 12),
-                        const Text(
-                          'Здесь можно обновить имя и должность. Email и роль доступны только для просмотра.',
+                        Text(
+                          tr(
+                            'Здесь можно обновить имя и должность. Email и роль доступны только для просмотра.',
+                          ),
                         ),
                         const SizedBox(height: 24),
                         TextFormField(
                           initialValue: email,
                           readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Рабочий email',
+                          decoration: InputDecoration(
+                            labelText: tr('Рабочий email'),
                           ),
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
-                          initialValue: role,
+                          initialValue: _roleLabel(role),
                           readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Роль в компании',
+                          decoration: InputDecoration(
+                            labelText: tr('Роль в компании'),
                           ),
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _fullNameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Имя сотрудника',
+                          decoration: InputDecoration(
+                            labelText: tr('Имя сотрудника'),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Введите имя сотрудника.';
+                              return tr('Введите имя сотрудника.');
                             }
                             return null;
                           },
@@ -98,14 +110,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
                           initialValue: _selectedPosition,
-                          decoration: const InputDecoration(
-                            labelText: 'Должность',
+                          decoration: InputDecoration(
+                            labelText: tr('Должность'),
                           ),
                           items: employeePositions
                               .map(
                                 (position) => DropdownMenuItem<String>(
                                   value: position,
-                                  child: Text(position),
+                                  child: Text(tr(position)),
                                 ),
                               )
                               .toList(growable: false),
@@ -132,7 +144,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text('Сохранить профиль'),
+                              : Text(tr('Сохранить профиль')),
                         ),
                       ],
                     ),
@@ -163,18 +175,31 @@ class _ProfilePageState extends State<ProfilePage> {
 
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Профиль обновлён.')));
+        ..showSnackBar(SnackBar(content: Text(tr('Профиль обновлён.'))));
     } catch (_) {
       if (!mounted) {
         return;
       }
 
       final message =
-          widget.controller.errorMessage ?? 'Не удалось обновить профиль.';
+          widget.controller.errorMessage ?? tr('Не удалось обновить профиль.');
       logUserFacingError(message, source: 'profile_page.save');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  String _roleLabel(String value) {
+    switch (value) {
+      case 'owner':
+        return tr('Владелец');
+      case 'admin':
+        return tr('Администратор');
+      case 'member':
+        return tr('Сотрудник');
+      default:
+        return value;
     }
   }
 }

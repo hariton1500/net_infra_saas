@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/employee_positions.dart';
 import '../core/project_scope.dart';
+import '../widgets/language_selector.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
@@ -1202,14 +1204,18 @@ class _StartPageState extends State<StartPage> {
     final membership = controller.membership;
     final displayName = profile?.fullName.isNotEmpty == true
         ? profile!.fullName
-        : profile?.email ?? controller.currentUser?.email ?? 'Сотрудник';
+        : profile?.email ?? controller.currentUser?.email ?? tr('Сотрудник');
 
     return Scaffold(
       appBar: AppBar(
         title: Text(membership?.companyName ?? 'Net Infra SaaS'),
         actions: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Center(child: LanguageSelector()),
+          ),
           IconButton(
-            tooltip: 'Профиль',
+            tooltip: tr('Профиль'),
             onPressed: controller.isBusy
                 ? null
                 : () {
@@ -1223,13 +1229,13 @@ class _StartPageState extends State<StartPage> {
             icon: const Icon(Icons.person_outline_rounded),
           ),
           IconButton(
-            tooltip: 'Обновить данные',
+            tooltip: tr('Обновить данные'),
             onPressed: controller.isBusy ? null : _refreshTeam,
             icon: const Icon(Icons.refresh_rounded),
           ),
           TextButton(
             onPressed: controller.isBusy ? null : controller.signOut,
-            child: const Text('Выйти'),
+            child: Text(tr('Выйти')),
           ),
           const SizedBox(width: 12),
         ],
@@ -1252,7 +1258,7 @@ class _StartPageState extends State<StartPage> {
                   _HeroCard(
                     displayName: displayName,
                     position: profile?.position ?? '',
-                    companyName: membership?.companyName ?? 'Компания',
+                    companyName: membership?.companyName ?? tr('Компания'),
                     role: membership?.role ?? 'member',
                     slug: membership?.slug ?? '-',
                     teamSize: controller.teamMembers.length,
@@ -1262,7 +1268,7 @@ class _StartPageState extends State<StartPage> {
                   _buildProjectsCard(context),
                   const SizedBox(height: 20),
                   Text(
-                    'Рабочие разделы',
+                    tr('Рабочие разделы'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),

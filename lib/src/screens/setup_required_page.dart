@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_i18n.dart';
+import '../widgets/language_selector.dart';
+
 class SetupRequiredPage extends StatelessWidget {
   const SetupRequiredPage({super.key});
 
@@ -17,27 +20,35 @@ class SetupRequiredPage extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerRight,
+                      child: LanguageSelector(),
+                    ),
+                    const SizedBox(height: 20),
                     Text(
-                      'Supabase ещё не настроен',
-                      style: TextStyle(
+                      tr('Supabase ещё не настроен'),
+                      style: const TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
-                      'Перед запуском передайте проекту два dart-define параметра: '
-                      'SUPABASE_URL и SUPABASE_ANON_KEY.',
+                      tr(
+                        'Перед запуском передайте проекту два dart-define параметра: SUPABASE_URL и SUPABASE_ANON_KEY.',
+                      ),
                     ),
-                    SizedBox(height: 16),
-                    SelectableText(
+                    const SizedBox(height: 16),
+                    const SelectableText(
                       'flutter run --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co '
                       '--dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY',
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
-                      'После этого приложение покажет экран входа и onboarding компании.',
+                      tr(
+                        'После этого приложение покажет экран входа и onboarding компании.',
+                      ),
                     ),
                   ],
                 ),

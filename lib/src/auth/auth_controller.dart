@@ -3,10 +3,18 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
 
-enum AuthView { loading, signedOut, needsCompanySetup, ready, error }
+enum AuthView {
+  loading,
+  signedOut,
+  passwordRecovery,
+  needsCompanySetup,
+  ready,
+  error,
+}
 
 class ProfileData {
   const ProfileData({
@@ -81,6 +89,7 @@ class AuthController extends ChangeNotifier {
 
   AuthView _view = AuthView.loading;
   bool _isBusy = false;
+  bool _isRecoveringPassword = false;
   String? _errorMessage;
   ProfileData? _profile;
   CompanyMembershipData? _membership;
@@ -115,6 +124,13 @@ class AuthController extends ChangeNotifier {
 
   Future<void> initialize() async {
     _authSubscription = _client.auth.onAuthStateChange.listen((event) {
+      if (event.event == AuthChangeEvent.passwordRecovery) {
+        _isRecoveringPassword = true;
+        _errorMessage = null;
+        _view = AuthView.passwordRecovery;
+        notifyListeners();
+        return;
+      }
       unawaited(refresh());
     });
 
@@ -125,6 +141,7 @@ class AuthController extends ChangeNotifier {
     final user = currentUser;
 
     if (user == null) {
+      _isRecoveringPassword = false;
       _profile = null;
       _membership = null;
       _teamMembers = const [];
@@ -145,11 +162,15 @@ class AuthController extends ChangeNotifier {
       _profile = await _fetchProfile(user);
       _membership = await _fetchMembership(user);
       await _loadCompanyData();
-      _view = _membership == null ? AuthView.needsCompanySetup : AuthView.ready;
+      if (_isRecoveringPassword) {
+        _view = AuthView.passwordRecovery;
+      } else {
+        _view = _membership == null ? AuthView.needsCompanySetup : AuthView.ready;
+      }
     } catch (error, stackTrace) {
       _errorMessage = _humanizeError(error);
       logUserFacingError(
-        _errorMessage ?? 'Не удалось загрузить сессию.',
+        _errorMessage ?? tr('Не удалось загрузить сессию.'),
         source: 'auth.refresh',
         error: error,
         stackTrace: stackTrace,
@@ -197,7 +218,7 @@ class AuthController extends ChangeNotifier {
       if (response.session == null) {
         _view = AuthView.signedOut;
         notifyListeners();
-        return 'Аккаунт создан. Подтвердите email и затем войдите в систему.';
+        return tr('Аккаунт создан. Подтвердите email и затем войдите в систему.');
       }
 
       await refresh();
@@ -206,7 +227,7 @@ class AuthController extends ChangeNotifier {
         await _createCompany(companyName: companyName.trim());
       }
 
-      return 'Компания создана, можно продолжать работу.';
+      return tr('Компания создана, можно продолжать работу.');
     });
   }
 
@@ -217,6 +238,7 @@ class AuthController extends ChangeNotifier {
   Future<void> signOut() async {
     await _runBusy(() async {
       await _client.auth.signOut();
+      _isRecoveringPassword = false;
       _profile = null;
       _membership = null;
       _teamMembers = const [];
@@ -252,8 +274,10 @@ class AuthController extends ChangeNotifier {
       final token = invite['token'] as String? ?? '';
 
       return token.isEmpty
-          ? 'Приглашение создано.'
-          : 'Приглашение создано. Код приглашения: $token';
+          ? tr('Приглашение создано.')
+          : tr('Приглашение создано. Код приглашения: {token}', {
+              'token': token,
+            });
     });
   }
 
@@ -439,7 +463,7 @@ class AuthController extends ChangeNotifier {
 
   Future<String> _createCompany({required String companyName}) async {
     if (companyName.isEmpty) {
-      throw const AuthException('Укажите название компании.');
+      throw AuthException(tr('Укажите название компании.'));
     }
 
     await _client.rpc(
@@ -448,7 +472,7 @@ class AuthController extends ChangeNotifier {
     );
 
     await refresh();
-    return 'Компания подключена, учётная запись готова.';
+    return tr('Компания подключена, учётная запись готова.');
   }
 
   Future<void> _acceptPendingInviteIfNeeded() async {
@@ -469,8 +493,17 @@ class AuthController extends ChangeNotifier {
   }
 
   String _humanizeError(Object error) {
-    if (error is AuthException && error.message.isNotEmpty) {
-      return error.message;
+    final authMessage =
+        error is AuthException ? error.message.trim().toLowerCase() : '';
+    if (authMessage.isNotEmpty) {
+      if (authMessage.contains('user already registered') ||
+          authMessage.contains('already registered') ||
+          authMessage.contains('already exists')) {
+        return tr(
+          'Аккаунт с таким email уже существует. Попробуйте войти или восстановить пароль.',
+        );
+      }
+      return error is AuthException ? error.message : authMessage;
     }
 
     if (error is PostgrestException && error.message.isNotEmpty) {
@@ -497,7 +530,7 @@ class AuthController extends ChangeNotifier {
     } catch (error, stackTrace) {
       _errorMessage = _humanizeError(error);
       logUserFacingError(
-        _errorMessage ?? 'Произошла ошибка.',
+        _errorMessage ?? tr('Произошла ошибка.'),
         source: 'auth.runBusy',
         error: error,
         stackTrace: stackTrace,
@@ -514,5 +547,58 @@ class AuthController extends ChangeNotifier {
   void dispose() {
     _authSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<String> sendPasswordReset({required String email}) async {
+    return _runBusy(() async {
+      final normalizedEmail = email.trim();
+      if (normalizedEmail.isEmpty) {
+        throw AuthException(tr('Введите email для восстановления пароля.'));
+      }
+
+      final redirectTo = _passwordRecoveryRedirectUrl();
+      await _client.auth.resetPasswordForEmail(
+        normalizedEmail,
+        redirectTo: redirectTo,
+      );
+      return tr(
+        'Мы отправили письмо для восстановления пароля, если аккаунт с таким email существует.',
+      );
+    });
+  }
+
+  Future<String> completePasswordRecovery({
+    required String password,
+    required String confirmPassword,
+  }) async {
+    return _runBusy(() async {
+      final normalizedPassword = password.trim();
+      final normalizedConfirmPassword = confirmPassword.trim();
+
+      if (normalizedPassword.isEmpty) {
+        throw AuthException(tr('Введите новый пароль.'));
+      }
+      if (normalizedPassword.length < 8) {
+        throw AuthException(tr('Минимум 8 символов.'));
+      }
+      if (normalizedPassword != normalizedConfirmPassword) {
+        throw AuthException(tr('Пароли не совпадают.'));
+      }
+
+      await _client.auth.updateUser(
+        UserAttributes(password: normalizedPassword),
+      );
+      _isRecoveringPassword = false;
+      await refresh();
+      return tr('Пароль обновлён.');
+    });
+  }
+
+  String? _passwordRecoveryRedirectUrl() {
+    final base = Uri.base;
+    if (!base.hasAuthority) {
+      return null;
+    }
+    return base.replace(path: '/', query: '', fragment: '').toString();
   }
 }

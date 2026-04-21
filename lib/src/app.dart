@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth/auth_controller.dart';
+import 'core/app_i18n.dart';
 import 'core/supabase_config.dart';
 import 'screens/auth_page.dart';
 import 'screens/company_setup_page.dart';
@@ -38,13 +40,29 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Net Infra SaaS',
-      debugShowCheckedModeBanner: false,
-      theme: _buildTheme(),
-      home: widget.config.isConfigured
-          ? AuthShell(controller: _controller!)
-          : const SetupRequiredPage(),
+    return ValueListenableBuilder<Locale>(
+      valueListenable: AppI18n.currentLocaleListenable,
+      builder: (context, locale, _) {
+        return MaterialApp(
+          title: 'Net Infra SaaS',
+          debugShowCheckedModeBanner: false,
+          theme: _buildTheme(),
+          locale: locale,
+          supportedLocales: AppI18n.supportedLocales,
+          localizationsDelegates: const [
+            AppI18nDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          localeResolutionCallback: (locale, supportedLocales) {
+            return AppI18n.resolve(locale);
+          },
+          home: widget.config.isConfigured
+              ? AuthShell(controller: _controller!)
+              : const SetupRequiredPage(),
+        );
+      },
     );
   }
 
@@ -56,20 +74,19 @@ class _MyAppState extends State<MyApp> {
     const secondary = Color(0xFF35C886);
     const text = Color(0xFFF2F7FA);
 
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: primary,
-          brightness: Brightness.dark,
-        ).copyWith(
-          primary: primary,
-          secondary: secondary,
-          surface: surface,
-          error: const Color(0xFFFF6B6B),
-          onPrimary: background,
-          onSecondary: background,
-          onSurface: text,
-          onError: text,
-        );
+    final scheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.dark,
+    ).copyWith(
+      primary: primary,
+      secondary: secondary,
+      surface: surface,
+      error: const Color(0xFFFF6B6B),
+      onPrimary: background,
+      onSecondary: background,
+      onSurface: text,
+      onError: text,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -146,6 +163,7 @@ class AuthShell extends StatelessWidget {
           case AuthView.loading:
             return const _LoadingScreen();
           case AuthView.signedOut:
+          case AuthView.passwordRecovery:
             return AuthPage(controller: controller);
           case AuthView.needsCompanySetup:
             return CompanySetupPage(controller: controller);
@@ -153,8 +171,7 @@ class AuthShell extends StatelessWidget {
             return StartPage(controller: controller);
           case AuthView.error:
             return _ErrorScreen(
-              message:
-                  controller.errorMessage ?? 'Не удалось загрузить сессию.',
+              message: controller.errorMessage ?? tr('Не удалось загрузить сессию.'),
               onRetry: controller.refresh,
               onSignOut: controller.signOut,
             );
@@ -200,20 +217,20 @@ class _ErrorScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Есть проблема с загрузкой данных',
+                      tr('Есть проблема с загрузкой данных'),
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 12),
                     Text(message),
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: () => onRetry(),
-                      child: const Text('Повторить'),
+                      onPressed: onRetry,
+                      child: Text(tr('Повторить')),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
-                      onPressed: () => onSignOut(),
-                      child: const Text('Выйти из аккаунта'),
+                      onPressed: onSignOut,
+                      child: Text(tr('Выйти из аккаунта')),
                     ),
                   ],
                 ),

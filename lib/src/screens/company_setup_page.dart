@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
+import '../widgets/language_selector.dart';
 
 class CompanySetupPage extends StatefulWidget {
   const CompanySetupPage({super.key, required this.controller});
@@ -49,26 +51,34 @@ class _CompanySetupPageState extends State<CompanySetupPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const Align(
+                        alignment: Alignment.centerRight,
+                        child: LanguageSelector(),
+                      ),
+                      const SizedBox(height: 20),
                       Text(
-                        'Завершите настройку компании',
+                        tr('Завершите настройку компании'),
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Вы вошли как ${user?.email ?? 'пользователь'}, но рабочее '
-                        'пространство компании ещё не создано.',
+                        tr(
+                          'Вы вошли как {email}, но рабочее пространство компании ещё не создано.',
+                          {
+                            'email': user?.email ?? tr('Пользователь'),
+                          },
+                        ),
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _companyController,
-                        decoration: const InputDecoration(
-                          labelText: 'Название компании',
+                        decoration: InputDecoration(
+                          labelText: tr('Название компании'),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Укажите название компании.';
+                            return tr('Укажите название компании.');
                           }
-
                           return null;
                         },
                       ),
@@ -85,14 +95,14 @@ class _CompanySetupPageState extends State<CompanySetupPage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('Создать рабочее пространство'),
+                            : Text(tr('Создать рабочее пространство')),
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: widget.controller.isBusy
                             ? null
                             : widget.controller.signOut,
-                        child: const Text('Выйти'),
+                        child: Text(tr('Выйти')),
                       ),
                     ],
                   ),
@@ -129,7 +139,7 @@ class _CompanySetupPageState extends State<CompanySetupPage> {
 
       final message =
           widget.controller.errorMessage ??
-          'Не удалось завершить настройку компании.';
+          tr('Не удалось завершить настройку компании.');
       logUserFacingError(message, source: 'company.setup');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
