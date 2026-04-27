@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
@@ -206,7 +207,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         choices.add(
           _EndpointChoice(
             key: _endpointKey(endpoint),
-            label: '${cable['name'] ?? 'Кабель'} • Волокно ${i + 1}',
+            label: '${cable['name'] ?? 'Cable'} • Fiber ${i + 1}',
             endpoint: endpoint,
           ),
         );
@@ -222,7 +223,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       choices.add(
         _EndpointChoice(
           key: _endpointKey(input),
-          label: '${splitter['name'] ?? 'Делитель'} • Вход',
+          label: '${splitter['name'] ?? 'Splitter'} • Input',
           endpoint: input,
         ),
       );
@@ -232,7 +233,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         choices.add(
           _EndpointChoice(
             key: _endpointKey(output),
-            label: '${splitter['name'] ?? 'Делитель'} • Выход ${i + 1}',
+            label: '${splitter['name'] ?? 'Splitter'} • Output ${i + 1}',
             endpoint: output,
           ),
         );
@@ -245,17 +246,17 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   String _endpointLabel(Map<String, dynamic> endpoint) {
     if (endpoint['type'] == 'splitter') {
       final splitter = _getSplitterById(endpoint['splitterId'] as int);
-      final name = splitter?['name'] ?? 'Делитель';
+      final name = splitter?['name'] ?? 'Splitter';
       final portType = (endpoint['portType'] as String?) ?? 'output';
       if (portType == 'input') {
-        return '$name[Вход]';
+        return '$name[Input]';
       }
 
-      return '$name[Выход ${(endpoint['portIndex'] as int) + 1}]';
+      return '$name[Output ${(endpoint['portIndex'] as int) + 1}]';
     }
 
     final cable = _getCableById(endpoint['cableId'] as int);
-    return '${cable?['name'] ?? 'Кабель'}[${(endpoint['fiberIndex'] as int) + 1}]';
+    return '${cable?['name'] ?? 'Cable'}[${(endpoint['fiberIndex'] as int) + 1}]';
   }
 
   bool _isPonBox(Map<String, dynamic> muff) => muff['is_pon_box'] == true;
@@ -417,12 +418,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       }
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось загрузить муфты из Supabase.',
+        'Failed to load closures from Supabase.',
         source: 'muff_notebook.load',
         error: error,
         stackTrace: stackTrace,
       );
-      _showSnack('Не удалось загрузить муфты из облака.');
+      _showSnack('Failed to load closures from the cloud.');
     }
 
     _rebuildNotebook(
@@ -555,12 +556,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       );
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось синхронизировать муфты.',
+        'Failed to synchronize closures.',
         source: 'muff_notebook.sync',
         error: error,
         stackTrace: stackTrace,
       );
-      _showSnack('Ошибка синхронизации муфт.');
+      _showSnack('Closure sync error.');
     } finally {
       if (mounted) {
         setState(() {
@@ -685,7 +686,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text(muff == null ? 'Новая муфта' : 'Редактировать муфту'),
+              title: Text(
+                tr(muff == null ? 'New closure' : 'Edit closure'),
+              ),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -694,34 +697,30 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     children: [
                       TextField(
                         controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Название',
-                        ),
+                        decoration: InputDecoration(labelText: tr('Name')),
                       ),
                       TextField(
                         controller: districtController,
-                        decoration: const InputDecoration(labelText: 'Район'),
+                        decoration: InputDecoration(labelText: tr('Area')),
                       ),
                       TextField(
                         controller: locationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Адрес/место',
-                        ),
+                        decoration: InputDecoration(labelText: tr('Address/place')),
                       ),
                       TextField(
                         controller: commentController,
-                        decoration: const InputDecoration(
-                          labelText: 'Комментарий',
-                        ),
+                        decoration: InputDecoration(labelText: tr('Comment')),
                         maxLines: 2,
                       ),
                       const SizedBox(height: 8),
                       SwitchListTile(
                         value: isPonBox,
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Это PON бокс'),
-                        subtitle: const Text(
-                          'Флаг сохраняется в карточке муфты и синхронизируется между сотрудниками.',
+                        title: Text(tr('This is a PON box')),
+                        subtitle: Text(
+                          tr(
+                            'The flag is saved in the closure card and synced between employees.',
+                          ),
                         ),
                         onChanged: (value) {
                           setStateDialog(() {
@@ -738,7 +737,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                             child: Text(
                               lat != null && lng != null
                                   ? '${lat!.toStringAsFixed(6)}, ${lng!.toStringAsFixed(6)}'
-                                  : 'Геопозиция не задана',
+                                  : tr('Location is not set'),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
@@ -765,7 +764,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                               }
                             },
                             icon: const Icon(Icons.map),
-                            label: const Text('На карте'),
+                            label: Text(tr('On map')),
                           ),
                         ],
                       ),
@@ -776,7 +775,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -832,18 +831,20 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     }
                     if (muff == null) {
                       await _recordTaskAddition(
-                        kind: 'Добавлена муфта',
+                        kind: tr('Closure added'),
                         summary: [
                           if (payload['name']?.toString().trim().isNotEmpty ==
                               true)
                             payload['name'].toString().trim()
                           else
-                            'Без названия',
+                            tr('Untitled'),
                           if ((payload['district'] ?? '')
                               .toString()
                               .trim()
                               .isNotEmpty)
-                            'район: ${payload['district'].toString().trim()}',
+                            tr('area: {value}', {
+                              'value': payload['district'].toString().trim(),
+                            }),
                           if ((payload['location'] ?? '')
                               .toString()
                               .trim()
@@ -853,7 +854,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                               .toString()
                               .trim()
                               .isNotEmpty)
-                            'примечание: ${payload['comment'].toString().trim()}',
+                            tr('note: {value}', {
+                              'value': payload['comment'].toString().trim(),
+                            }),
                         ].join(' • '),
                         targetRecordId: payload['id'] as int?,
                       );
@@ -863,7 +866,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     setState(() {});
                   },
                   icon: const Icon(Icons.save_rounded),
-                  label: const Text('Сохранить'),
+                  label: Text(tr('Save')),
                 ),
               ],
             );
@@ -951,22 +954,22 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Добавить кабель'),
+              title: Text(tr('Add cable')),
               content: SizedBox(
                 width: 420,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
-                      decoration: const InputDecoration(
-                        labelText: 'Направление/имя',
+                      decoration: InputDecoration(
+                        labelText: tr('Direction/name'),
                       ),
                       onChanged: (value) => name = value,
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('Волокон:'),
+                        Text(tr('Fibers:')),
                         const SizedBox(width: 12),
                         DropdownButton<int>(
                           value: fibersNumber,
@@ -989,13 +992,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('Сторона:'),
+                        Text(tr('Side:')),
                         const SizedBox(width: 12),
                         DropdownButton<int>(
                           value: side,
-                          items: const [
-                            DropdownMenuItem(value: 0, child: Text('Слева')),
-                            DropdownMenuItem(value: 1, child: Text('Справа')),
+                          items: [
+                            DropdownMenuItem(value: 0, child: Text(tr('Left'))),
+                            DropdownMenuItem(value: 1, child: Text(tr('Right'))),
                           ],
                           onChanged: (value) {
                             setStateDialog(() {
@@ -1008,7 +1011,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('Маркировка:'),
+                        Text(tr('Label:')),
                         const SizedBox(width: 12),
                         DropdownButton<String>(
                           value: scheme,
@@ -1034,7 +1037,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -1045,7 +1048,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     );
                     cables.add({
                       'id': DateTime.now().microsecondsSinceEpoch,
-                      'name': name.isEmpty ? 'Кабель' : name,
+                      'name': name.isEmpty ? tr('Cable') : name,
                       'fibers': fibersNumber,
                       'side': side,
                       'color_scheme': scheme,
@@ -1058,17 +1061,17 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       return;
                     }
                     await _recordTaskAddition(
-                      kind: 'Добавлен кабель в муфту',
+                      kind: 'Cable added to closure',
                       summary: [
-                        '${muff['name'] ?? 'Муфта'}',
-                        '${cables.last['name'] ?? 'Кабель'}',
-                        'волокон: ${cables.last['fibers'] ?? fibersNumber}',
-                        'сторона: ${((cables.last['side'] as int?) ?? side) == 0 ? 'слева' : 'справа'}',
+                        '${muff['name'] ?? 'Closure'}',
+                        '${cables.last['name'] ?? 'Cable'}',
+                        'fibers: ${cables.last['fibers'] ?? fibersNumber}',
+                        'side: ${((cables.last['side'] as int?) ?? side) == 0 ? 'left' : 'right'}',
                         if ((cables.last['color_scheme'] ?? '')
                             .toString()
                             .trim()
                             .isNotEmpty)
-                          'маркировка: ${cables.last['color_scheme']}',
+                          'label: ${cables.last['color_scheme']}',
                       ].join(' • '),
                       targetRecordId: muff['id'] as int?,
                     );
@@ -1076,7 +1079,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
               ],
             );
@@ -1129,7 +1132,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Редактировать имя кабеля'),
+          title: Text(tr('Edit cable name')),
           content: TextField(
             controller: controller,
             decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -1137,7 +1140,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Отмена'),
+              child: Text(tr('Cancel')),
             ),
             FilledButton.tonal(
               onPressed: () async {
@@ -1153,7 +1156,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                 setState(() {});
                 navigator.pop();
               },
-              child: const Text('Сохранить'),
+              child: Text(tr('Save')),
             ),
           ],
         );
@@ -1205,11 +1208,16 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Кабель: ${cable['name']} | Волокно ${fiberIndex + 1}'),
+              Text(
+                tr('Cable: {name} | Fiber {fiber}', {
+                  'name': '${cable['name']}',
+                  'fiber': '${fiberIndex + 1}',
+                }),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: commentController,
-                decoration: const InputDecoration(labelText: 'Комментарий'),
+                decoration: InputDecoration(labelText: tr('Comment')),
               ),
               const SizedBox(height: 12),
               Row(
@@ -1217,7 +1225,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Отмена'),
+                    child: Text(tr('Cancel')),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.tonalIcon(
@@ -1236,7 +1244,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       navigator.pop();
                     },
                     icon: const Icon(Icons.save),
-                    label: const Text('Сохранить'),
+                    label: Text(tr('Save')),
                   ),
                 ],
               ),
@@ -1255,7 +1263,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
 
     final choices = _endpointChoices(muff);
     if (choices.length < 2) {
-      _showSnack('Нужно минимум две точки подключения');
+      _showSnack('At least two connection points are required');
       return;
     }
 
@@ -1280,13 +1288,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Добавить соединение'),
+              title: Text(tr('Add connection')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('От:'),
+                    child: Text(tr('From:')),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
@@ -1302,9 +1310,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Куда:'),
+                    child: Text(tr('To:')),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
@@ -1324,7 +1332,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -1339,7 +1347,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
               ],
             );
@@ -1369,26 +1377,26 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     }
 
     if (_sameEndpoint(endpoint1, endpoint2)) {
-      _showSnack('Нельзя соединить точку саму с собой');
+      _showSnack('A point cannot be connected to itself');
       return false;
     }
 
     if ((endpoint1['type'] == 'cable') &&
         (endpoint2['type'] == 'cable') &&
         endpoint1['cableId'] == endpoint2['cableId']) {
-      _showSnack('Нельзя соединять волокна одного кабеля');
+      _showSnack('Fibers of the same cable cannot be connected');
       return false;
     }
 
     final connections = _normalizedConnections(muff);
     if (_isEndpointBusy(connections, endpoint1) ||
         _isEndpointBusy(connections, endpoint2)) {
-      _showSnack('Точка подключения уже занята');
+      _showSnack('Connection point is already occupied');
       return false;
     }
 
     if (_connectionExists(connections, endpoint1, endpoint2)) {
-      _showSnack('Такое соединение уже есть');
+      _showSnack('This connection already exists');
       return false;
     }
 
@@ -1401,9 +1409,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     await _persist();
     if (mounted) {
       await _recordTaskAddition(
-        kind: 'Добавлено соединение в муфту',
+        kind: 'Connection added to closure',
         summary: [
-          muff['name']?.toString() ?? 'Муфта',
+          muff['name']?.toString() ?? 'Closure',
           '${_endpointLabel(endpoint1)} ↔ ${_endpointLabel(endpoint2)}',
         ].join(' • '),
         targetRecordId: muff['id'] as int?,
@@ -1454,14 +1462,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Добавить делитель'),
+              title: Text(tr('Add splitter')),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
-                      decoration: const InputDecoration(
-                        labelText: 'Название делителя',
+                      decoration: InputDecoration(
+                        labelText: tr('Splitter name'),
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (value) => name = value.trim(),
@@ -1469,8 +1477,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
                       value: ratio,
-                      decoration: const InputDecoration(
-                        labelText: 'Коэффициент деления',
+                      decoration: InputDecoration(
+                        labelText: tr('Split ratio'),
                         border: OutlineInputBorder(),
                       ),
                       items: const [2, 4, 8, 16, 32]
@@ -1490,13 +1498,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
                       value: side,
-                      decoration: const InputDecoration(
-                        labelText: 'Сторона',
+                      decoration: InputDecoration(
+                        labelText: tr('Side'),
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 0, child: Text('Слева')),
-                        DropdownMenuItem(value: 1, child: Text('Справа')),
+                      items: [
+                        DropdownMenuItem(value: 0, child: Text(tr('Left'))),
+                        DropdownMenuItem(value: 1, child: Text(tr('Right'))),
                       ],
                       onChanged: (value) {
                         setStateDialog(() {
@@ -1507,18 +1515,18 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: orientation,
-                      decoration: const InputDecoration(
-                        labelText: 'Расположение выходных портов',
+                      decoration: InputDecoration(
+                        labelText: tr('Output port layout'),
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'vertical',
-                          child: Text('Вертикально'),
+                          child: Text(tr('Vertical')),
                         ),
                         DropdownMenuItem(
                           value: 'horizontal',
-                          child: Text('Горизонтально'),
+                          child: Text(tr('Horizontal')),
                         ),
                       ],
                       onChanged: (value) {
@@ -1533,7 +1541,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -1543,7 +1551,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     );
                     splitters.add({
                       'id': DateTime.now().microsecondsSinceEpoch,
-                      'name': name.isEmpty ? 'Делитель 1:$ratio' : name,
+                      'name': name.isEmpty ? tr('Splitter 1:{ratio}', {'ratio': '$ratio'}) : name,
                       'ratio': ratio,
                       'side': side,
                       'orientation': orientation,
@@ -1555,13 +1563,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       return;
                     }
                     await _recordTaskAddition(
-                      kind: 'Добавлен делитель в муфту',
+                      kind: 'Splitter added to closure',
                       summary: [
-                        '${muff['name'] ?? 'Муфта'}',
-                        '${splitters.last['name'] ?? 'Делитель'}',
+                        '${muff['name'] ?? 'Closure'}',
+                        '${splitters.last['name'] ?? 'Splitter'}',
                         '1:${splitters.last['ratio'] ?? ratio}',
-                        'сторона: ${((splitters.last['side'] as int?) ?? side) == 0 ? 'слева' : 'справа'}',
-                        'ориентация: ${((splitters.last['orientation'] ?? orientation) == 'vertical') ? 'вертикально' : 'горизонтально'}',
+                        'side: ${((splitters.last['side'] as int?) ?? side) == 0 ? 'left' : 'right'}',
+                        'orientation: ${((splitters.last['orientation'] ?? orientation) == 'vertical') ? 'vertical' : 'horizontal'}',
                       ].join(' • '),
                       targetRecordId: muff['id'] as int?,
                     );
@@ -1569,7 +1577,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
               ],
             );
@@ -1598,15 +1606,15 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Редактировать делитель'),
+              title: Text(tr('Edit splitter')),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Название делителя',
+                      decoration: InputDecoration(
+                        labelText: tr('Splitter name'),
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (value) => name = value.trim(),
@@ -1614,8 +1622,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
                       value: ratio,
-                      decoration: const InputDecoration(
-                        labelText: 'Коэффициент деления',
+                      decoration: InputDecoration(
+                        labelText: tr('Split ratio'),
                         border: OutlineInputBorder(),
                       ),
                       items: const [2, 4, 8, 16, 32]
@@ -1635,13 +1643,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
                       value: side,
-                      decoration: const InputDecoration(
-                        labelText: 'Сторона',
+                      decoration: InputDecoration(
+                        labelText: tr('Side'),
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 0, child: Text('Слева')),
-                        DropdownMenuItem(value: 1, child: Text('Справа')),
+                      items: [
+                        DropdownMenuItem(value: 0, child: Text(tr('Left'))),
+                        DropdownMenuItem(value: 1, child: Text(tr('Right'))),
                       ],
                       onChanged: (value) {
                         setStateDialog(() {
@@ -1652,18 +1660,18 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: orientation,
-                      decoration: const InputDecoration(
-                        labelText: 'Расположение выходных портов',
+                      decoration: InputDecoration(
+                        labelText: tr('Output port layout'),
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'vertical',
-                          child: Text('Вертикально'),
+                          child: Text(tr('Vertical')),
                         ),
                         DropdownMenuItem(
                           value: 'horizontal',
-                          child: Text('Горизонтально'),
+                          child: Text(tr('Horizontal')),
                         ),
                       ],
                       onChanged: (value) {
@@ -1678,13 +1686,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
                     final navigator = Navigator.of(context);
                     splitter['name'] = nameController.text.trim().isEmpty
-                        ? 'Делитель 1:$ratio'
+                        ? tr('Splitter 1:{ratio}', {'ratio': '$ratio'})
                         : nameController.text.trim();
                     splitter['ratio'] = ratio;
                     splitter['side'] = side;
@@ -1698,7 +1706,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.save),
-                  label: const Text('Сохранить'),
+                  label: Text(tr('Save')),
                 ),
               ],
             );
@@ -1784,8 +1792,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? 'Активная задача: ${activeProject.name}'
-                  : 'Активная задача не выбрана',
+                  ? 'Active task: ${activeProject.name}'
+                  : 'No active task selected',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -1816,10 +1824,10 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Блокнот муфт'),
+        title: Text(tr('Closure notebook')),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Слой карты',
+            tooltip: tr('Map layer'),
             initialValue: _selectedTileLayerId,
             onSelected: (value) {
               setState(() {
@@ -1843,10 +1851,10 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               Icons.cloud_upload_outlined,
               color: _hasDirtyRecords ? Colors.redAccent : Colors.greenAccent,
             ),
-            tooltip: 'Синхронизировать',
+            tooltip: tr('Sync'),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Фильтр по району',
+            tooltip: tr('Area filter'),
             icon: Icon(
               _districtFilter == null
                   ? Icons.filter_list
@@ -1857,7 +1865,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               CheckedPopupMenuItem<String>(
                 value: _allDistrictsValue,
                 checked: _districtFilter == null,
-                child: const Text('Все районы'),
+                child: Text(tr('All areas')),
               ),
               ..._districtOptions.map(
                 (district) => CheckedPopupMenuItem<String>(
@@ -1869,7 +1877,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             ],
           ),
           PopupMenuButton<String>(
-            tooltip: 'Фильтр по задаче',
+            tooltip: tr('Task filter'),
             icon: Icon(
               _projectFilterId == null
                   ? Icons.workspaces_outline
@@ -1880,7 +1888,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               CheckedPopupMenuItem<String>(
                 value: '__all_projects__',
                 checked: _projectFilterId == null,
-                child: const Text('Все задачи'),
+                child: Text(tr('All tasks')),
               ),
               ..._projectOptions.entries.map(
                 (entry) => CheckedPopupMenuItem<String>(
@@ -1898,17 +1906,17 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               });
             },
             icon: Icon(_mapView ? Icons.list : Icons.map),
-            tooltip: _mapView ? 'Список' : 'Карта',
+            tooltip: _mapView ? tr('List') : tr('Map'),
           ),
           IconButton(
             onPressed: _syncing ? null : _loadFromStorage,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Обновить',
+            tooltip: tr('Refresh'),
           ),
           IconButton(
             onPressed: () => _showMuffEditor(),
             icon: const Icon(Icons.add),
-            tooltip: 'Новая муфта',
+            tooltip: tr('New closure'),
           ),
         ],
       ),
@@ -1999,7 +2007,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                muff['name'] ?? 'Без названия',
+                muff['name'] ?? tr('Untitled'),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               if (_isPonBox(muff)) ...[
@@ -2008,7 +2016,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               ],
               const SizedBox(height: 6),
               if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
-                Text('Район: ${muff['district']}'),
+                Text(
+                  tr('Area: {value}', {
+                    'value': '${muff['district']}',
+                  }),
+                ),
               if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
                 const SizedBox(height: 6),
               Text(muff['location'] ?? ''),
@@ -2024,7 +2036,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Закрыть'),
+                    child: Text(tr('Close')),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.tonal(
@@ -2035,7 +2047,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       });
                       Navigator.of(context).pop();
                     },
-                    child: const Text('Открыть'),
+                    child: Text(tr('Open')),
                   ),
                 ],
               ),
@@ -2055,7 +2067,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         _muffs.where((muff) => muff['deleted'] != true).isEmpty) {
       return Center(
         child: Text(
-          'Муфт пока нет. Добавьте первую запись.',
+          tr('There are no closures yet. Add the first record.'),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -2063,7 +2075,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     if (visibleMuffs.isEmpty) {
       return Center(
         child: Text(
-          'В выбранном районе муфт пока нет.',
+          'There are no closures in the selected area yet.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -2082,14 +2094,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               : null,
           child: ListTile(
             leading: _statusDot(muff['dirty'] == true),
-            title: Text(muff['name'] ?? 'Без названия'),
+            title: Text(muff['name'] ?? 'Untitled'),
             subtitle: Text(
               [
-                if (_isPonBox(muff)) 'Тип: PON бокс',
+                if (_isPonBox(muff)) 'Type: PON box',
                 if (_projectNameFor(muff) != null)
-                  'Задача: ${_projectNameFor(muff)}',
+                  'Task: ${_projectNameFor(muff)}',
                 if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
-                  'Район: ${muff['district']}',
+                  'Area: ${muff['district']}',
                 if ((muff['location'] ?? '').toString().trim().isNotEmpty)
                   (muff['location'] ?? '').toString().trim(),
               ].join('\n'),
@@ -2109,10 +2121,10 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                   _deleteMuff(muff);
                 }
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'edit', child: Text('Редактировать')),
-                PopupMenuItem(value: 'geo', child: Text('Геопозиция')),
-                PopupMenuItem(value: 'delete', child: Text('Удалить')),
+              itemBuilder: (context) => [
+                PopupMenuItem(value: 'edit', child: Text(tr('Edit'))),
+                PopupMenuItem(value: 'geo', child: Text(tr('Location'))),
+                PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
               ],
             ),
             onTap: () => _selectMuff(muff),
@@ -2126,7 +2138,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     if (_selectedMuff == null) {
       return Center(
         child: Text(
-          'Выберите муфту слева',
+          'Select a closure on the left',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -2152,7 +2164,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                   });
                 },
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('К списку'),
+                label: Text(tr('Back to list')),
               ),
             ),
           Padding(
@@ -2169,12 +2181,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            muff['name'] ?? 'Без названия',
+                            muff['name'] ?? 'Untitled',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Геопозиция',
+                          tooltip: tr('Location'),
                           onPressed: () => _openMuffLocation(muff),
                           icon: const Icon(Icons.map),
                         ),
@@ -2187,7 +2199,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     const SizedBox(height: 4),
                     if (((muff['district'] as String?)?.trim() ?? '')
                         .isNotEmpty)
-                      Text('Район: ${muff['district']}'),
+                      Text(
+                        tr('Area: {value}', {
+                          'value': '${muff['district']}',
+                        }),
+                      ),
                     if (((muff['district'] as String?)?.trim() ?? '')
                         .isNotEmpty)
                       const SizedBox(height: 4),
@@ -2209,7 +2225,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                             TextButton.icon(
                               onPressed: () => _openMuffLocation(muff),
                               icon: const Icon(Icons.map),
-                              label: const Text('Изменить'),
+                              label: Text(tr('Change')),
                             ),
                           ],
                         ),
@@ -2228,14 +2244,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             child: Row(
               children: [
                 const Text(
-                  'Кабели',
+                  'Cables',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _addCable,
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить кабель'),
+                  label: Text(tr('Add cable')),
                 ),
               ],
             ),
@@ -2245,14 +2261,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             child: Row(
               children: [
                 const Text(
-                  'Делители',
+                  'Splitters',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _addSplitter,
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить делитель'),
+                  label: Text(tr('Add splitter')),
                 ),
               ],
             ),
@@ -2292,14 +2308,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             child: Row(
               children: [
                 const Text(
-                  'Соединения',
+                  'Connections',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _addConnection,
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
                 if (connections.isNotEmpty)
                   TextButton.icon(
@@ -2312,15 +2328,15 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       }
                     },
                     icon: const Icon(Icons.delete_forever_outlined),
-                    label: const Text('Очистить все'),
+                    label: Text(tr('Clear all')),
                   ),
               ],
             ),
           ),
           if (connections.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(12),
-              child: Text('Соединений пока нет'),
+              child: Text(tr('There are no connections yet')),
             )
           else
             Column(
@@ -2361,11 +2377,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          side == 0 ? 'Слева' : 'Справа',
+          tr(side == 0 ? 'Left' : 'Right'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        if (cables.isEmpty && splitters.isEmpty) const Text('Нет элементов'),
+        if (cables.isEmpty && splitters.isEmpty) Text(tr('No items')),
         ...cables.map((cable) {
           final isSelected = _selectedCableId == cable['id'];
           return Card(
@@ -2387,7 +2403,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       children: [
                         Expanded(
                           child: Text(
-                            cable['name'] ?? 'Кабель',
+                            cable['name'] ?? tr('Cable'),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -2403,18 +2419,18 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                               _deleteCable(cable['id'] as int);
                             }
                           },
-                          itemBuilder: (context) => const [
+                          itemBuilder: (context) => [
                             PopupMenuItem(
                               value: 'rename',
-                              child: Text('Переименовать'),
+                              child: Text(tr('Rename')),
                             ),
                             PopupMenuItem(
                               value: 'swap',
-                              child: Text('Перенести на другую сторону'),
+                              child: Text(tr('Move to the other side')),
                             ),
                             PopupMenuItem(
                               value: 'delete',
-                              child: Text('Удалить'),
+                              child: Text(tr('Delete')),
                             ),
                           ],
                         ),
@@ -2589,11 +2605,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        splitter['name'] ?? 'Делитель',
+                        splitter['name'] ?? tr('Splitter'),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       //const SizedBox(height: 2),
-                      //Text('PON 1:$ratio • ${orientation == 'vertical' ? 'вертикально' : 'горизонтально'}', style: Theme.of(context).textTheme.bodySmall,),
+                      //Text('PON 1:$ratio • ${orientation == 'vertical' ? 'vertical' : 'horizontal'}', style: Theme.of(context).textTheme.bodySmall,),
                     ],
                   ),
                 ),
@@ -2606,14 +2622,14 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       _deleteSplitter(splitterId);
                     }
                   },
-                  itemBuilder: (context) => const [
+                  itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'edit',
-                      child: Text('Редактировать'),
+                      child: Text(tr('Edit')),
                     ),
                     PopupMenuItem(
                       value: 'delete',
-                      child: Text('Удалить'),
+                      child: Text(tr('Delete')),
                     ),
                   ],
                 ),
@@ -2820,12 +2836,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Кабель: ${cable['name']}',
+            tr('Cable: {name}', {'name': '${cable['name']}'}),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           if (commentItems.isNotEmpty) ...[
             const SizedBox(height: 6),
-            const Text('Комментарии по волокнам:'),
+            Text(tr('Fiber comments:')),
             ...commentItems,
           ],
         ],
@@ -2845,8 +2861,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           ).colorScheme.secondary.withValues(alpha: 0.45),
         ),
       ),
-      child: const Text(
-        'PON бокс',
+      child: Text(
+        tr('PON box'),
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );

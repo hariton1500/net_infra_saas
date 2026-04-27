@@ -6,7 +6,6 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/employee_positions.dart';
 import '../core/project_scope.dart';
-import '../widgets/language_selector.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
@@ -58,7 +57,7 @@ class _StartPageState extends State<StartPage> {
       await _syncRepository.removeCache(_legacyWorkOrdersCacheKey);
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось очистить устаревший локальный кэш нарядов.',
+        'Failed to clear the outdated local work order cache.',
         source: 'start.cleanup_legacy_work_orders_cache',
         error: error,
         stackTrace: stackTrace,
@@ -225,7 +224,7 @@ class _StartPageState extends State<StartPage> {
       });
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось загрузить задачи.',
+        'Failed to load tasks.',
         source: 'start.projects_load',
         error: error,
         stackTrace: stackTrace,
@@ -362,11 +361,11 @@ class _StartPageState extends State<StartPage> {
   String? _workLogTargetButtonLabel(Map<String, dynamic> entry) {
     switch (_workLogTargetScreenOf(entry)) {
       case 'muff_notebook':
-        return 'Открыть муфту';
+        return 'Open closure';
       case 'network_cabinet':
-        return 'Открыть шкаф';
+        return 'Open cabinet';
       case 'infrastructure_map':
-        return 'Открыть маршрут';
+        return 'Open route';
       default:
         return null;
     }
@@ -547,7 +546,7 @@ class _StartPageState extends State<StartPage> {
     if (normalizedEmail.isNotEmpty) {
       return normalizedEmail;
     }
-    return 'Сотрудник';
+    return 'Employee';
   }
 
   Future<void> _showTaskAssigneesEditor(Map<String, dynamic> task) async {
@@ -559,7 +558,7 @@ class _StartPageState extends State<StartPage> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text('В компании пока нет сотрудников.')),
+          const SnackBar(content: Text('There are no employees in the company yet.')),
         );
       return;
     }
@@ -576,7 +575,7 @@ class _StartPageState extends State<StartPage> {
           builder: (context, setModalState) {
             return AlertDialog(
               title: Text(
-                'Сотрудники задачи "${projectNameOf(task) ?? 'Без названия'}"',
+                'Task employees "${projectNameOf(task) ?? 'Untitled'}"',
               ),
               content: SizedBox(
                 width: 460,
@@ -618,7 +617,7 @@ class _StartPageState extends State<StartPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: const Text('Cancel'),
                 ),
                 FilledButton(
                   onPressed: () async {
@@ -643,7 +642,7 @@ class _StartPageState extends State<StartPage> {
                     }
                     navigator.pop();
                   },
-                  child: const Text('Сохранить'),
+                  child: const Text('Save'),
                 ),
               ],
             );
@@ -683,7 +682,7 @@ class _StartPageState extends State<StartPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(projectNameOf(currentTask) ?? 'Задача'),
+          title: Text(projectNameOf(currentTask) ?? 'Task'),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -695,7 +694,7 @@ class _StartPageState extends State<StartPage> {
                       true)
                     Text((currentTask['description'] as String).trim())
                   else
-                    const Text('Описание не заполнено.'),
+                    const Text('Description is empty.'),
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 8,
@@ -703,19 +702,19 @@ class _StartPageState extends State<StartPage> {
                     children: [
                       if (isActive)
                         const _TagBadge(
-                          label: 'Активная',
+                          label: 'Active',
                           backgroundColor: Color(0xFF123524),
                           borderColor: Color(0xFF35C886),
                         ),
                       if (isCompleted)
                         const _TagBadge(
-                          label: 'Выполнена',
+                          label: 'Completed',
                           backgroundColor: Color(0xFF3A2812),
                           borderColor: Color(0xFFE0A54A),
                         ),
                       if (isVerified)
                         const _TagBadge(
-                          label: 'Проверена',
+                          label: 'Verified',
                           backgroundColor: Color(0xFF122E3A),
                           borderColor: Color(0xFF53B6D9),
                         ),
@@ -723,17 +722,17 @@ class _StartPageState extends State<StartPage> {
                   ),
                   if (_taskCompletedBy(currentTask) != null) ...[
                     const SizedBox(height: 12),
-                    Text('Выполнил: ${_taskCompletedBy(currentTask)}'),
+                    Text('Completed by: ${_taskCompletedBy(currentTask)}'),
                   ],
                   if (_taskVerifiedBy(currentTask) != null) ...[
                     const SizedBox(height: 6),
-                    Text('Проверил: ${_taskVerifiedBy(currentTask)}'),
+                    Text('Verified by: ${_taskVerifiedBy(currentTask)}'),
                   ],
                   const SizedBox(height: 16),
                   Text(
                     assignees.isEmpty
-                        ? 'Исполнители не закреплены'
-                        : 'Закреплённые сотрудники',
+                        ? 'No assignees assigned'
+                        : 'Assigned employees',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -755,14 +754,14 @@ class _StartPageState extends State<StartPage> {
                   ],
                   const SizedBox(height: 20),
                   Text(
-                    'Перечень работ',
+                    'Work list',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 10),
                   if (workLog.isEmpty)
-                    const Text('Пока нет зафиксированных добавлений.')
+                    const Text('There are no recorded additions yet.')
                   else
                     Column(
                       children: [
@@ -837,7 +836,7 @@ class _StartPageState extends State<StartPage> {
                     ),
                   const SizedBox(height: 20),
                   Text(
-                    'Действия',
+                    'Actions',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -854,7 +853,7 @@ class _StartPageState extends State<StartPage> {
                             navigator.pop();
                             await _showTaskAssigneesEditor(currentTask);
                           },
-                          child: const Text('Исполнители'),
+                          child: const Text('Assignees'),
                         ),
                       if (canMarkCompleted)
                         FilledButton.tonal(
@@ -866,7 +865,7 @@ class _StartPageState extends State<StartPage> {
                             }
                             navigator.pop();
                           },
-                          child: const Text('Выполнена'),
+                          child: const Text('Completed'),
                         ),
                       if (canMarkVerified)
                         FilledButton.tonal(
@@ -878,7 +877,7 @@ class _StartPageState extends State<StartPage> {
                             }
                             navigator.pop();
                           },
-                          child: const Text('Проверена'),
+                          child: const Text('Verified'),
                         ),
                       if (canMarkArchived)
                         FilledButton.tonal(
@@ -890,13 +889,13 @@ class _StartPageState extends State<StartPage> {
                             }
                             navigator.pop();
                           },
-                          child: const Text('В архив'),
+                          child: const Text('Archive'),
                         ),
                       if (!canManageAssignees &&
                           !canMarkCompleted &&
                           !canMarkVerified &&
                           !canMarkArchived)
-                        const Text('Для этой задачи сейчас нет доступных действий.'),
+                        const Text('There are no actions available for this task now.'),
                     ],
                   ),
                 ],
@@ -906,7 +905,7 @@ class _StartPageState extends State<StartPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Закрыть'),
+              child: const Text('Close'),
             ),
           ],
         );
@@ -944,7 +943,7 @@ class _StartPageState extends State<StartPage> {
       });
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось сохранить задачи.',
+        'Failed to save tasks.',
         source: 'start.projects_persist',
         error: error,
         stackTrace: stackTrace,
@@ -958,7 +957,7 @@ class _StartPageState extends State<StartPage> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text('Не удалось сохранить задачи.')),
+          const SnackBar(content: Text('Failed to save tasks.')),
         );
     }
   }
@@ -971,7 +970,7 @@ class _StartPageState extends State<StartPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Новая задача'),
+          title: const Text('New task'),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -979,12 +978,12 @@ class _StartPageState extends State<StartPage> {
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Краткое название'),
+                  decoration: const InputDecoration(labelText: 'Short title'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: descriptionController,
-                  decoration: const InputDecoration(labelText: 'Описание'),
+                  decoration: const InputDecoration(labelText: 'Description'),
                   minLines: 2,
                   maxLines: 4,
                 ),
@@ -994,7 +993,7 @@ class _StartPageState extends State<StartPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Отмена'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
@@ -1030,7 +1029,7 @@ class _StartPageState extends State<StartPage> {
                 }
                 navigator.pop();
               },
-              child: const Text('Создать'),
+              child: const Text('Create'),
             ),
           ],
         );
@@ -1085,7 +1084,7 @@ class _StartPageState extends State<StartPage> {
             Row(
               children: [
                 Text(
-                  'Задачи',
+                  'Tasks',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -1095,7 +1094,7 @@ class _StartPageState extends State<StartPage> {
                   FilledButton.tonalIcon(
                     onPressed: _syncingProjects ? null : _showProjectEditor,
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('Создать'),
+                    label: const Text('Create'),
                   ),
               ],
             ),
@@ -1105,11 +1104,11 @@ class _StartPageState extends State<StartPage> {
                 segments: const [
                   ButtonSegment<String>(
                     value: _taskListFilterAll,
-                    label: Text('Все'),
+                    label: Text('All'),
                   ),
                   ButtonSegment<String>(
                     value: _taskListFilterMine,
-                    label: Text('Мои'),
+                    label: Text('Mine'),
                   ),
                 ],
                 selected: {_effectiveTaskListFilter},
@@ -1126,14 +1125,14 @@ class _StartPageState extends State<StartPage> {
                 Expanded(
                   child: Text(
                     _activeProject == null
-                        ? 'Активная задача выключена.'
-                        : 'Активная задача: ${_activeProject!.name}',
+                        ? 'Active task is turned off.'
+                        : 'Active task: ${_activeProject!.name}',
                   ),
                 ),
                 if (_activeProject != null)
                   TextButton(
                     onPressed: _clearActiveProject,
-                    child: const Text('Выключить'),
+                    child: const Text('Turn off'),
                   ),
               ],
             ),
@@ -1143,15 +1142,15 @@ class _StartPageState extends State<StartPage> {
             else if (projects.isEmpty)
               Text(
                 _effectiveTaskListFilter == _taskListFilterMine
-                    ? 'У вас пока нет назначенных задач.'
-                    : 'Задач пока нет.',
+                    ? 'You do not have assigned tasks yet.'
+                    : 'There are no tasks yet.',
               )
             else
               Column(
                 children: [
                   for (final project in projects) ...[
                     _ProjectRow(
-                      title: projectNameOf(project) ?? 'Без названия',
+                      title: projectNameOf(project) ?? 'Untitled',
                       description:
                           (project['description'] as String?)?.trim() ?? '',
                       assignees: _assignedEmployeesOf(project)
@@ -1204,18 +1203,14 @@ class _StartPageState extends State<StartPage> {
     final membership = controller.membership;
     final displayName = profile?.fullName.isNotEmpty == true
         ? profile!.fullName
-        : profile?.email ?? controller.currentUser?.email ?? tr('Сотрудник');
+        : profile?.email ?? controller.currentUser?.email ?? tr('Employee');
 
     return Scaffold(
       appBar: AppBar(
         title: Text(membership?.companyName ?? 'Net Infra SaaS'),
         actions: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Center(child: LanguageSelector()),
-          ),
           IconButton(
-            tooltip: tr('Профиль'),
+            tooltip: tr('Profile'),
             onPressed: controller.isBusy
                 ? null
                 : () {
@@ -1229,13 +1224,13 @@ class _StartPageState extends State<StartPage> {
             icon: const Icon(Icons.person_outline_rounded),
           ),
           IconButton(
-            tooltip: tr('Обновить данные'),
+            tooltip: tr('Refresh data'),
             onPressed: controller.isBusy ? null : _refreshTeam,
             icon: const Icon(Icons.refresh_rounded),
           ),
           TextButton(
             onPressed: controller.isBusy ? null : controller.signOut,
-            child: Text(tr('Выйти')),
+            child: Text(tr('Sign out')),
           ),
           const SizedBox(width: 12),
         ],
@@ -1258,7 +1253,7 @@ class _StartPageState extends State<StartPage> {
                   _HeroCard(
                     displayName: displayName,
                     position: profile?.position ?? '',
-                    companyName: membership?.companyName ?? tr('Компания'),
+                    companyName: membership?.companyName ?? tr('Company'),
                     role: membership?.role ?? 'member',
                     slug: membership?.slug ?? '-',
                     teamSize: controller.teamMembers.length,
@@ -1268,7 +1263,7 @@ class _StartPageState extends State<StartPage> {
                   _buildProjectsCard(context),
                   const SizedBox(height: 20),
                   Text(
-                    tr('Рабочие разделы'),
+                    tr('Work sections'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -1280,9 +1275,9 @@ class _StartPageState extends State<StartPage> {
                       final cards = [
                         _ActionCard(
                           icon: Icons.map_outlined,
-                          title: 'Карта инфраструктуры',
+                          title: 'Infrastructure map',
                           description:
-                              'Быстрый переход к карте муфт, PON боксов, кабельных маршрутов и точек подключения.',
+                              'Quick access to the map of closures, PON boxes, cable routes, and connection points.',
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1298,9 +1293,9 @@ class _StartPageState extends State<StartPage> {
                         ),
                         _ActionCard(
                           icon: Icons.notes_rounded,
-                          title: 'Блокнот муфт',
+                          title: 'Closure notebook',
                           description:
-                              'Оперативная работа с монтажными узлами, заметками и обслуживанием.',
+                              'Operational work with installation nodes, notes, and maintenance.',
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1315,9 +1310,9 @@ class _StartPageState extends State<StartPage> {
                         ),
                         _ActionCard(
                           icon: Icons.timeline_rounded,
-                          title: 'Кабельные линии',
+                          title: 'Cable lines',
                           description:
-                              'Построение и редактирование кабельных маршрутов теперь выполняется прямо на карте инфраструктуры.',
+                              'Cable routes are now built and edited directly on the infrastructure map.',
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1333,9 +1328,9 @@ class _StartPageState extends State<StartPage> {
                         ),
                         _ActionCard(
                           icon: Icons.dns_rounded,
-                          title: 'Сетевые шкафы',
+                          title: 'Network cabinets',
                           description:
-                              'Просмотр шкафов, оборудования и состояния точек размещения.',
+                              'View cabinets, equipment, and placement point status.',
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1376,7 +1371,7 @@ class _StartPageState extends State<StartPage> {
                   const SizedBox(height: 24),
                   if (controller.canManageTeam) ...[
                     Text(
-                      'Команда компании',
+                      'Company team',
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
@@ -1441,14 +1436,14 @@ class _StartPageState extends State<StartPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Пригласить сотрудника',
+                'Invite employee',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               const Text(
-                'Приглашение создаётся по рабочему email. После регистрации с этим email сотрудник автоматически попадёт в компанию.',
+                'The invite is created by work email. After registering with this email, the employee will automatically join the company.',
               ),
               const SizedBox(height: 14),
               if (canAssignPosition)
@@ -1473,26 +1468,26 @@ class _StartPageState extends State<StartPage> {
                             _selectedPosition = value;
                           });
                         },
-                  decoration: const InputDecoration(labelText: 'Должность'),
+                  decoration: const InputDecoration(labelText: 'Position'),
                 )
               else
                 const Text(
-                  'Должность назначает только владелец компании. Для сотрудников по умолчанию будет использована стандартная должность.',
+                  'Only the company owner can assign a position. Employees will use the default position by default.',
                 ),
               const SizedBox(height: 18),
               TextFormField(
                 controller: _inviteEmailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  labelText: 'Email сотрудника',
+                  labelText: 'Employee email',
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Введите email.';
+                    return 'Enter an email address.';
                   }
 
                   if (!value.contains('@')) {
-                    return 'Введите корректный email.';
+                    return 'Enter a valid email address.';
                   }
 
                   return null;
@@ -1501,7 +1496,7 @@ class _StartPageState extends State<StartPage> {
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: _selectedRole,
-                decoration: const InputDecoration(labelText: 'Роль в компании'),
+                decoration: const InputDecoration(labelText: 'Company role'),
                 items: const [
                   DropdownMenuItem(value: 'member', child: Text('member')),
                   DropdownMenuItem(value: 'admin', child: Text('admin')),
@@ -1527,7 +1522,7 @@ class _StartPageState extends State<StartPage> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Создать приглашение'),
+                    : const Text('Create invite'),
               ),
             ],
           ),
@@ -1546,20 +1541,20 @@ class _StartPageState extends State<StartPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ожидающие приглашения',
+              'Pending invites',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             if (invites.isEmpty)
-              const Text('Нет активных приглашений.')
+              const Text('There are no active invites.')
             else
               for (final invite in invites) ...[
                 _InfoRow(
                   title: invite.email,
                   subtitle:
-                      'Код: ${invite.token} • ${_formatDate(invite.createdAt)}',
+                      'Code: ${invite.token} • ${_formatDate(invite.createdAt)}',
                   role: invite.role,
                   position: invite.position,
                 ),
@@ -1581,14 +1576,14 @@ class _StartPageState extends State<StartPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Команда компании',
+              'Company team',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             if (team.isEmpty)
-              const Text('Пока нет сотрудников.')
+              const Text('There are no employees yet.')
             else
               for (final member in team) ...[
                 _InfoRow(
@@ -1643,7 +1638,7 @@ class _StartPageState extends State<StartPage> {
       }
 
       final message =
-          widget.controller.errorMessage ?? 'Не удалось создать приглашение.';
+          widget.controller.errorMessage ?? 'Failed to create the invite.';
       logUserFacingError(message, source: 'start.invite');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -1661,7 +1656,7 @@ class _StartPageState extends State<StartPage> {
       }
 
       final message =
-          widget.controller.errorMessage ?? 'Не удалось обновить данные.';
+          widget.controller.errorMessage ?? 'Failed to refresh the data.';
       logUserFacingError(message, source: 'start.refresh');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -1689,9 +1684,9 @@ class _StartPageState extends State<StartPage> {
       return normalizedEmail;
     }
     if (normalizedUserId.isNotEmpty) {
-      return 'Сотрудник ${normalizedUserId.substring(0, normalizedUserId.length < 8 ? normalizedUserId.length : 8)}';
+      return 'Employee ${normalizedUserId.substring(0, normalizedUserId.length < 8 ? normalizedUserId.length : 8)}';
     }
-    return 'Сотрудник';
+    return 'Employee';
   }
 
   String _memberSubtitle({
@@ -1707,7 +1702,7 @@ class _StartPageState extends State<StartPage> {
         'ID: ${userId.trim()}',
     ];
     if (parts.isEmpty) {
-      return 'Профиль сотрудника';
+      return 'Employee profile';
     }
     return parts.join(' • ');
   }
@@ -1749,28 +1744,28 @@ class _HeroCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Рабочий экран сотрудника',
+                    'Employee workspace',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text('Пользователь: $displayName'),
+                  Text('User: $displayName'),
                   const SizedBox(height: 6),
-                  Text('Компания: $companyName'),
+                  Text('Company: $companyName'),
                   const SizedBox(height: 6),
-                  Text('Роль: $role'),
+                  Text('Role: $role'),
                   if (position.trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text('Должность: $position'),
+                    Text('Position: $position'),
                   ],
                   const SizedBox(height: 6),
                   Text('Slug: $slug'),
                 ],
               ),
             ),
-            _MetricBadge(label: 'Сотрудники', value: '$teamSize'),
-            _MetricBadge(label: 'Инвайты', value: '$inviteCount'),
+            _MetricBadge(label: 'Employees', value: '$teamSize'),
+            _MetricBadge(label: 'Invites', value: '$inviteCount'),
           ],
         ),
       ),
@@ -1934,7 +1929,7 @@ class _ProjectRow extends StatelessWidget {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: onOpenDetails,
-                      child: const Text('Открыть'),
+                      child: const Text('Open'),
                     ),
                   ],
                 ),
@@ -1946,26 +1941,26 @@ class _ProjectRow extends StatelessWidget {
                 children: [
                   if (isVerified)
                     const _TagBadge(
-                      label: 'Проверена',
+                      label: 'Verified',
                       backgroundColor: Color(0xFF122E3A),
                       borderColor: Color(0xFF53B6D9),
                     ),
                   if (isCompleted)
                     const _TagBadge(
-                      label: 'Выполнена',
+                      label: 'Completed',
                       backgroundColor: Color(0xFF3A2812),
                       borderColor: Color(0xFFE0A54A),
                     ),
                   if (isActive)
                     const _TagBadge(
-                      label: 'Активная',
+                      label: 'Active',
                       backgroundColor: Color(0xFF123524),
                       borderColor: Color(0xFF35C886),
                     )
                   else
                     TextButton(
                       onPressed: onActivate,
-                      child: const Text('Активировать'),
+                      child: const Text('Activate'),
                     ),
                 ],
               ),
@@ -1974,22 +1969,22 @@ class _ProjectRow extends StatelessWidget {
           if (isCompleted && completedBy != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Отметил выполнение: $completedBy',
+              'Marked completed by: $completedBy',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
           if (isVerified && verifiedBy != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Проверил: $verifiedBy',
+              'Verified by: $verifiedBy',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
           const SizedBox(height: 12),
           Text(
             assignees.isEmpty
-                ? 'Сотрудники не закреплены'
-                : 'Закреплённые сотрудники',
+                ? 'No employees assigned'
+                : 'Assigned employees',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -2013,7 +2008,7 @@ class _ProjectRow extends StatelessWidget {
             const SizedBox(height: 12),
             TextButton(
               onPressed: onManageAssignees,
-              child: const Text('Закрепить сотрудников'),
+              child: const Text('Assign employees'),
             ),
           ],
           if (canMarkCompleted) ...[
@@ -2021,7 +2016,7 @@ class _ProjectRow extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onMarkCompleted,
               icon: const Icon(Icons.task_alt_rounded),
-              label: const Text('Отметить выполненной'),
+              label: const Text('Mark completed'),
             ),
           ],
           if (canMarkVerified) ...[
@@ -2029,7 +2024,7 @@ class _ProjectRow extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onMarkVerified,
               icon: const Icon(Icons.verified_rounded),
-              label: const Text('Пометить проверенной'),
+              label: const Text('Mark verified'),
             ),
           ],
           if (canMarkArchived) ...[
@@ -2037,7 +2032,7 @@ class _ProjectRow extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onMarkArchived,
               icon: const Icon(Icons.archive_rounded),
-              label: const Text('Отправить в архив'),
+              label: const Text('Send to archive'),
             ),
           ],
         ],
@@ -2112,11 +2107,11 @@ class _InfoRow extends StatelessWidget {
   String _roleLabel(String value) {
     switch (value) {
       case 'owner':
-        return 'Владелец';
+        return 'Owner';
       case 'admin':
-        return 'Администратор';
+        return 'Administrator';
       case 'member':
-        return 'Сотрудник';
+        return 'Employee';
       default:
         return value;
     }

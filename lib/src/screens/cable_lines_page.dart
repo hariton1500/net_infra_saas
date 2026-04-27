@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
@@ -134,7 +135,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
     if (companyId == null) {
       setState(() {
         _loading = false;
-        _errorMessage = 'Компания не найдена для текущего пользователя.';
+          _errorMessage = tr('Company was not found for the current user.');
       });
       return;
     }
@@ -158,7 +159,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
         );
       } catch (error, stackTrace) {
         logUserFacingError(
-          'Не удалось обновить кабельные линии из Supabase.',
+          'Failed to refresh cable lines from Supabase.',
           source: 'cable_lines.pull_merge',
           error: error,
           stackTrace: stackTrace,
@@ -173,7 +174,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
         );
       } catch (error, stackTrace) {
         logUserFacingError(
-          'Не удалось обновить муфты для привязки маршрутов.',
+          'Failed to refresh closures for route binding.',
           source: 'cable_lines.muffs',
           error: error,
           stackTrace: stackTrace,
@@ -188,7 +189,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
         );
       } catch (error, stackTrace) {
         logUserFacingError(
-          'Не удалось обновить шкафы для привязки маршрутов.',
+          'Failed to refresh cabinets for route binding.',
           source: 'cable_lines.cabinets',
           error: error,
           stackTrace: stackTrace,
@@ -208,7 +209,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
       });
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось загрузить кабельные линии.',
+        'Failed to load cable lines.',
         source: 'cable_lines.load',
         error: error,
         stackTrace: stackTrace,
@@ -218,7 +219,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
       }
       setState(() {
         _loading = false;
-        _errorMessage = 'Не удалось открыть раздел кабельных линий.';
+        _errorMessage = 'Failed to open the cable lines section.';
       });
     }
   }
@@ -281,13 +282,13 @@ class _CableLinesPageState extends State<CableLinesPage> {
 
     return _CableLineRoute(
       id: (record['id'] as int?) ?? 0,
-      name: name?.isNotEmpty == true ? name! : 'Кабельная линия',
+      name: name?.isNotEmpty == true ? name! : 'Cable line',
       points: points,
       meta: {
-        'Точек маршрута': '${points.length}',
-        if (startAnchor != null) 'Начало': startAnchor['name'] ?? 'Привязано',
-        if (endAnchor != null) 'Конец': endAnchor['name'] ?? 'Привязано',
-        if (note != null && note.isNotEmpty) 'Примечание': note,
+        'Route points': '${points.length}',
+        if (startAnchor != null) 'Start': startAnchor['name'] ?? 'Linked',
+        if (endAnchor != null) 'End': endAnchor['name'] ?? 'Linked',
+        if (note != null && note.isNotEmpty) 'Note': note,
       },
       raw: _syncRepository.clone(record),
     );
@@ -365,9 +366,9 @@ class _CableLinesPageState extends State<CableLinesPage> {
               type: type,
               entityId: id,
               name: (record['name'] as String?)?.trim().isNotEmpty == true
-                  ? (record['name'] as String).trim()
-                  : 'Без названия',
-              subtitle: isPonBox ? 'PON бокс' : 'Муфта',
+              ? (record['name'] as String).trim()
+                  : tr('Untitled'),
+              subtitle: isPonBox ? tr('PON box') : tr('Closure'),
               location: (record['location'] as String?)?.trim() ?? '',
               point: LatLng(
                 record['location_lat'] as double,
@@ -390,8 +391,8 @@ class _CableLinesPageState extends State<CableLinesPage> {
               entityId: id,
               name: (record['name'] as String?)?.trim().isNotEmpty == true
                   ? (record['name'] as String).trim()
-                  : 'Без названия',
-              subtitle: 'Сетевой шкаф',
+                  : tr('Untitled'),
+              subtitle: tr('Network cabinet'),
               location: (record['location'] as String?)?.trim() ?? '',
               point: LatLng(
                 record['location_lat'] as double,
@@ -636,18 +637,20 @@ class _CableLinesPageState extends State<CableLinesPage> {
 
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showSnackBar('Укажите название линии.');
+      _showSnackBar(tr('Please enter a line name.'));
       return;
     }
     if (_draftStartAnchorKey != null &&
         _draftStartAnchorKey == _draftEndAnchorKey) {
-      _showSnackBar('Начало и конец маршрута должны быть разными точками.');
+      _showSnackBar(
+        tr('The route start and end must be different points.'),
+      );
       return;
     }
 
     final routePoints = _pointsWithAnchors();
     if (routePoints.length < 2) {
-      _showSnackBar('Для маршрута нужно минимум две точки.');
+      _showSnackBar(tr('A route requires at least two points.'));
       return;
     }
 
@@ -694,19 +697,25 @@ class _CableLinesPageState extends State<CableLinesPage> {
     await _persistRecords(nextRecords, selectId: recordId, keepEditing: false);
     if (_editingRouteId == null) {
       await _recordTaskAddition(
-        kind: 'Добавлен маршрут',
+        kind: tr('Route added'),
         summary: [
-          routeRecord['name']?.toString() ?? 'Маршрут',
+          routeRecord['name']?.toString() ?? tr('Route'),
           if ((_anchorByKey(_draftStartAnchorKey)?.location ?? '')
               .trim()
               .isNotEmpty)
-            'старт: ${_anchorByKey(_draftStartAnchorKey)!.location}',
+            tr('start: {value}', {
+              'value': _anchorByKey(_draftStartAnchorKey)!.location,
+            }),
           if ((_anchorByKey(_draftEndAnchorKey)?.location ?? '')
               .trim()
               .isNotEmpty)
-            'финиш: ${_anchorByKey(_draftEndAnchorKey)!.location}',
+            tr('end: {value}', {
+              'value': _anchorByKey(_draftEndAnchorKey)!.location,
+            }),
           if (_noteController.text.trim().isNotEmpty)
-            'примечание: ${_noteController.text.trim()}',
+            tr('note: {value}', {
+              'value': _noteController.text.trim(),
+            }),
         ].join(' • '),
         targetRecordId: recordId,
       );
@@ -722,16 +731,20 @@ class _CableLinesPageState extends State<CableLinesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить маршрут'),
-        content: Text('Маршрут "${route.name}" будет удалён из списка и sync.'),
+        title: Text(tr('Delete route')),
+        content: Text(
+          tr('Route "{name}" will be removed from the list and sync.', {
+            'name': route.name,
+          }),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text(tr('Cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Удалить'),
+            child: Text(tr('Delete')),
           ),
         ],
       ),
@@ -836,7 +849,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
       });
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось сохранить кабельный маршрут.',
+        'Failed to save the cable route.',
         source: 'cable_lines.persist',
         error: error,
         stackTrace: stackTrace,
@@ -847,7 +860,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
       setState(() {
         _syncing = false;
       });
-      _showSnackBar('Не удалось сохранить маршрут.');
+      _showSnackBar(tr('Failed to save the route.'));
     }
   }
 
@@ -876,36 +889,42 @@ class _CableLinesPageState extends State<CableLinesPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _editing ? 'Построение маршрута' : 'Кабельные линии',
+                    _editing
+                        ? tr('Route building')
+                        : tr('Cable lines'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const _LegendLineRow(
+                  _LegendLineRow(
                     color: Color(0xFF1EDDC5),
-                    label: 'Выбранная линия',
+                    label: tr('Selected line'),
                   ),
                   const SizedBox(height: 8),
-                  const _LegendLineRow(
+                  _LegendLineRow(
                     color: Color(0xFF60A5FA),
-                    label: 'Остальные маршруты',
+                    label: tr('Other routes'),
                   ),
                   if (_editing) ...[
                     const SizedBox(height: 8),
-                    const _LegendLineRow(
+                    _LegendLineRow(
                       color: Color(0xFFFFA629),
-                      label: 'Черновик маршрута',
+                      label: tr('Route draft'),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Начало и конец можно привязать к муфтам или шкафам. Тап по карте добавляет промежуточные точки.',
+                      tr(
+                        'The start and end can be linked to closures or cabinets. Tap the map to add intermediate points.',
+                      ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                   const SizedBox(height: 8),
                   Text(
-                    'Всего линий: ${_routes.length}',
+                    tr('Total lines: {count}', {
+                      'count': _routes.length.toString(),
+                    }),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -1014,8 +1033,10 @@ class _CableLinesPageState extends State<CableLinesPage> {
             padding: const EdgeInsets.all(24),
             child: Text(
               _editing
-                  ? 'Добавьте точки на карте и сохраните первый маршрут.'
-                  : 'Маршрутов пока нет. Нажмите "Новый маршрут", чтобы начать.',
+                  ? tr('Add points on the map and save the first route.')
+                  : tr(
+                      'There are no routes yet. Press "New route" to start.',
+                    ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -1070,7 +1091,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
                             ),
                           ),
                           PopupMenuButton<String>(
-                            tooltip: 'Действия',
+                            tooltip: tr('Actions'),
                             onSelected: (value) {
                               if (value == 'edit') {
                                 _startEditRoute(route);
@@ -1078,14 +1099,14 @@ class _CableLinesPageState extends State<CableLinesPage> {
                                 _deleteRoute(route);
                               }
                             },
-                            itemBuilder: (context) => const [
+                            itemBuilder: (context) => [
                               PopupMenuItem(
                                 value: 'edit',
-                                child: Text('Редактировать'),
+                                child: Text(tr('Edit')),
                               ),
                               PopupMenuItem(
                                 value: 'delete',
-                                child: Text('Удалить'),
+                                child: Text(tr('Delete')),
                               ),
                             ],
                           ),
@@ -1143,14 +1164,14 @@ class _CableLinesPageState extends State<CableLinesPage> {
                       Expanded(
                         child: Text(
                           _editingRouteId == null
-                              ? 'Новый маршрут'
-                              : 'Редактирование маршрута',
+                              ? tr('New route')
+                              : tr('Route editing'),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Закрыть редактор',
+                        tooltip: tr('Close editor'),
                         onPressed: _syncing ? null : _cancelEditing,
                         icon: const Icon(Icons.close_rounded),
                       ),
@@ -1159,21 +1180,19 @@ class _CableLinesPageState extends State<CableLinesPage> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Название линии',
-                      hintText: 'Например: Магистраль Север-12',
+                    decoration: InputDecoration(
+                      labelText: tr('Line name'),
+                      hintText: tr('Example: North Trunk-12'),
                     ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
                     initialValue: _draftStartAnchorKey,
-                    decoration: const InputDecoration(
-                      labelText: 'Начало маршрута',
-                    ),
+                    decoration: InputDecoration(labelText: tr('Route start')),
                     items: [
-                      const DropdownMenuItem<String?>(
+                      DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('Без привязки'),
+                        child: Text(tr('Unlinked')),
                       ),
                       ..._anchorOptions.map(
                         (option) => DropdownMenuItem<String?>(
@@ -1187,13 +1206,11 @@ class _CableLinesPageState extends State<CableLinesPage> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
                     initialValue: _draftEndAnchorKey,
-                    decoration: const InputDecoration(
-                      labelText: 'Конец маршрута',
-                    ),
+                    decoration: InputDecoration(labelText: tr('Route end')),
                     items: [
-                      const DropdownMenuItem<String?>(
+                      DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('Без привязки'),
+                        child: Text(tr('Unlinked')),
                       ),
                       ..._anchorOptions.map(
                         (option) => DropdownMenuItem<String?>(
@@ -1208,7 +1225,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
                   TextField(
                     controller: _noteController,
                     maxLines: 2,
-                    decoration: const InputDecoration(labelText: 'Примечание'),
+                    decoration: InputDecoration(labelText: tr('Note')),
                   ),
                   const SizedBox(height: 14),
                   Wrap(
@@ -1217,11 +1234,13 @@ class _CableLinesPageState extends State<CableLinesPage> {
                     children: [
                       _EditorStatChip(
                         icon: Icons.alt_route_rounded,
-                        label: 'Точек: ${_pointsWithAnchors().length}',
+                        label: tr('Points: {count}', {
+                          'count': _pointsWithAnchors().length.toString(),
+                        }),
                       ),
-                      const _EditorStatChip(
+                      _EditorStatChip(
                         icon: Icons.touch_app_outlined,
-                        label: 'Тап по карте добавляет промежуточную точку',
+                        label: tr('Tap the map to add an intermediate point'),
                       ),
                     ],
                   ),
@@ -1235,18 +1254,20 @@ class _CableLinesPageState extends State<CableLinesPage> {
                             ? null
                             : _undoDraftPoint,
                         icon: const Icon(Icons.undo_rounded),
-                        label: const Text('Отменить точку'),
+                        label: Text(tr('Cancel point')),
                       ),
                       OutlinedButton.icon(
                         onPressed: _syncing ? null : _clearDraftPoints,
                         icon: const Icon(Icons.clear_all_rounded),
-                        label: const Text('Очистить маршрут'),
+                        label: Text(tr('Clear route')),
                       ),
                       FilledButton.icon(
                         onPressed: _syncing ? null : _saveDraft,
                         icon: const Icon(Icons.save_rounded),
                         label: Text(
-                          _editingRouteId == null ? 'Создать' : 'Сохранить',
+                          _editingRouteId == null
+                              ? tr('Create')
+                              : tr('Save'),
                         ),
                       ),
                     ],
@@ -1315,15 +1336,15 @@ class _CableLinesPageState extends State<CableLinesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Кабельные линии'),
+        title: Text(tr('Cable lines')),
         actions: [
           IconButton(
-            tooltip: 'Новый маршрут',
+            tooltip: tr('New route'),
             onPressed: _syncing ? null : _startCreateRoute,
             icon: const Icon(Icons.add_road_rounded),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Слой карты',
+            tooltip: tr('Map layer'),
             initialValue: _selectedTileLayerId,
             onSelected: (value) {
               setState(() {
@@ -1342,7 +1363,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
                 .toList(growable: false),
           ),
           IconButton(
-            tooltip: 'Синхронизировать',
+            tooltip: tr('Sync'),
             onPressed: _loading || _syncing ? null : _syncNow,
             icon: _syncing
                 ? const SizedBox(
@@ -1353,7 +1374,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
                 : const Icon(Icons.cloud_sync_outlined),
           ),
           IconButton(
-            tooltip: 'Обновить',
+            tooltip: tr('Refresh'),
             onPressed: _loading || _syncing ? null : _loadRoutes,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -1402,8 +1423,10 @@ class _CableLinesPageState extends State<CableLinesPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? 'Активная задача: ${activeProject.name}'
-                  : 'Активная задача не выбрана',
+                  ? tr('Active task: {name}', {
+                      'name': activeProject.name,
+                    })
+                  : tr('No active task selected'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(

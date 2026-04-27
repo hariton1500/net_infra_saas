@@ -1,0 +1,19 @@
+Net Infra SaaS es un espacio de trabajo práctico para equipos de telecomunicaciones y operación de infraestructura de red.
+
+Ayuda a las empresas a gestionar armarios, rutas de fibra, empalmes, cambios de campo, tareas y coordinación del equipo desde un sistema compartido.
+
+En lugar de depender de chats dispersos, hojas de cálculo, notas en papel y herramientas desconectadas, los equipos pueden trabajar desde un espacio digital estructurado con mejor visibilidad y mayor control operativo.
+
+Con Net Infra SaaS puedes:
+
+- documentar armarios y nodos de red
+- gestionar rutas de fibra y registros técnicos
+- vincular cambios de infraestructura con tareas activas
+- alinear a los equipos de oficina y de campo
+- reducir el riesgo de cambios de campo no documentados
+- acelerar la incorporación de nuevos empleados
+
+Net Infra SaaS está diseñado para proveedores, contratistas, ingenieros y equipos de infraestructura que necesitan una herramienta práctica para el trabajo operativo real.
+
+No es un gestor de proyectos genérico. Es un espacio de trabajo especializado para empresas que construyen, mantienen y escalan infraestructura de red real.
+

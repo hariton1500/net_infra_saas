@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 Future<Position> determinePosition() async {
   final serviceEnabled = await Geolocator.isLocationServiceEnabled();
   if (!serviceEnabled) {
-    throw Exception('Службы геолокации отключены на устройстве.');
+    throw Exception('Location services are disabled on the device.');
   }
 
   var permission = await Geolocator.checkPermission();
@@ -12,12 +12,12 @@ Future<Position> determinePosition() async {
   }
 
   if (permission == LocationPermission.denied) {
-    throw Exception('Доступ к геолокации отклонён пользователем.');
+    throw Exception('Location access was denied by the user.');
   }
 
   if (permission == LocationPermission.deniedForever) {
     throw Exception(
-      'Доступ к геолокации навсегда запрещён. Разрешите его в настройках системы.',
+      'Location access is permanently denied. Enable it in system settings.',
     );
   }
 

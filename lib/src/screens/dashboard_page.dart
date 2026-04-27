@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
 import 'profile_page.dart';
@@ -38,7 +39,7 @@ class _DashboardPageState extends State<DashboardPage> {
         title: const Text('Net Infra SaaS'),
         actions: [
           IconButton(
-            tooltip: 'Профиль',
+            tooltip: tr('Profile'),
             onPressed: controller.isBusy
                 ? null
                 : () {
@@ -52,13 +53,13 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: const Icon(Icons.person_outline_rounded),
           ),
           IconButton(
-            tooltip: 'Обновить',
+            tooltip: tr('Refresh'),
             onPressed: controller.isBusy ? null : _refreshTeam,
             icon: const Icon(Icons.refresh_rounded),
           ),
           TextButton(
             onPressed: controller.isBusy ? null : controller.signOut,
-            child: const Text('Выйти'),
+            child: Text(tr('Sign out')),
           ),
           const SizedBox(width: 12),
         ],
@@ -84,32 +85,43 @@ class _DashboardPageState extends State<DashboardPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              membership?.companyName ?? 'Компания',
+                              membership?.companyName ?? tr('Company'),
                               style: Theme.of(context).textTheme.headlineMedium
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              'Вы вошли как ${profile?.fullName.isNotEmpty == true ? profile!.fullName : user?.email ?? 'сотрудник'}.',
+                              tr('You are signed in as {name}.', {
+                                'name':
+                                    profile?.fullName.isNotEmpty == true
+                                        ? profile!.fullName
+                                        : user?.email ?? tr('Employee'),
+                              }),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Роль в компании: ${membership?.role ?? 'member'}',
+                              tr('Company role: {role}', {
+                                'role': _roleLabel(membership?.role ?? 'member'),
+                              }),
                             ),
                             const SizedBox(height: 6),
-                            Text('Slug компании: ${membership?.slug ?? '-'}'),
+                            Text(
+                              tr('Company slug: {slug}', {
+                                'slug': membership?.slug ?? '-',
+                              }),
+                            ),
                           ],
                         ),
                       ),
                       _MetricCard(
-                        title: 'Сотрудники',
+                        title: tr('Employees'),
                         value: '${controller.teamMembers.length}',
-                        caption: 'Активных участников команды',
+                        caption: tr('Active team members'),
                       ),
                       _MetricCard(
-                        title: 'Инвайты',
+                        title: tr('Invites'),
                         value: '${controller.pendingInvites.length}',
-                        caption: 'Ожидают принятия',
+                        caption: tr('Awaiting acceptance'),
                       ),
                     ],
                   ),
@@ -121,31 +133,55 @@ class _DashboardPageState extends State<DashboardPage> {
                 runSpacing: 20,
                 children: [
                   _InfoCard(
-                    title: 'Профиль',
+                    title: tr('Profile'),
                     lines: [
-                      'Email: ${profile?.email ?? user?.email ?? '-'}',
-                      'Должность: ${profile?.position.isNotEmpty == true ? profile!.position : '-'}',
-                      'Имя: ${profile?.fullName.isNotEmpty == true ? profile!.fullName : '-'}',
+                      tr('Email: {value}', {
+                        'value': profile?.email ?? user?.email ?? '-',
+                      }),
+                      tr('Position: {value}', {
+                        'value':
+                            profile?.position.isNotEmpty == true
+                                ? profile!.position
+                                : '-',
+                      }),
+                      tr('Name: {value}', {
+                        'value':
+                            profile?.fullName.isNotEmpty == true
+                                ? profile!.fullName
+                                : '-',
+                      }),
                     ],
                   ),
                   _InfoCard(
-                    title: 'Компания',
+                    title: tr('Company'),
                     lines: [
-                      'Название: ${membership?.companyName ?? '-'}',
-                      'Slug: ${membership?.slug ?? '-'}',
-                      'Роль: ${membership?.role ?? '-'}',
+                      tr('Title: {value}', {
+                        'value': membership?.companyName ?? '-',
+                      }),
+                      tr('Slug: {value}', {'value': membership?.slug ?? '-'}),
+                      tr('Role: {value}', {
+                        'value': membership == null
+                            ? '-'
+                            : _roleLabel(membership.role),
+                      }),
                     ],
                   ),
                   _InfoCard(
-                    title: 'Приглашения',
+                    title: tr('Invites'),
                     lines: controller.canManageTeam
-                        ? const [
-                            'Ниже можно приглашать сотрудников по email.',
-                            'Если сотрудник зарегистрируется с этим email, его membership подключится автоматически.',
+                        ? [
+                            tr('Below you can invite employees by email.'),
+                            tr(
+                              'If the employee registers with this email, the membership will be attached automatically.',
+                            ),
                           ]
-                        : const [
-                            'Список команды и pending invites доступен для просмотра.',
-                            'Создание приглашений доступно владельцам и администраторам.',
+                        : [
+                            tr(
+                              'The team list and pending invites are available for viewing.',
+                            ),
+                            tr(
+                              'Creating invites is available to owners and administrators.',
+                            ),
                           ],
                   ),
                 ],
@@ -209,25 +245,27 @@ class _DashboardPageState extends State<DashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Пригласить сотрудника',
+                tr('Invite employee'),
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Создайте приглашение по рабочему email. Сотрудник зарегистрируется с этим email и автоматически попадёт в компанию.',
+              Text(
+                tr(
+                  'Create an invite using a work email. The employee will register with this email and automatically join the company.',
+                ),
               ),
               const SizedBox(height: 14),
               if (canAssignPosition)
                 DropdownButtonFormField<String>(
                   initialValue: _selectedPosition,
-                  decoration: const InputDecoration(labelText: 'Должность'),
+                  decoration: InputDecoration(labelText: tr('Position')),
                   items: employeePositions
                       .map(
                         (position) => DropdownMenuItem<String>(
                           value: position,
-                          child: Text(position),
+                          child: Text(tr(position)),
                         ),
                       )
                       .toList(growable: false),
@@ -244,23 +282,23 @@ class _DashboardPageState extends State<DashboardPage> {
                         },
                 )
               else
-                const Text(
-                  'Должность назначает только владелец компании. Для сотрудников по умолчанию будет использована стандартная должность.',
+                Text(
+                  tr(
+                    'Only the company owner can assign a position. Employees will use the default position by default.',
+                  ),
                 ),
               const SizedBox(height: 18),
               TextFormField(
                 controller: _inviteEmailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email сотрудника',
-                ),
+                decoration: InputDecoration(labelText: tr('Employee email')),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Введите email.';
+                    return tr('Enter an email address.');
                   }
 
                   if (!value.contains('@')) {
-                    return 'Введите корректный email.';
+                    return tr('Enter a valid email address.');
                   }
 
                   return null;
@@ -269,10 +307,13 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: _selectedRole,
-                decoration: const InputDecoration(labelText: 'Роль в компании'),
-                items: const [
-                  DropdownMenuItem(value: 'member', child: Text('member')),
-                  DropdownMenuItem(value: 'admin', child: Text('admin')),
+                decoration: InputDecoration(labelText: tr('Company role')),
+                items: [
+                  DropdownMenuItem(value: 'member', child: Text(tr('Employee'))),
+                  DropdownMenuItem(
+                    value: 'admin',
+                    child: Text(tr('Administrator')),
+                  ),
                 ],
                 onChanged: controller.isBusy
                     ? null
@@ -295,7 +336,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Отправить приглашение'),
+                    : Text(tr('Send invite')),
               ),
             ],
           ),
@@ -314,14 +355,14 @@ class _DashboardPageState extends State<DashboardPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Команда компании',
+              tr('Company team'),
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             if (team.isEmpty)
-              const Text('Пока нет сотрудников.')
+              Text(tr('There are no employees yet.'))
             else
               for (final member in team) ...[
                 _PersonRow(
@@ -329,10 +370,10 @@ class _DashboardPageState extends State<DashboardPage> {
                       ? member.fullName.trim()
                       : member.email.trim().isNotEmpty
                       ? member.email.trim()
-                      : 'Сотрудник ${member.userId.substring(0, member.userId.length < 8 ? member.userId.length : 8)}',
+                      : '${tr('Employee')} ${member.userId.substring(0, member.userId.length < 8 ? member.userId.length : 8)}',
                   subtitle: member.email.trim().isNotEmpty
                       ? member.email.trim()
-                      : 'ID: ${member.userId}',
+                      : tr('ID: {value}', {'value': member.userId}),
                   role: member.role,
                   position: member.position,
                 ),
@@ -354,20 +395,23 @@ class _DashboardPageState extends State<DashboardPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ожидающие приглашения',
+              tr('Pending invites'),
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             if (invites.isEmpty)
-              const Text('Нет активных приглашений.')
+              Text(tr('There are no active invites.'))
             else
               for (final invite in invites) ...[
                 _PersonRow(
                   title: invite.email,
                   subtitle:
-                      'Код: ${invite.token} • ${_formatDate(invite.createdAt)}',
+                      tr('Code: {token} • {date}', {
+                        'token': invite.token,
+                        'date': _formatDate(invite.createdAt),
+                      }),
                   role: invite.role,
                   position: invite.position,
                 ),
@@ -409,7 +453,7 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final message =
-          widget.controller.errorMessage ?? 'Не удалось создать приглашение.';
+          widget.controller.errorMessage ?? tr('Failed to create the invite.');
       logUserFacingError(message, source: 'dashboard.invite');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -426,7 +470,7 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final message =
-          widget.controller.errorMessage ?? 'Не удалось обновить данные.';
+          widget.controller.errorMessage ?? tr('Failed to refresh the data.');
       logUserFacingError(message, source: 'dashboard.refresh');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -441,6 +485,19 @@ class _DashboardPageState extends State<DashboardPage> {
     final minute = value.minute.toString().padLeft(2, '0');
 
     return '$day.$month ${value.year} $hour:$minute';
+  }
+
+  String _roleLabel(String value) {
+    switch (value) {
+      case 'owner':
+        return tr('Owner');
+      case 'admin':
+        return tr('Administrator');
+      case 'member':
+        return tr('Employee');
+      default:
+        return value;
+    }
   }
 }
 
@@ -570,7 +627,7 @@ class _PersonRow extends StatelessWidget {
                 borderColor: const Color(0xFF2A648E),
               ),
               _TagBadge(
-                label: position,
+                label: tr(position),
                 backgroundColor: const Color(0xFF123524),
                 borderColor: const Color(0xFF35C886),
               ),
@@ -584,11 +641,11 @@ class _PersonRow extends StatelessWidget {
   String _roleLabel(String value) {
     switch (value) {
       case 'owner':
-        return 'Владелец';
+        return tr('Owner');
       case 'admin':
-        return 'Администратор';
+        return tr('Administrator');
       case 'member':
-        return 'Сотрудник';
+        return tr('Employee');
       default:
         return value;
     }

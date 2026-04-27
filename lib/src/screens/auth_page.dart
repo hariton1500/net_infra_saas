@@ -4,7 +4,6 @@ import '../auth/auth_controller.dart';
 import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
-import '../widgets/language_selector.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, required this.controller});
@@ -73,11 +72,6 @@ class _AuthPageState extends State<AuthPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Align(
-                          alignment: Alignment.centerRight,
-                          child: LanguageSelector(),
-                        ),
-                        const SizedBox(height: 20),
                         _ResetPasswordForm(
                           formKey: _resetPasswordFormKey,
                           passwordController: _newPasswordController,
@@ -114,14 +108,6 @@ class _AuthPageState extends State<AuthPage>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 180),
-                                child: const LanguageSelector(),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
                             Container(
                               decoration: BoxDecoration(
                                 color: const Color(0xFF0C1D33),
@@ -131,8 +117,8 @@ class _AuthPageState extends State<AuthPage>
                                 controller: _tabController,
                                 indicatorSize: TabBarIndicatorSize.tab,
                                 tabs: [
-                                  Tab(text: tr('Вход')),
-                                  Tab(text: tr('Регистрация')),
+                                  Tab(text: tr('Sign in')),
+                                  Tab(text: tr('Sign up')),
                                 ],
                               ),
                             ),
@@ -219,7 +205,7 @@ class _AuthPageState extends State<AuthPage>
         password: _signInPasswordController.text,
       );
     } catch (_) {
-      _showErrorMessage(widget.controller.errorMessage ?? tr('Не удалось войти.'));
+      _showErrorMessage(widget.controller.errorMessage ?? tr('Failed to sign in.'));
     }
   }
 
@@ -239,7 +225,7 @@ class _AuthPageState extends State<AuthPage>
       _showMessage(message);
     } catch (_) {
       final message =
-          widget.controller.errorMessage ?? tr('Не удалось создать аккаунт.');
+          widget.controller.errorMessage ?? tr('Failed to create the account.');
       if (_isDuplicateEmailError(message)) {
         _showDuplicateEmailMessage();
         return;
@@ -261,7 +247,7 @@ class _AuthPageState extends State<AuthPage>
       _showMessage(message);
     } catch (_) {
       _showErrorMessage(
-        widget.controller.errorMessage ?? tr('Не удалось обновить пароль.'),
+        widget.controller.errorMessage ?? tr('Failed to update the password.'),
       );
     }
   }
@@ -270,7 +256,7 @@ class _AuthPageState extends State<AuthPage>
     try {
       await widget.controller.signOut();
     } catch (_) {
-      _showErrorMessage(widget.controller.errorMessage ?? tr('Выйти'));
+      _showErrorMessage(widget.controller.errorMessage ?? tr('Sign out'));
     }
   }
 
@@ -286,7 +272,7 @@ class _AuthPageState extends State<AuthPage>
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(tr('Восстановить пароль')),
+          title: Text(tr('Reset password')),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -295,7 +281,7 @@ class _AuthPageState extends State<AuthPage>
               children: [
                 Text(
                   tr(
-                    'Введите рабочий email. Мы отправим письмо со ссылкой для смены пароля.',
+                    'Enter your work email. We will send a message with a link to change your password.',
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -303,7 +289,7 @@ class _AuthPageState extends State<AuthPage>
                   controller: _recoveryEmailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: tr('Рабочий email'),
+                    labelText: tr('Work email'),
                   ),
                 ),
               ],
@@ -312,7 +298,7 @@ class _AuthPageState extends State<AuthPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(tr('Отмена')),
+              child: Text(tr('Cancel')),
             ),
             FilledButton(
               onPressed: () async {
@@ -330,12 +316,12 @@ class _AuthPageState extends State<AuthPage>
                   _showErrorMessage(
                     widget.controller.errorMessage ??
                         tr(
-                          'Не удалось отправить письмо для восстановления пароля.',
+                          'Failed to send the password recovery email.',
                         ),
                   );
                 }
               },
-              child: Text(tr('Отправить письмо')),
+              child: Text(tr('Send email')),
             ),
           ],
         );
@@ -358,16 +344,16 @@ class _AuthPageState extends State<AuthPage>
     final normalized = message.trim().toLowerCase();
     return normalized ==
             tr(
-              'Аккаунт с таким email уже существует. Попробуйте войти или восстановить пароль.',
+              'An account with this email already exists. Try signing in or resetting the password.',
             ).toLowerCase() ||
-        normalized.contains('email уже существует') ||
+        normalized.contains('email already exists') ||
         normalized.contains('already registered') ||
         normalized.contains('already exists');
   }
 
   void _showDuplicateEmailMessage() {
     final message = tr(
-      'Аккаунт с таким email уже существует. Перейдите ко входу или восстановите пароль.',
+      'An account with this email already exists. Go to sign in or reset the password.',
     );
     logUserFacingError(message, source: 'auth.page.duplicate_email');
     final messenger = ScaffoldMessenger.of(context);
@@ -378,7 +364,7 @@ class _AuthPageState extends State<AuthPage>
           content: Text(message),
           duration: const Duration(seconds: 10),
           action: SnackBarAction(
-            label: tr('Войти'),
+            label: tr('Sign in'),
             onPressed: _switchToSignIn,
           ),
         ),
@@ -439,7 +425,7 @@ class _BrandPanel extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              tr('Управление инфраструктурой для компаний и их команд'),
+              tr('Infrastructure management for companies and their teams'),
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -447,28 +433,28 @@ class _BrandPanel extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               tr(
-                'Входите в рабочее пространство компании, создавайте первую организацию и готовьте доступ для сотрудников на общей платформе.',
+                'Access the company workspace, create the first organization, and prepare employee access on one shared platform.',
               ),
             ),
             SizedBox(height: isCompact ? 24 : 40),
             _FeatureTile(
-              title: tr('Один аккаунт на компанию'),
+              title: tr('One account per company'),
               description: tr(
-                'Владелец создаёт рабочее пространство и затем добавляет сотрудников.',
+                'The owner creates the workspace and then adds employees.',
               ),
             ),
             const SizedBox(height: 14),
             _FeatureTile(
-              title: tr('Сессии Supabase'),
+              title: tr('Supabase sessions'),
               description: tr(
-                'Приложение автоматически восстанавливает активную сессию пользователя.',
+                'The app automatically restores the active user session.',
               ),
             ),
             const SizedBox(height: 14),
             _FeatureTile(
-              title: tr('Готово для multi-tenant'),
+              title: tr('Ready for multi-tenant'),
               description: tr(
-                'Профили, компании и роли сотрудников уже разделены на уровне базы.',
+                'Profiles, companies, and employee roles are already isolated at the database level.',
               ),
             ),
           ],
@@ -617,34 +603,34 @@ class _SignInForm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            tr('Вход для сотрудников'),
+            tr('Employee sign in'),
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           Text(
             tr(
-              'Используйте рабочий email и пароль, чтобы открыть пространство компании.',
+              'Use your work email and password to open the company workspace.',
             ),
           ),
           const SizedBox(height: 24),
           TextFormField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(labelText: tr('Рабочий email')),
+            decoration: InputDecoration(labelText: tr('Work email')),
             validator: _validateEmail,
           ),
           const SizedBox(height: 14),
           TextFormField(
             controller: passwordController,
             obscureText: true,
-            decoration: InputDecoration(labelText: tr('Пароль')),
+            decoration: InputDecoration(labelText: tr('Password')),
             validator: _validatePassword,
           ),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: controller.isBusy ? null : onForgotPassword,
-              child: Text(tr('Восстановить пароль')),
+              child: Text(tr('Reset password')),
             ),
           ),
           const Spacer(),
@@ -656,7 +642,7 @@ class _SignInForm extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(tr('Войти')),
+                : Text(tr('Sign in')),
           ),
         ],
       ),
@@ -699,25 +685,25 @@ class _SignUpForm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            tr('Регистрация владельца компании'),
+            tr('Company owner registration'),
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           Text(
             tr(
-              'Создайте первый аккаунт компании. После этого можно будет добавлять сотрудников.',
+              'Create the first company account. After that, you can add employees.',
             ),
           ),
           const SizedBox(height: 24),
           TextFormField(
             controller: fullNameController,
-            decoration: InputDecoration(labelText: tr('Ваше имя')),
+            decoration: InputDecoration(labelText: tr('Your name')),
             validator: _validateRequired,
           ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
             initialValue: selectedPosition,
-            decoration: InputDecoration(labelText: tr('Должность')),
+            decoration: InputDecoration(labelText: tr('Position')),
             items: employeePositions
                 .map(
                   (position) => DropdownMenuItem<String>(
@@ -735,21 +721,21 @@ class _SignUpForm extends StatelessWidget {
           const SizedBox(height: 14),
           TextFormField(
             controller: companyController,
-            decoration: InputDecoration(labelText: tr('Название компании')),
+            decoration: InputDecoration(labelText: tr('Company name')),
             validator: _validateRequired,
           ),
           const SizedBox(height: 14),
           TextFormField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(labelText: tr('Рабочий email')),
+            decoration: InputDecoration(labelText: tr('Work email')),
             validator: _validateEmail,
           ),
           const SizedBox(height: 14),
           TextFormField(
             controller: passwordController,
             obscureText: true,
-            decoration: InputDecoration(labelText: tr('Пароль')),
+            decoration: InputDecoration(labelText: tr('Password')),
             validator: _validatePassword,
           ),
           const SizedBox(height: 8),
@@ -759,11 +745,11 @@ class _SignUpForm extends StatelessWidget {
             children: [
               TextButton(
                 onPressed: controller.isBusy ? null : onGoToSignIn,
-                child: Text(tr('Перейти ко входу')),
+                child: Text(tr('Go to sign in')),
               ),
               TextButton(
                 onPressed: controller.isBusy ? null : onForgotPassword,
-                child: Text(tr('Восстановить пароль')),
+                child: Text(tr('Reset password')),
               ),
             ],
           ),
@@ -776,7 +762,7 @@ class _SignUpForm extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(tr('Создать компанию')),
+                : Text(tr('Create company')),
           ),
         ],
       ),
@@ -810,7 +796,7 @@ class _ResetPasswordForm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            tr('Задайте новый пароль'),
+            tr('Set a new password'),
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -818,14 +804,14 @@ class _ResetPasswordForm extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             tr(
-              'Мы подтвердили ссылку восстановления. Теперь можно задать новый пароль для аккаунта.',
+              'We confirmed the recovery link. You can now set a new password for the account.',
             ),
           ),
           const SizedBox(height: 24),
           TextFormField(
             controller: passwordController,
             obscureText: true,
-            decoration: InputDecoration(labelText: tr('Новый пароль')),
+            decoration: InputDecoration(labelText: tr('New password')),
             validator: _validatePassword,
           ),
           const SizedBox(height: 14),
@@ -833,7 +819,7 @@ class _ResetPasswordForm extends StatelessWidget {
             controller: confirmPasswordController,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: tr('Повторите новый пароль'),
+              labelText: tr('Repeat new password'),
             ),
             validator: (value) {
               final baseValidation = _validatePassword(value);
@@ -841,7 +827,7 @@ class _ResetPasswordForm extends StatelessWidget {
                 return baseValidation;
               }
               if ((value ?? '') != passwordController.text) {
-                return tr('Пароли не совпадают.');
+                return tr('Passwords do not match.');
               }
               return null;
             },
@@ -855,12 +841,12 @@ class _ResetPasswordForm extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(tr('Сохранить новый пароль')),
+                : Text(tr('Save new password')),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: controller.isBusy ? null : onSignOut,
-            child: Text(tr('Выйти из режима восстановления')),
+            child: Text(tr('Leave recovery mode')),
           ),
         ],
       ),
@@ -870,7 +856,7 @@ class _ResetPasswordForm extends StatelessWidget {
 
 String? _validateRequired(String? value) {
   if (value == null || value.trim().isEmpty) {
-    return tr('Поле обязательно.');
+    return tr('This field is required.');
   }
 
   return null;
@@ -878,11 +864,11 @@ String? _validateRequired(String? value) {
 
 String? _validateEmail(String? value) {
   if (value == null || value.trim().isEmpty) {
-    return tr('Введите email.');
+    return tr('Enter an email address.');
   }
 
   if (!value.contains('@')) {
-    return tr('Введите корректный email.');
+    return tr('Enter a valid email address.');
   }
 
   return null;
@@ -890,11 +876,11 @@ String? _validateEmail(String? value) {
 
 String? _validatePassword(String? value) {
   if (value == null || value.isEmpty) {
-    return tr('Введите пароль.');
+    return tr('Enter a password.');
   }
 
   if (value.length < 8) {
-    return tr('Минимум 8 символов.');
+    return tr('Minimum 8 characters.');
   }
 
   return null;

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth/auth_controller.dart';
 import 'core/app_i18n.dart';
+import 'core/strings.dart';
 import 'core/supabase_config.dart';
 import 'screens/auth_page.dart';
 import 'screens/company_setup_page.dart';
@@ -40,29 +40,13 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<Locale>(
-      valueListenable: AppI18n.currentLocaleListenable,
-      builder: (context, locale, _) {
-        return MaterialApp(
-          title: 'Net Infra SaaS',
-          debugShowCheckedModeBanner: false,
-          theme: _buildTheme(),
-          locale: locale,
-          supportedLocales: AppI18n.supportedLocales,
-          localizationsDelegates: const [
-            AppI18nDelegate(),
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          localeResolutionCallback: (locale, supportedLocales) {
-            return AppI18n.resolve(locale);
-          },
-          home: widget.config.isConfigured
-              ? AuthShell(controller: _controller!)
-              : const SetupRequiredPage(),
-        );
-      },
+    return MaterialApp(
+      title: AppStrings.appTitle,
+      debugShowCheckedModeBanner: false,
+      theme: _buildTheme(),
+      home: widget.config.isConfigured
+          ? AuthShell(controller: _controller!)
+          : const SetupRequiredPage(),
     );
   }
 
@@ -171,7 +155,7 @@ class AuthShell extends StatelessWidget {
             return StartPage(controller: controller);
           case AuthView.error:
             return _ErrorScreen(
-              message: controller.errorMessage ?? tr('Не удалось загрузить сессию.'),
+              message: controller.errorMessage ?? tr(AppStrings.sessionLoadFailed),
               onRetry: controller.refresh,
               onSignOut: controller.signOut,
             );
@@ -217,7 +201,7 @@ class _ErrorScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      tr('Есть проблема с загрузкой данных'),
+                      tr(AppStrings.dataLoadProblem),
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 12),
@@ -225,12 +209,12 @@ class _ErrorScreen extends StatelessWidget {
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: onRetry,
-                      child: Text(tr('Повторить')),
+                      child: Text(tr(AppStrings.retry)),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
                       onPressed: onSignOut,
-                      child: Text(tr('Выйти из аккаунта')),
+                      child: Text(tr(AppStrings.signOutOfAccount)),
                     ),
                   ],
                 ),

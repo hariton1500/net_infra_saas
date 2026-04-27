@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
@@ -322,7 +323,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     if (companyId == null) {
       setState(() {
         _loading = false;
-        _errorMessage = 'Компания не найдена для текущего пользователя.';
+        _errorMessage = 'Company was not found for the current user.';
       });
       return;
     }
@@ -346,7 +347,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         );
       } catch (error, stackTrace) {
         logUserFacingError(
-          'Не удалось обновить муфты для карты.',
+          'Failed to refresh closures for the map.',
           source: 'infrastructure_map.muffs',
           error: error,
           stackTrace: stackTrace,
@@ -361,7 +362,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         );
       } catch (error, stackTrace) {
         logUserFacingError(
-          'Не удалось обновить шкафы для карты.',
+          'Failed to refresh cabinets for the map.',
           source: 'infrastructure_map.cabinets',
           error: error,
           stackTrace: stackTrace,
@@ -376,7 +377,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         );
       } catch (error, stackTrace) {
         logUserFacingError(
-          'Не удалось обновить задачи для карты.',
+          'Failed to refresh map tasks.',
           source: 'infrastructure_map.projects',
           error: error,
           stackTrace: stackTrace,
@@ -391,7 +392,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         );
       } catch (error, stackTrace) {
         logUserFacingError(
-          'Не удалось обновить кабельные маршруты для карты.',
+          'Failed to refresh cable routes for the map.',
           source: 'infrastructure_map.routes',
           error: error,
           stackTrace: stackTrace,
@@ -440,7 +441,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _refreshTraceHighlight();
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось загрузить сущности инфраструктуры.',
+        'Failed to load infrastructure entities.',
         source: 'infrastructure_map.load',
         error: error,
         stackTrace: stackTrace,
@@ -450,7 +451,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       }
       setState(() {
         _loading = false;
-        _errorMessage = 'Не удалось загрузить карту инфраструктуры.';
+        _errorMessage = 'Failed to load the infrastructure map.';
       });
     }
   }
@@ -485,19 +486,19 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             key: _entityKey(type, id),
             name: (record['name'] as String?)?.trim().isNotEmpty == true
                 ? (record['name'] as String).trim()
-                : 'Без названия',
+                : 'Untitled',
             location: (record['location'] as String?)?.trim() ?? '',
             point: LatLng(
               record['location_lat'] as double,
               record['location_lng'] as double,
             ),
-            subtitle: isPonBox ? 'PON бокс' : 'Муфта',
+            subtitle: isPonBox ? 'PON box' : 'Closure',
             meta: {
               if (_projectNameFor(record) != null)
-                'Задача': _projectNameFor(record)!,
-              if (district.isNotEmpty) 'Район': district,
-              'Кабели': '${cables.length}',
-              'Соединения': '${connections.length}',
+                'Task': _projectNameFor(record)!,
+              if (district.isNotEmpty) 'Area': district,
+              'Cables': '${cables.length}',
+              'Connections': '${connections.length}',
             },
           );
         })
@@ -529,18 +530,18 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             key: _entityKey(_InfrastructureEntityType.cabinet, id),
             name: (record['name'] as String?)?.trim().isNotEmpty == true
                 ? (record['name'] as String).trim()
-                : 'Без названия',
+                : 'Untitled',
             location: (record['location'] as String?)?.trim() ?? '',
             point: LatLng(
               record['location_lat'] as double,
               record['location_lng'] as double,
             ),
-            subtitle: 'Сетевой шкаф',
+            subtitle: 'Network cabinet',
             meta: {
               if (_projectNameFor(record) != null)
-                'Задача': _projectNameFor(record)!,
-              'Коммутаторы': '${switches.length}',
-              'Кабели': '${cables.length}',
+                'Task': _projectNameFor(record)!,
+              'Switches': '${switches.length}',
+              'Cables': '${cables.length}',
             },
           );
         })
@@ -561,16 +562,16 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
 
     return _CableRoute(
       id: (record['id'] as int?) ?? 0,
-      name: name?.isNotEmpty == true ? name! : 'Кабельная линия',
+      name: name?.isNotEmpty == true ? name! : 'Cable line',
       points: points,
       lengthMeters: lengthMeters,
       meta: {
-        if (_projectNameFor(record) != null) 'Задача': _projectNameFor(record)!,
-        'Длина': _formatRouteLength(lengthMeters),
-        'Точек': '${points.length}',
-        if (startAnchor != null) 'Начало': startAnchor['name'] ?? 'Привязано',
-        if (endAnchor != null) 'Конец': endAnchor['name'] ?? 'Привязано',
-        if (note != null && note.isNotEmpty) 'Примечание': note,
+        if (_projectNameFor(record) != null) 'Task': _projectNameFor(record)!,
+        'Length': _formatRouteLength(lengthMeters),
+        'Points': '${points.length}',
+        if (startAnchor != null) 'Start': startAnchor['name'] ?? 'Linked',
+        if (endAnchor != null) 'End': endAnchor['name'] ?? 'Linked',
+        if (note != null && note.isNotEmpty) 'Note': note,
       },
       raw: _syncRepository.clone(record),
     );
@@ -635,9 +636,9 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   String _formatRouteLength(double lengthMeters) {
     if (lengthMeters >= 1000) {
       final kilometers = lengthMeters / 1000;
-      return '${kilometers.toStringAsFixed(kilometers >= 10 ? 1 : 2)} км';
+      return '${kilometers.toStringAsFixed(kilometers >= 10 ? 1 : 2)} km';
     }
-    return '${lengthMeters.toStringAsFixed(lengthMeters >= 100 ? 0 : 1)} м';
+    return '${lengthMeters.toStringAsFixed(lengthMeters >= 100 ? 0 : 1)} m';
   }
 
   String _entityKey(_InfrastructureEntityType type, int entityId) {
@@ -727,8 +728,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     final cabinet = _entityByTypeAndId('cabinet', request.cabinetId);
     final portLabel = request.portIndex + 1;
     final summary = result == null
-        ? 'Трассу от порта $portLabel построить не удалось.'
-        : 'Трасса от ${cabinet?.name ?? 'шкафа'} порт $portLabel: объектов ${result.entityKeys.length}, маршрутов ${result.routeIds.length}.';
+        ? 'Failed to build trace from port $portLabel.'
+        : 'Trace from ${cabinet?.name ?? 'cabinet'} port $portLabel: objects ${result.entityKeys.length}, routes ${result.routeIds.length}.';
 
     if (!mounted) {
       return;
@@ -1232,7 +1233,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       return _RouteCableChoice(
         entity: entity,
         cableId: cableId,
-        cableName: cableName?.isNotEmpty == true ? cableName! : 'Кабель #$cableId',
+        cableName: cableName?.isNotEmpty == true ? cableName! : 'Cable #$cableId',
         fibers: cableFibers,
       );
     }).toList(growable: false);
@@ -1278,7 +1279,11 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(choice.cableName),
-                        subtitle: Text('Волокон: ${choice.fibers}'),
+                        subtitle: Text(
+                          tr('Fibers: {value}', {
+                            'value': '${choice.fibers}',
+                          }),
+                        ),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => Navigator.of(context).pop(choice),
                       );
@@ -1441,8 +1446,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                     SliverToBoxAdapter(
                       child: Text(
                         relatedRoutes.isEmpty
-                            ? 'У этого объекта пока нет привязанных маршрутов.'
-                            : 'Маршруты от этого объекта',
+                            ? 'This object has no linked routes yet.'
+                            : 'Routes from this object',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -1452,7 +1457,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                     if (relatedRoutes.isEmpty)
                       const SliverToBoxAdapter(
                         child: Text(
-                          'Список пуст. Когда маршрут будет начинаться или заканчиваться на этом объекте, он появится здесь.',
+                          'The list is empty. When a route starts or ends at this object, it will appear here.',
                         ),
                       )
                     else
@@ -1465,10 +1470,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                           );
                           final endAnchor = _extractAnchor(route.raw['end_anchor']);
                           final role = _anchorMatchesEntity(startAnchor, entity)
-                              ? 'Начало'
+                              ? 'Start'
                               : _anchorMatchesEntity(endAnchor, entity)
-                                  ? 'Конец'
-                                  : 'Маршрут';
+                                  ? 'End'
+                                  : 'Route';
 
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
@@ -1492,7 +1497,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             subtitle: Text(
-                              '$role • ${_formatRouteLength(route.lengthMeters)} • Точек: ${route.points.length}',
+                              '$role • ${_formatRouteLength(route.lengthMeters)} • Points: ${route.points.length}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1602,18 +1607,18 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         setState(() {
           _pendingStartEntityKey = entity.key;
         });
-        _showSnackBar('Начало выбрано. Теперь выберите конец маршрута.');
+        _showSnackBar(tr('Start selected. Now choose the route end.'));
         return;
       }
 
       if (_pendingStartEntityKey == entity.key) {
-        _showSnackBar('Начало и конец маршрута должны быть разными.');
+        _showSnackBar('The route start and end must be different.');
         return;
       }
 
       final start = _entityByKey(_pendingStartEntityKey);
       if (start == null) {
-        _showSnackBar('Не удалось найти начальную точку маршрута.');
+        _showSnackBar('Failed to find the route start point.');
         setState(() {
           _pendingStartEntityKey = null;
         });
@@ -1633,7 +1638,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         unawaited(() async {
           final startCable = await _pickCableForEntity(
             entity,
-            title: 'Выберите свободный кабель начала маршрута',
+            title: tr('Select a free cable for the route start'),
           );
           if (startCable == null || !mounted) {
             return;
@@ -1644,20 +1649,22 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             _pendingRequiredFibers = startCable.fibers;
           });
           _showSnackBar(
-            'Начало и кабель выбраны. Теперь выберите объект с таким же количеством волокон.',
+            tr(
+              'Start and cable selected. Now choose an object with the same fiber count.',
+            ),
           );
         }());
         return;
       }
 
       if (_pendingStartEntityKey == entity.key) {
-        _showSnackBar('Начало и конец маршрута должны быть разными.');
+        _showSnackBar(tr('The route start and end must be different.'));
         return;
       }
 
       final start = _entityByKey(_pendingStartEntityKey);
       if (start == null) {
-        _showSnackBar('Не удалось найти начальную точку маршрута.');
+        _showSnackBar(tr('Failed to find the route start point.'));
         setState(() {
           _pendingStartEntityKey = null;
           _pendingStartCableId = null;
@@ -1669,7 +1676,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       final requiredFibers = _pendingRequiredFibers;
       final startCableId = _pendingStartCableId;
       if (requiredFibers == null || startCableId == null) {
-        _showSnackBar('Сначала выберите стартовый кабель.');
+        _showSnackBar(tr('Select the start cable first.'));
         return;
       }
 
@@ -1683,7 +1690,9 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       }
       if (startCable == null) {
         _showSnackBar(
-          'Стартовый кабель больше недоступен. Выберите начало маршрута заново.',
+          tr(
+            'The start cable is no longer available. Select the route start again.',
+          ),
         );
         setState(() {
           _pendingStartEntityKey = null;
@@ -1695,7 +1704,9 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
 
       if (_freeCableChoicesForEntity(entity, fibers: requiredFibers).isEmpty) {
         _showSnackBar(
-          'У этого объекта нет свободных кабелей на $requiredFibers волокон.',
+          tr('This object has no free cables with {count} fibers.', {
+            'count': '$requiredFibers',
+          }),
         );
         return;
       }
@@ -1703,7 +1714,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       unawaited(() async {
         final endCable = await _pickCableForEntity(
           entity,
-          title: 'Выберите свободный кабель конца маршрута',
+          title: tr('Select a free cable for the route end'),
           fibers: requiredFibers,
         );
         if (endCable == null) {
@@ -1780,11 +1791,11 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       preserveModes: false,
     );
     await _recordTaskAddition(
-      kind: 'Добавлен маршрут',
+      kind: 'Route added',
       summary: [
-        routeRecord['name']?.toString() ?? 'Маршрут',
-        if ((start.location).trim().isNotEmpty) 'старт: ${start.location}',
-        if ((end.location).trim().isNotEmpty) 'финиш: ${end.location}',
+        routeRecord['name']?.toString() ?? 'Route',
+        if ((start.location).trim().isNotEmpty) 'start: ${start.location}',
+        if ((end.location).trim().isNotEmpty) 'end: ${end.location}',
       ].join(' • '),
       targetRecordId: routeId,
     );
@@ -1798,7 +1809,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _pendingStartEntityKey = null;
       _selectedRouteId = routeId;
     });
-    _showSnackBar('Маршрут создан. Тапните по сегменту, чтобы добавить точку.');
+    _showSnackBar('Route created. Tap a segment to add a point.');
   }
 
   Future<void> _createRouteBetweenWithBindings(
@@ -1810,7 +1821,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     final startSource = _entityRecord(start);
     final endSource = _entityRecord(end);
     if (startSource == null || endSource == null) {
-      _showSnackBar('Не удалось найти записи объектов для привязки кабелей.');
+      _showSnackBar('Failed to find object records for cable bindings.');
       return;
     }
 
@@ -1912,11 +1923,11 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       preserveModes: false,
     );
     await _recordTaskAddition(
-      kind: 'Добавлен маршрут',
+      kind: 'Route added',
       summary: [
-        routeRecord['name']?.toString() ?? 'Маршрут',
-        'кабель старта: ${startCable.cableName} (${startCable.fibers} вол.)',
-        'кабель финиша: ${endCable.cableName} (${endCable.fibers} вол.)',
+        routeRecord['name']?.toString() ?? 'Route',
+        'start cable: ${startCable.cableName} (${startCable.fibers} fibers)',
+        'end cable: ${endCable.cableName} (${endCable.fibers} fibers)',
       ].join(' • '),
       targetRecordId: routeId,
     );
@@ -1928,7 +1939,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeEditMode = true;
       _selectedRouteId = routeId;
     });
-    _showSnackBar('Маршрут и привязки кабелей созданы.');
+    _showSnackBar('Route and cable bindings have been created.');
   }
 
   Future<void> _deleteSelectedRoute() async {
@@ -1940,16 +1951,18 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить маршрут'),
-        content: Text('Маршрут "${route.name}" будет удалён.'),
+        title: Text(tr('Delete route')),
+        content: Text(
+          tr('Route "{name}" will be deleted.', {'name': route.name}),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text(tr('Cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Удалить'),
+            child: Text(tr('Delete')),
           ),
         ],
       ),
@@ -2088,7 +2101,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       });
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось сохранить кабельный маршрут.',
+        'Failed to save the cable route.',
         source: 'infrastructure_map.persist_routes',
         error: error,
         stackTrace: stackTrace,
@@ -2099,7 +2112,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       setState(() {
         _syncingRoutes = false;
       });
-      _showSnackBar('Не удалось сохранить маршрут.');
+      _showSnackBar('Failed to save the route.');
     }
   }
 
@@ -2200,7 +2213,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       });
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось сохранить маршрут и привязки кабелей.',
+        'Failed to save the route and cable bindings.',
         source: 'infrastructure_map.persist_all',
         error: error,
         stackTrace: stackTrace,
@@ -2211,7 +2224,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       setState(() {
         _syncingRoutes = false;
       });
-      _showSnackBar('Не удалось сохранить маршрут и привязки.');
+      _showSnackBar('Failed to save the route and bindings.');
     }
   }
 
@@ -2402,7 +2415,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Карта инфраструктуры',
+                    'Infrastructure map',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -2411,42 +2424,42 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                   _LegendRow(
                     color: _entityColor(_InfrastructureEntityType.muff),
                     icon: _entityIcon(_InfrastructureEntityType.muff),
-                    label: 'Муфты',
+                    label: 'Closures',
                   ),
                   const SizedBox(height: 8),
                   _LegendRow(
                     color: _entityColor(_InfrastructureEntityType.ponBox),
                     icon: _entityIcon(_InfrastructureEntityType.ponBox),
-                    label: 'PON боксы',
+                    label: 'PON boxes',
                   ),
                   const SizedBox(height: 8),
                   _LegendRow(
                     color: _entityColor(_InfrastructureEntityType.cabinet),
                     icon: _entityIcon(_InfrastructureEntityType.cabinet),
-                    label: 'Сетевые шкафы',
+                    label: 'Network cabinets',
                   ),
                   const SizedBox(height: 8),
                   const _LegendRow(
                     color: Color(0xFF1EDDC5),
                     icon: Icons.timeline_rounded,
-                    label: 'Кабельные маршруты',
+                    label: 'Cable routes',
                   ),
                   const SizedBox(height: 12),
                   if (_routeCreateMode)
                     Text(
                       _pendingStartEntityKey == null
-                          ? 'Выберите начало маршрута по муфте или шкафу.'
-                          : 'Теперь выберите конец маршрута.',
+                          ? 'Select the route start from a closure or cabinet.'
+                          : 'Now choose the route end.',
                       style: Theme.of(context).textTheme.bodySmall,
                     )
                   else if (_routeEditMode && _selectedRoute != null)
                     Text(
-                      'Тапните рядом с линией, чтобы вставить точку. Промежуточные точки можно перетаскивать.',
+                      'Tap near the line to insert a point. Intermediate points can be dragged.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (_routeEditMode && selectedRoute != null)
                     Text(
-                      'Длина маршрута: ${_formatRouteLength(selectedRoute.lengthMeters)}',
+                      'Route length: ${_formatRouteLength(selectedRoute.lengthMeters)}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   if (_routeEditMode && selectedRoute != null)
@@ -2471,7 +2484,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                       ),
                     ),
                   Text(
-                    'Точек: ${_entities.length} • Маршрутов: ${_routes.length}',
+                    'Points: ${_entities.length} • Routes: ${_routes.length}',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -2539,7 +2552,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        'Активный',
+                        'Active',
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           color: color,
                           fontWeight: FontWeight.w700,
@@ -2573,7 +2586,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: const [
                 Text(
-                  'Маршрутов пока нет. Нажмите "+" и выберите сначала начало, затем конец по существующим муфтам или шкафам.',
+                  'There are no routes yet. Press "+" and select the start first, then the end from existing closures or cabinets.',
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -2606,13 +2619,13 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                       Row(
                         children: [
                           Text(
-                            'Маршруты',
+                            'Routes',
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const Spacer(),
                           Text(
-                            '${filteredRoutes.length} из ${_routes.length}',
+                            '${filteredRoutes.length} of ${_routes.length}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -2622,13 +2635,14 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                         controller: _routeSearchController,
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
-                          hintText:
-                              'Поиск по названию, началу, концу, примечанию',
+                          hintText: tr(
+                            'Search by name, start, end, or note',
+                          ),
                           prefixIcon: const Icon(Icons.search_rounded),
                           suffixIcon: _routeSearchQuery.trim().isEmpty
                               ? null
                               : IconButton(
-                                  tooltip: 'Очистить поиск',
+                                  tooltip: tr('Clear search'),
                                   onPressed: _clearRouteSearch,
                                   icon: const Icon(Icons.close_rounded),
                                 ),
@@ -2651,7 +2665,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                       if (selectedRoute != null) ...[
                         const SizedBox(height: 14),
                         Text(
-                          'Выбранный маршрут',
+                          'Selected route',
                           style: Theme.of(context).textTheme.labelLarge,
                         ),
                         const SizedBox(height: 8),
@@ -2669,7 +2683,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                     padding: EdgeInsets.fromLTRB(24, 16, 24, 32),
                     child: Center(
                       child: Text(
-                        'По этому запросу маршруты не найдены.',
+                        'No routes match this search.',
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -2708,7 +2722,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           child: Padding(
             padding: EdgeInsets.all(20),
             child: Text(
-              'Маршрутов пока нет. Нажмите "+" и выберите сначала начало, затем конец по существующим муфтам или шкафам.',
+              'There are no routes yet. Press "+" and select the start first, then the end from existing closures or cabinets.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -2803,7 +2817,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            'На карте пока нет сущностей с координатами и кабельных маршрутов.',
+            'There are no mapped entities with coordinates or cable routes yet.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
@@ -3012,8 +3026,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? 'Активная задача: ${activeProject.name}'
-                  : 'Активная задача не выбрана',
+                  ? 'Active task: ${activeProject.name}'
+                  : 'No active task selected',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -3033,18 +3047,18 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Карта инфраструктуры'),
+        title: Text(tr('Infrastructure map')),
         actions: [
           if (_activeTraceRequest != null)
             IconButton(
-              tooltip: 'Очистить подсветку трассы',
+              tooltip: tr('Clear route highlight'),
               onPressed: _clearTraceHighlight,
               icon: const Icon(Icons.alt_route_rounded),
             ),
           IconButton(
             tooltip: _routeCreateMode
-                ? 'Отменить создание маршрута'
-                : 'Новый маршрут',
+                ? tr('Cancel route creation')
+                : tr('New route'),
             onPressed: _loading || _syncingRoutes
                 ? null
                 : _toggleRouteCreateMode,
@@ -3054,8 +3068,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           ),
           IconButton(
             tooltip: _routeEditMode
-                ? 'Завершить редактирование маршрута'
-                : 'Редактировать выбранный маршрут',
+                ? tr('Finish route editing')
+                : tr('Edit selected route'),
             onPressed: _loading || _syncingRoutes || _selectedRoute == null
                 ? null
                 : _toggleRouteEditMode,
@@ -3064,14 +3078,14 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ),
           ),
           IconButton(
-            tooltip: 'Удалить выбранный маршрут',
+            tooltip: tr('Delete selected route'),
             onPressed: _loading || _syncingRoutes || _selectedRoute == null
                 ? null
                 : _deleteSelectedRoute,
             icon: const Icon(Icons.delete_outline_rounded),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Слой карты',
+            tooltip: tr('Map layer'),
             initialValue: _selectedTileLayerId,
             onSelected: (value) {
               setState(() {
@@ -3090,7 +3104,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                 .toList(growable: false),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Фильтр по задаче',
+            tooltip: tr('Task filter'),
             icon: Icon(
               _projectFilterId == null
                   ? Icons.workspaces_outline
@@ -3101,7 +3115,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
               CheckedPopupMenuItem<String>(
                 value: '__all_projects__',
                 checked: _projectFilterId == null,
-                child: const Text('Все задачи'),
+                child: Text(tr('All tasks')),
               ),
               ..._projectOptions.entries.map(
                 (entry) => CheckedPopupMenuItem<String>(
@@ -3113,7 +3127,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ],
           ),
           IconButton(
-            tooltip: 'Обновить',
+            tooltip: tr('Refresh'),
             onPressed: _loading || _syncingRoutes ? null : _loadMapData,
             icon: _syncingRoutes
                 ? const SizedBox(

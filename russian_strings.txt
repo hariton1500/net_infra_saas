@@ -1,0 +1,792 @@
+﻿lib\src\screens\start.dart:60:        'Не удалось очистить устаревший локальный кэш нарядов.',
+lib\src\screens\start.dart:227:        'Не удалось загрузить задачи.',
+lib\src\screens\start.dart:364:        return 'Открыть муфту';
+lib\src\screens\start.dart:366:        return 'Открыть шкаф';
+lib\src\screens\start.dart:368:        return 'Открыть маршрут';
+lib\src\screens\start.dart:549:    return 'Сотрудник';
+lib\src\screens\start.dart:561:          const SnackBar(content: Text('В компании пока нет сотрудников.')),
+lib\src\screens\start.dart:578:                'Сотрудники задачи "${projectNameOf(task) ?? 'Без названия'}"',
+lib\src\screens\start.dart:620:                  child: const Text('Отмена'),
+lib\src\screens\start.dart:645:                  child: const Text('Сохранить'),
+lib\src\screens\start.dart:685:          title: Text(projectNameOf(currentTask) ?? 'Задача'),
+lib\src\screens\start.dart:697:                    const Text('Описание не заполнено.'),
+lib\src\screens\start.dart:705:                          label: 'Активная',
+lib\src\screens\start.dart:711:                          label: 'Выполнена',
+lib\src\screens\start.dart:717:                          label: 'Проверена',
+lib\src\screens\start.dart:725:                    Text('Выполнил: ${_taskCompletedBy(currentTask)}'),
+lib\src\screens\start.dart:729:                    Text('Проверил: ${_taskVerifiedBy(currentTask)}'),
+lib\src\screens\start.dart:734:                        ? 'Исполнители не закреплены'
+lib\src\screens\start.dart:735:                        : 'Закреплённые сотрудники',
+lib\src\screens\start.dart:757:                    'Перечень работ',
+lib\src\screens\start.dart:764:                    const Text('Пока нет зафиксированных добавлений.')
+lib\src\screens\start.dart:839:                    'Действия',
+lib\src\screens\start.dart:856:                          child: const Text('Исполнители'),
+lib\src\screens\start.dart:868:                          child: const Text('Выполнена'),
+lib\src\screens\start.dart:880:                          child: const Text('Проверена'),
+lib\src\screens\start.dart:892:                          child: const Text('В архив'),
+lib\src\screens\start.dart:898:                        const Text('Для этой задачи сейчас нет доступных действий.'),
+lib\src\screens\start.dart:908:              child: const Text('Закрыть'),
+lib\src\screens\start.dart:946:        'Не удалось сохранить задачи.',
+lib\src\screens\start.dart:960:          const SnackBar(content: Text('Не удалось сохранить задачи.')),
+lib\src\screens\start.dart:973:          title: const Text('Новая задача'),
+lib\src\screens\start.dart:981:                  decoration: const InputDecoration(labelText: 'Краткое название'),
+lib\src\screens\start.dart:986:                  decoration: const InputDecoration(labelText: 'Описание'),
+lib\src\screens\start.dart:996:              child: const Text('Отмена'),
+lib\src\screens\start.dart:1032:              child: const Text('Создать'),
+lib\src\screens\start.dart:1087:                  'Задачи',
+lib\src\screens\start.dart:1097:                    label: const Text('Создать'),
+lib\src\screens\start.dart:1107:                    label: Text('Все'),
+lib\src\screens\start.dart:1111:                    label: Text('Мои'),
+lib\src\screens\start.dart:1128:                        ? 'Активная задача выключена.'
+lib\src\screens\start.dart:1129:                        : 'Активная задача: ${_activeProject!.name}',
+lib\src\screens\start.dart:1135:                    child: const Text('Выключить'),
+lib\src\screens\start.dart:1145:                    ? 'У вас пока нет назначенных задач.'
+lib\src\screens\start.dart:1146:                    : 'Задач пока нет.',
+lib\src\screens\start.dart:1153:                      title: projectNameOf(project) ?? 'Без названия',
+lib\src\screens\start.dart:1206:        : profile?.email ?? controller.currentUser?.email ?? tr('Сотрудник');
+lib\src\screens\start.dart:1213:            tooltip: tr('Профиль'),
+lib\src\screens\start.dart:1227:            tooltip: tr('Обновить данные'),
+lib\src\screens\start.dart:1233:            child: Text(tr('Выйти')),
+lib\src\screens\start.dart:1256:                    companyName: membership?.companyName ?? tr('Компания'),
+lib\src\screens\start.dart:1266:                    tr('Рабочие разделы'),
+lib\src\screens\start.dart:1278:                          title: 'Карта инфраструктуры',
+lib\src\screens\start.dart:1280:                              'Быстрый переход к карте муфт, PON боксов, кабельных маршрутов и точек подключения.',
+lib\src\screens\start.dart:1296:                          title: 'Блокнот муфт',
+lib\src\screens\start.dart:1298:                              'Оперативная работа с монтажными узлами, заметками и обслуживанием.',
+lib\src\screens\start.dart:1313:                          title: 'Кабельные линии',
+lib\src\screens\start.dart:1315:                              'Построение и редактирование кабельных маршрутов теперь выполняется прямо на карте инфраструктуры.',
+lib\src\screens\start.dart:1331:                          title: 'Сетевые шкафы',
+lib\src\screens\start.dart:1333:                              'Просмотр шкафов, оборудования и состояния точек размещения.',
+lib\src\screens\start.dart:1374:                      'Команда компании',
+lib\src\screens\start.dart:1439:                'Пригласить сотрудника',
+lib\src\screens\start.dart:1446:                'Приглашение создаётся по рабочему email. После регистрации с этим email сотрудник автоматически попадёт в компанию.',
+lib\src\screens\start.dart:1471:                  decoration: const InputDecoration(labelText: 'Должность'),
+lib\src\screens\start.dart:1475:                  'Должность назначает только владелец компании. Для сотрудников по умолчанию будет использована стандартная должность.',
+lib\src\screens\start.dart:1482:                  labelText: 'Email сотрудника',
+lib\src\screens\start.dart:1486:                    return 'Введите email.';
+lib\src\screens\start.dart:1490:                    return 'Введите корректный email.';
+lib\src\screens\start.dart:1499:                decoration: const InputDecoration(labelText: 'Роль в компании'),
+lib\src\screens\start.dart:1525:                    : const Text('Создать приглашение'),
+lib\src\screens\start.dart:1544:              'Ожидающие приглашения',
+lib\src\screens\start.dart:1551:              const Text('Нет активных приглашений.')
+lib\src\screens\start.dart:1557:                      'Код: ${invite.token} • ${_formatDate(invite.createdAt)}',
+lib\src\screens\start.dart:1579:              'Команда компании',
+lib\src\screens\start.dart:1586:              const Text('Пока нет сотрудников.')
+lib\src\screens\start.dart:1641:          widget.controller.errorMessage ?? 'Не удалось создать приглашение.';
+lib\src\screens\start.dart:1659:          widget.controller.errorMessage ?? 'Не удалось обновить данные.';
+lib\src\screens\start.dart:1687:      return 'Сотрудник ${normalizedUserId.substring(0, normalizedUserId.length < 8 ? normalizedUserId.length : 8)}';
+lib\src\screens\start.dart:1689:    return 'Сотрудник';
+lib\src\screens\start.dart:1705:      return 'Профиль сотрудника';
+lib\src\screens\start.dart:1747:                    'Рабочий экран сотрудника',
+lib\src\screens\start.dart:1753:                  Text('Пользователь: $displayName'),
+lib\src\screens\start.dart:1755:                  Text('Компания: $companyName'),
+lib\src\screens\start.dart:1757:                  Text('Роль: $role'),
+lib\src\screens\start.dart:1760:                    Text('Должность: $position'),
+lib\src\screens\start.dart:1767:            _MetricBadge(label: 'Сотрудники', value: '$teamSize'),
+lib\src\screens\start.dart:1768:            _MetricBadge(label: 'Инвайты', value: '$inviteCount'),
+lib\src\screens\start.dart:1932:                      child: const Text('Открыть'),
+lib\src\screens\start.dart:1944:                      label: 'Проверена',
+lib\src\screens\start.dart:1950:                      label: 'Выполнена',
+lib\src\screens\start.dart:1956:                      label: 'Активная',
+lib\src\screens\start.dart:1963:                      child: const Text('Активировать'),
+lib\src\screens\start.dart:1972:              'Отметил выполнение: $completedBy',
+lib\src\screens\start.dart:1979:              'Проверил: $verifiedBy',
+lib\src\screens\start.dart:1986:                ? 'Сотрудники не закреплены'
+lib\src\screens\start.dart:1987:                : 'Закреплённые сотрудники',
+lib\src\screens\start.dart:2011:              child: const Text('Закрепить сотрудников'),
+lib\src\screens\start.dart:2019:              label: const Text('Отметить выполненной'),
+lib\src\screens\start.dart:2027:              label: const Text('Пометить проверенной'),
+lib\src\screens\start.dart:2035:              label: const Text('Отправить в архив'),
+lib\src\screens\start.dart:2110:        return 'Владелец';
+lib\src\screens\start.dart:2112:        return 'Администратор';
+lib\src\screens\start.dart:2114:        return 'Сотрудник';
+lib\src\screens\muff_notebook.dart:210:            label: '${cable['name'] ?? 'Кабель'} • Волокно ${i + 1}',
+lib\src\screens\muff_notebook.dart:226:          label: '${splitter['name'] ?? 'Делитель'} • Вход',
+lib\src\screens\muff_notebook.dart:236:            label: '${splitter['name'] ?? 'Делитель'} • Выход ${i + 1}',
+lib\src\screens\muff_notebook.dart:249:      final name = splitter?['name'] ?? 'Делитель';
+lib\src\screens\muff_notebook.dart:252:        return '$name[Вход]';
+lib\src\screens\muff_notebook.dart:255:      return '$name[Выход ${(endpoint['portIndex'] as int) + 1}]';
+lib\src\screens\muff_notebook.dart:259:    return '${cable?['name'] ?? 'Кабель'}[${(endpoint['fiberIndex'] as int) + 1}]';
+lib\src\screens\muff_notebook.dart:421:        'Не удалось загрузить муфты из Supabase.',
+lib\src\screens\muff_notebook.dart:426:      _showSnack('Не удалось загрузить муфты из облака.');
+lib\src\screens\muff_notebook.dart:559:        'Не удалось синхронизировать муфты.',
+lib\src\screens\muff_notebook.dart:564:      _showSnack('Ошибка синхронизации муфт.');
+lib\src\screens\muff_notebook.dart:690:                tr(muff == null ? 'Новая муфта' : 'Редактировать муфту'),
+lib\src\screens\muff_notebook.dart:700:                        decoration: InputDecoration(labelText: tr('Название')),
+lib\src\screens\muff_notebook.dart:704:                        decoration: InputDecoration(labelText: tr('Район')),
+lib\src\screens\muff_notebook.dart:708:                        decoration: InputDecoration(labelText: tr('Адрес/место')),
+lib\src\screens\muff_notebook.dart:712:                        decoration: InputDecoration(labelText: tr('Комментарий')),
+lib\src\screens\muff_notebook.dart:719:                        title: Text(tr('Это PON бокс')),
+lib\src\screens\muff_notebook.dart:722:                            'Флаг сохраняется в карточке муфты и синхронизируется между сотрудниками.',
+lib\src\screens\muff_notebook.dart:740:                                  : tr('Геопозиция не задана'),
+lib\src\screens\muff_notebook.dart:767:                            label: Text(tr('На карте')),
+lib\src\screens\muff_notebook.dart:778:                  child: Text(tr('Отмена')),
+lib\src\screens\muff_notebook.dart:834:                        kind: tr('Добавлена муфта'),
+lib\src\screens\muff_notebook.dart:840:                            tr('Без названия'),
+lib\src\screens\muff_notebook.dart:845:                            tr('район: {value}', {
+lib\src\screens\muff_notebook.dart:857:                            tr('примечание: {value}', {
+lib\src\screens\muff_notebook.dart:869:                  label: Text(tr('Сохранить')),
+lib\src\screens\muff_notebook.dart:957:              title: Text(tr('Добавить кабель')),
+lib\src\screens\muff_notebook.dart:965:                        labelText: tr('Направление/имя'),
+lib\src\screens\muff_notebook.dart:972:                        Text(tr('Волокон:')),
+lib\src\screens\muff_notebook.dart:995:                        Text(tr('Сторона:')),
+lib\src\screens\muff_notebook.dart:1000:                            DropdownMenuItem(value: 0, child: Text(tr('Слева'))),
+lib\src\screens\muff_notebook.dart:1001:                            DropdownMenuItem(value: 1, child: Text(tr('Справа'))),
+lib\src\screens\muff_notebook.dart:1014:                        Text(tr('Маркировка:')),
+lib\src\screens\muff_notebook.dart:1040:                  child: Text(tr('Отмена')),
+lib\src\screens\muff_notebook.dart:1051:                      'name': name.isEmpty ? tr('Кабель') : name,
+lib\src\screens\muff_notebook.dart:1064:                      kind: 'Добавлен кабель в муфту',
+lib\src\screens\muff_notebook.dart:1066:                        '${muff['name'] ?? 'Муфта'}',
+lib\src\screens\muff_notebook.dart:1067:                        '${cables.last['name'] ?? 'Кабель'}',
+lib\src\screens\muff_notebook.dart:1068:                        'волокон: ${cables.last['fibers'] ?? fibersNumber}',
+lib\src\screens\muff_notebook.dart:1069:                        'сторона: ${((cables.last['side'] as int?) ?? side) == 0 ? 'слева' : 'справа'}',
+lib\src\screens\muff_notebook.dart:1074:                          'маркировка: ${cables.last['color_scheme']}',
+lib\src\screens\muff_notebook.dart:1082:                  label: Text(tr('Добавить')),
+lib\src\screens\muff_notebook.dart:1135:          title: Text(tr('Редактировать имя кабеля')),
+lib\src\screens\muff_notebook.dart:1143:              child: Text(tr('Отмена')),
+lib\src\screens\muff_notebook.dart:1159:              child: Text(tr('Сохранить')),
+lib\src\screens\muff_notebook.dart:1212:                tr('Кабель: {name} | Волокно {fiber}', {
+lib\src\screens\muff_notebook.dart:1220:                decoration: InputDecoration(labelText: tr('Комментарий')),
+lib\src\screens\muff_notebook.dart:1228:                    child: Text(tr('Отмена')),
+lib\src\screens\muff_notebook.dart:1247:                    label: Text(tr('Сохранить')),
+lib\src\screens\muff_notebook.dart:1266:      _showSnack('Нужно минимум две точки подключения');
+lib\src\screens\muff_notebook.dart:1291:              title: Text(tr('Добавить соединение')),
+lib\src\screens\muff_notebook.dart:1297:                    child: Text(tr('От:')),
+lib\src\screens\muff_notebook.dart:1315:                    child: Text(tr('Куда:')),
+lib\src\screens\muff_notebook.dart:1335:                  child: Text(tr('Отмена')),
+lib\src\screens\muff_notebook.dart:1350:                  label: Text(tr('Добавить')),
+lib\src\screens\muff_notebook.dart:1380:      _showSnack('Нельзя соединить точку саму с собой');
+lib\src\screens\muff_notebook.dart:1387:      _showSnack('Нельзя соединять волокна одного кабеля');
+lib\src\screens\muff_notebook.dart:1394:      _showSnack('Точка подключения уже занята');
+lib\src\screens\muff_notebook.dart:1399:      _showSnack('Такое соединение уже есть');
+lib\src\screens\muff_notebook.dart:1412:        kind: 'Добавлено соединение в муфту',
+lib\src\screens\muff_notebook.dart:1414:          muff['name']?.toString() ?? 'Муфта',
+lib\src\screens\muff_notebook.dart:1465:              title: Text(tr('Добавить делитель')),
+lib\src\screens\muff_notebook.dart:1472:                        labelText: tr('Название делителя'),
+lib\src\screens\muff_notebook.dart:1481:                        labelText: tr('Коэффициент деления'),
+lib\src\screens\muff_notebook.dart:1502:                        labelText: tr('Сторона'),
+lib\src\screens\muff_notebook.dart:1506:                        DropdownMenuItem(value: 0, child: Text(tr('Слева'))),
+lib\src\screens\muff_notebook.dart:1507:                        DropdownMenuItem(value: 1, child: Text(tr('Справа'))),
+lib\src\screens\muff_notebook.dart:1519:                        labelText: tr('Расположение выходных портов'),
+lib\src\screens\muff_notebook.dart:1525:                          child: Text(tr('Вертикально')),
+lib\src\screens\muff_notebook.dart:1529:                          child: Text(tr('Горизонтально')),
+lib\src\screens\muff_notebook.dart:1544:                  child: Text(tr('Отмена')),
+lib\src\screens\muff_notebook.dart:1554:                      'name': name.isEmpty ? tr('Делитель 1:{ratio}', {'ratio': '$ratio'}) : name,
+lib\src\screens\muff_notebook.dart:1566:                      kind: 'Добавлен делитель в муфту',
+lib\src\screens\muff_notebook.dart:1568:                        '${muff['name'] ?? 'Муфта'}',
+lib\src\screens\muff_notebook.dart:1569:                        '${splitters.last['name'] ?? 'Делитель'}',
+lib\src\screens\muff_notebook.dart:1571:                        'сторона: ${((splitters.last['side'] as int?) ?? side) == 0 ? 'слева' : 'справа'}',
+lib\src\screens\muff_notebook.dart:1572:                        'ориентация: ${((splitters.last['orientation'] ?? orientation) == 'vertical') ? 'вертикально' : 'горизонтально'}',
+lib\src\screens\muff_notebook.dart:1580:                  label: Text(tr('Добавить')),
+lib\src\screens\muff_notebook.dart:1609:              title: Text(tr('Редактировать делитель')),
+lib\src\screens\muff_notebook.dart:1617:                        labelText: tr('Название делителя'),
+lib\src\screens\muff_notebook.dart:1626:                        labelText: tr('Коэффициент деления'),
+lib\src\screens\muff_notebook.dart:1647:                        labelText: tr('Сторона'),
+lib\src\screens\muff_notebook.dart:1651:                        DropdownMenuItem(value: 0, child: Text(tr('Слева'))),
+lib\src\screens\muff_notebook.dart:1652:                        DropdownMenuItem(value: 1, child: Text(tr('Справа'))),
+lib\src\screens\muff_notebook.dart:1664:                        labelText: tr('Расположение выходных портов'),
+lib\src\screens\muff_notebook.dart:1670:                          child: Text(tr('Вертикально')),
+lib\src\screens\muff_notebook.dart:1674:                          child: Text(tr('Горизонтально')),
+lib\src\screens\muff_notebook.dart:1689:                  child: Text(tr('Отмена')),
+lib\src\screens\muff_notebook.dart:1695:                        ? tr('Делитель 1:{ratio}', {'ratio': '$ratio'})
+lib\src\screens\muff_notebook.dart:1709:                  label: Text(tr('Сохранить')),
+lib\src\screens\muff_notebook.dart:1795:                  ? 'Активная задача: ${activeProject.name}'
+lib\src\screens\muff_notebook.dart:1796:                  : 'Активная задача не выбрана',
+lib\src\screens\muff_notebook.dart:1827:        title: Text(tr('Блокнот муфт')),
+lib\src\screens\muff_notebook.dart:1830:            tooltip: tr('Слой карты'),
+lib\src\screens\muff_notebook.dart:1854:            tooltip: tr('Синхронизировать'),
+lib\src\screens\muff_notebook.dart:1857:            tooltip: tr('Фильтр по району'),
+lib\src\screens\muff_notebook.dart:1868:                child: Text(tr('Все районы')),
+lib\src\screens\muff_notebook.dart:1880:            tooltip: tr('Фильтр по задаче'),
+lib\src\screens\muff_notebook.dart:1891:                child: Text(tr('Все задачи')),
+lib\src\screens\muff_notebook.dart:1909:            tooltip: _mapView ? tr('Список') : tr('Карта'),
+lib\src\screens\muff_notebook.dart:1914:            tooltip: tr('Обновить'),
+lib\src\screens\muff_notebook.dart:1919:            tooltip: tr('Новая муфта'),
+lib\src\screens\muff_notebook.dart:2010:                muff['name'] ?? tr('Без названия'),
+lib\src\screens\muff_notebook.dart:2020:                  tr('Район: {value}', {
+lib\src\screens\muff_notebook.dart:2039:                    child: Text(tr('Закрыть')),
+lib\src\screens\muff_notebook.dart:2050:                    child: Text(tr('Открыть')),
+lib\src\screens\muff_notebook.dart:2070:          tr('Муфт пока нет. Добавьте первую запись.'),
+lib\src\screens\muff_notebook.dart:2078:          'В выбранном районе муфт пока нет.',
+lib\src\screens\muff_notebook.dart:2097:            title: Text(muff['name'] ?? 'Без названия'),
+lib\src\screens\muff_notebook.dart:2100:                if (_isPonBox(muff)) 'Тип: PON бокс',
+lib\src\screens\muff_notebook.dart:2102:                  'Задача: ${_projectNameFor(muff)}',
+lib\src\screens\muff_notebook.dart:2104:                  'Район: ${muff['district']}',
+lib\src\screens\muff_notebook.dart:2125:                PopupMenuItem(value: 'edit', child: Text(tr('Редактировать'))),
+lib\src\screens\muff_notebook.dart:2126:                PopupMenuItem(value: 'geo', child: Text(tr('Геопозиция'))),
+lib\src\screens\muff_notebook.dart:2127:                PopupMenuItem(value: 'delete', child: Text(tr('Удалить'))),
+lib\src\screens\muff_notebook.dart:2141:          'Выберите муфту слева',
+lib\src\screens\muff_notebook.dart:2167:                label: Text(tr('К списку')),
+lib\src\screens\muff_notebook.dart:2184:                            muff['name'] ?? 'Без названия',
+lib\src\screens\muff_notebook.dart:2189:                          tooltip: tr('Геопозиция'),
+lib\src\screens\muff_notebook.dart:2203:                        tr('Район: {value}', {
+lib\src\screens\muff_notebook.dart:2228:                              label: Text(tr('Изменить')),
+lib\src\screens\muff_notebook.dart:2247:                  'Кабели',
+lib\src\screens\muff_notebook.dart:2254:                  label: Text(tr('Добавить кабель')),
+lib\src\screens\muff_notebook.dart:2264:                  'Делители',
+lib\src\screens\muff_notebook.dart:2271:                  label: Text(tr('Добавить делитель')),
+lib\src\screens\muff_notebook.dart:2311:                  'Соединения',
+lib\src\screens\muff_notebook.dart:2318:                  label: Text(tr('Добавить')),
+lib\src\screens\muff_notebook.dart:2331:                    label: Text(tr('Очистить все')),
+lib\src\screens\muff_notebook.dart:2339:              child: Text(tr('Соединений пока нет')),
+lib\src\screens\muff_notebook.dart:2380:          tr(side == 0 ? 'Слева' : 'Справа'),
+lib\src\screens\muff_notebook.dart:2384:        if (cables.isEmpty && splitters.isEmpty) Text(tr('Нет элементов')),
+lib\src\screens\muff_notebook.dart:2406:                            cable['name'] ?? tr('Кабель'),
+lib\src\screens\muff_notebook.dart:2425:                              child: Text(tr('Переименовать')),
+lib\src\screens\muff_notebook.dart:2429:                              child: Text(tr('Перенести на другую сторону')),
+lib\src\screens\muff_notebook.dart:2433:                              child: Text(tr('Удалить')),
+lib\src\screens\muff_notebook.dart:2608:                        splitter['name'] ?? tr('Делитель'),
+lib\src\screens\muff_notebook.dart:2612:                      //Text('PON 1:$ratio • ${orientation == 'vertical' ? 'вертикально' : 'горизонтально'}', style: Theme.of(context).textTheme.bodySmall,),
+lib\src\screens\muff_notebook.dart:2628:                      child: Text(tr('Редактировать')),
+lib\src\screens\muff_notebook.dart:2632:                      child: Text(tr('Удалить')),
+lib\src\screens\muff_notebook.dart:2839:            tr('Кабель: {name}', {'name': '${cable['name']}'}),
+lib\src\screens\muff_notebook.dart:2844:            Text(tr('Комментарии по волокнам:')),
+lib\src\screens\muff_notebook.dart:2865:        tr('PON бокс'),
+lib\src\screens\cable_lines_page.dart:138:          _errorMessage = tr('Компания не найдена для текущего пользователя.');
+lib\src\screens\cable_lines_page.dart:162:          'Не удалось обновить кабельные линии из Supabase.',
+lib\src\screens\cable_lines_page.dart:177:          'Не удалось обновить муфты для привязки маршрутов.',
+lib\src\screens\cable_lines_page.dart:192:          'Не удалось обновить шкафы для привязки маршрутов.',
+lib\src\screens\cable_lines_page.dart:212:        'Не удалось загрузить кабельные линии.',
+lib\src\screens\cable_lines_page.dart:222:        _errorMessage = 'Не удалось открыть раздел кабельных линий.';
+lib\src\screens\cable_lines_page.dart:285:      name: name?.isNotEmpty == true ? name! : 'Кабельная линия',
+lib\src\screens\cable_lines_page.dart:288:        'Точек маршрута': '${points.length}',
+lib\src\screens\cable_lines_page.dart:289:        if (startAnchor != null) 'Начало': startAnchor['name'] ?? 'Привязано',
+lib\src\screens\cable_lines_page.dart:290:        if (endAnchor != null) 'Конец': endAnchor['name'] ?? 'Привязано',
+lib\src\screens\cable_lines_page.dart:291:        if (note != null && note.isNotEmpty) 'Примечание': note,
+lib\src\screens\cable_lines_page.dart:370:                  : tr('Без названия'),
+lib\src\screens\cable_lines_page.dart:371:              subtitle: isPonBox ? tr('PON бокс') : tr('Муфта'),
+lib\src\screens\cable_lines_page.dart:394:                  : tr('Без названия'),
+lib\src\screens\cable_lines_page.dart:395:              subtitle: tr('Сетевой шкаф'),
+lib\src\screens\cable_lines_page.dart:640:      _showSnackBar(tr('Укажите название линии.'));
+lib\src\screens\cable_lines_page.dart:646:        tr('Начало и конец маршрута должны быть разными точками.'),
+lib\src\screens\cable_lines_page.dart:653:      _showSnackBar(tr('Для маршрута нужно минимум две точки.'));
+lib\src\screens\cable_lines_page.dart:700:        kind: tr('Добавлен маршрут'),
+lib\src\screens\cable_lines_page.dart:702:          routeRecord['name']?.toString() ?? tr('Маршрут'),
+lib\src\screens\cable_lines_page.dart:706:            tr('старт: {value}', {
+lib\src\screens\cable_lines_page.dart:712:            tr('финиш: {value}', {
+lib\src\screens\cable_lines_page.dart:716:            tr('примечание: {value}', {
+lib\src\screens\cable_lines_page.dart:734:        title: Text(tr('Удалить маршрут')),
+lib\src\screens\cable_lines_page.dart:736:          tr('Маршрут "{name}" будет удалён из списка и sync.', {
+lib\src\screens\cable_lines_page.dart:743:            child: Text(tr('Отмена')),
+lib\src\screens\cable_lines_page.dart:747:            child: Text(tr('Удалить')),
+lib\src\screens\cable_lines_page.dart:852:        'Не удалось сохранить кабельный маршрут.',
+lib\src\screens\cable_lines_page.dart:863:      _showSnackBar(tr('Не удалось сохранить маршрут.'));
+lib\src\screens\cable_lines_page.dart:893:                        ? tr('Построение маршрута')
+lib\src\screens\cable_lines_page.dart:894:                        : tr('Кабельные линии'),
+lib\src\screens\cable_lines_page.dart:902:                    label: tr('Выбранная линия'),
+lib\src\screens\cable_lines_page.dart:907:                    label: tr('Остальные маршруты'),
+lib\src\screens\cable_lines_page.dart:913:                      label: tr('Черновик маршрута'),
+lib\src\screens\cable_lines_page.dart:918:                        'Начало и конец можно привязать к муфтам или шкафам. Тап по карте добавляет промежуточные точки.',
+lib\src\screens\cable_lines_page.dart:925:                    tr('Всего линий: {count}', {
+lib\src\screens\cable_lines_page.dart:1036:                  ? tr('Добавьте точки на карте и сохраните первый маршрут.')
+lib\src\screens\cable_lines_page.dart:1038:                      'Маршрутов пока нет. Нажмите "Новый маршрут", чтобы начать.',
+lib\src\screens\cable_lines_page.dart:1094:                            tooltip: tr('Действия'),
+lib\src\screens\cable_lines_page.dart:1105:                                child: Text(tr('Редактировать')),
+lib\src\screens\cable_lines_page.dart:1109:                                child: Text(tr('Удалить')),
+lib\src\screens\cable_lines_page.dart:1167:                              ? tr('Новый маршрут')
+lib\src\screens\cable_lines_page.dart:1168:                              : tr('Редактирование маршрута'),
+lib\src\screens\cable_lines_page.dart:1174:                        tooltip: tr('Закрыть редактор'),
+lib\src\screens\cable_lines_page.dart:1184:                      labelText: tr('Название линии'),
+lib\src\screens\cable_lines_page.dart:1185:                      hintText: tr('Например: Магистраль Север-12'),
+lib\src\screens\cable_lines_page.dart:1191:                    decoration: InputDecoration(labelText: tr('Начало маршрута')),
+lib\src\screens\cable_lines_page.dart:1195:                        child: Text(tr('Без привязки')),
+lib\src\screens\cable_lines_page.dart:1209:                    decoration: InputDecoration(labelText: tr('Конец маршрута')),
+lib\src\screens\cable_lines_page.dart:1213:                        child: Text(tr('Без привязки')),
+lib\src\screens\cable_lines_page.dart:1228:                    decoration: InputDecoration(labelText: tr('Примечание')),
+lib\src\screens\cable_lines_page.dart:1237:                        label: tr('Точек: {count}', {
+lib\src\screens\cable_lines_page.dart:1243:                        label: tr('Тап по карте добавляет промежуточную точку'),
+lib\src\screens\cable_lines_page.dart:1257:                        label: Text(tr('Отменить точку')),
+lib\src\screens\cable_lines_page.dart:1262:                        label: Text(tr('Очистить маршрут')),
+lib\src\screens\cable_lines_page.dart:1269:                              ? tr('Создать')
+lib\src\screens\cable_lines_page.dart:1270:                              : tr('Сохранить'),
+lib\src\screens\cable_lines_page.dart:1339:        title: Text(tr('Кабельные линии')),
+lib\src\screens\cable_lines_page.dart:1342:            tooltip: tr('Новый маршрут'),
+lib\src\screens\cable_lines_page.dart:1347:            tooltip: tr('Слой карты'),
+lib\src\screens\cable_lines_page.dart:1366:            tooltip: tr('Синхронизировать'),
+lib\src\screens\cable_lines_page.dart:1377:            tooltip: tr('Обновить'),
+lib\src\screens\cable_lines_page.dart:1426:                  ? tr('Активная задача: {name}', {
+lib\src\screens\cable_lines_page.dart:1429:                  : tr('Активная задача не выбрана'),
+lib\src\screens\network_cabinet.dart:70:    _portTypeCopper: 'Медный',
+lib\src\screens\network_cabinet.dart:71:    _portTypeOptical: 'Оптический',
+lib\src\screens\network_cabinet.dart:226:        'Не удалось загрузить шкафы из Supabase.',
+lib\src\screens\network_cabinet.dart:231:      _showSnack('Не удалось загрузить шкафы из облака.');
+lib\src\screens\network_cabinet.dart:307:        'Не удалось синхронизировать шкафы.',
+lib\src\screens\network_cabinet.dart:312:      _showSnack('Ошибка синхронизации шкафов.');
+lib\src\screens\network_cabinet.dart:449:                  ? 'Активная задача: ${activeProject.name}'
+lib\src\screens\network_cabinet.dart:450:                  : 'Активная задача не выбрана',
+lib\src\screens\network_cabinet.dart:548:                tr(cabinet == null ? 'Новый шкаф' : 'Редактировать шкаф'),
+lib\src\screens\network_cabinet.dart:558:                        decoration: InputDecoration(labelText: tr('Название')),
+lib\src\screens\network_cabinet.dart:562:                        decoration: InputDecoration(labelText: tr('Адрес/место')),
+lib\src\screens\network_cabinet.dart:566:                        decoration: InputDecoration(labelText: tr('Комментарий')),
+lib\src\screens\network_cabinet.dart:578:                                  : tr('Геопозиция не задана'),
+lib\src\screens\network_cabinet.dart:605:                            label: Text(tr('На карте')),
+lib\src\screens\network_cabinet.dart:616:                  child: Text(tr('Отмена')),
+lib\src\screens\network_cabinet.dart:671:                        kind: tr('Добавлен шкаф'),
+lib\src\screens\network_cabinet.dart:677:                            tr('Без названия'),
+lib\src\screens\network_cabinet.dart:687:                            tr('примечание: {value}', {
+lib\src\screens\network_cabinet.dart:699:                  label: Text(tr('Сохранить')),
+lib\src\screens\network_cabinet.dart:823:    final nameController = TextEditingController(text: 'Коммутатор');
+lib\src\screens\network_cabinet.dart:833:              title: Text(tr('Добавить коммутатор')),
+lib\src\screens\network_cabinet.dart:841:                      decoration: InputDecoration(labelText: tr('Название')),
+lib\src\screens\network_cabinet.dart:845:                      decoration: InputDecoration(labelText: tr('Модель')),
+lib\src\screens\network_cabinet.dart:850:                        Text(tr('Портов:')),
+lib\src\screens\network_cabinet.dart:876:                  child: Text(tr('Отмена')),
+lib\src\screens\network_cabinet.dart:888:                          ? tr('Коммутатор')
+lib\src\screens\network_cabinet.dart:904:                      kind: 'Добавлен коммутатор в шкаф',
+lib\src\screens\network_cabinet.dart:906:                        '${cabinet['name'] ?? tr('Шкаф')}',
+lib\src\screens\network_cabinet.dart:907:                        '${switches.last['name'] ?? tr('Коммутатор')}',
+lib\src\screens\network_cabinet.dart:912:                          tr('модель: {value}', {
+lib\src\screens\network_cabinet.dart:915:                        tr('портов: {value}', {
+lib\src\screens\network_cabinet.dart:925:                  label: Text(tr('Добавить')),
+lib\src\screens\network_cabinet.dart:984:                tr('Типы портов: {name}', {
+lib\src\screens\network_cabinet.dart:985:                  'name': '${sw['name'] ?? tr('Коммутатор')}',
+lib\src\screens\network_cabinet.dart:1001:                                tr('Порт {value}', {
+lib\src\screens\network_cabinet.dart:1042:                  child: Text(tr('Отмена')),
+lib\src\screens\network_cabinet.dart:1058:                  label: Text(tr('Сохранить')),
+lib\src\screens\network_cabinet.dart:1083:              title: Text(tr('Добавить кабель')),
+lib\src\screens\network_cabinet.dart:1091:                        labelText: tr('Направление/имя'),
+lib\src\screens\network_cabinet.dart:1098:                        Text(tr('Волокон:')),
+lib\src\screens\network_cabinet.dart:1121:                        Text(tr('Маркировка:')),
+lib\src\screens\network_cabinet.dart:1147:                  child: Text(tr('Отмена')),
+lib\src\screens\network_cabinet.dart:1158:                      'name': name.isEmpty ? tr('Кабель') : name,
+lib\src\screens\network_cabinet.dart:1171:                      kind: 'Добавлен кабель в шкаф',
+lib\src\screens\network_cabinet.dart:1173:                        '${cabinet['name'] ?? 'Шкаф'}',
+lib\src\screens\network_cabinet.dart:1174:                        '${cables.last['name'] ?? 'Кабель'}',
+lib\src\screens\network_cabinet.dart:1175:                        'волокон: ${cables.last['fibers'] ?? fibersNumber}',
+lib\src\screens\network_cabinet.dart:1180:                          'маркировка: ${cables.last['color_scheme']}',
+lib\src\screens\network_cabinet.dart:1188:                  label: Text(tr('Добавить')),
+lib\src\screens\network_cabinet.dart:1237:          title: Text(tr('Редактировать имя кабеля')),
+lib\src\screens\network_cabinet.dart:1245:              child: Text(tr('Отмена')),
+lib\src\screens\network_cabinet.dart:1261:              child: Text(tr('Сохранить')),
+lib\src\screens\network_cabinet.dart:1301:                    tr('Кабель: {name} | Волокно {fiber}', {
+lib\src\screens\network_cabinet.dart:1309:                    decoration: InputDecoration(labelText: tr('Комментарий')),
+lib\src\screens\network_cabinet.dart:1314:                      Text(tr('Сплиттер:')),
+lib\src\screens\network_cabinet.dart:1322:                                child: Text(value == 0 ? 'Нет' : '$value'),
+lib\src\screens\network_cabinet.dart:1340:                        child: Text(tr('Отмена')),
+lib\src\screens\network_cabinet.dart:1361:                        label: Text(tr('Сохранить')),
+lib\src\screens\network_cabinet.dart:1440:      return 'Медный порт нельзя соединять с волокном кабеля';
+lib\src\screens\network_cabinet.dart:1455:      return 'Между коммутаторами нельзя соединять порты разных типов';
+lib\src\screens\network_cabinet.dart:1535:      _showSnack('Нельзя соединять волокна одного кабеля');
+lib\src\screens\network_cabinet.dart:1541:      _showSnack('Нельзя соединять порты одного коммутатора');
+lib\src\screens\network_cabinet.dart:1553:      _showSnack('Конечная точка уже используется');
+lib\src\screens\network_cabinet.dart:1558:      _showSnack('Такое соединение уже есть');
+lib\src\screens\network_cabinet.dart:1568:        kind: 'Добавлено соединение в шкаф',
+lib\src\screens\network_cabinet.dart:1570:          cabinet['name']?.toString() ?? 'Шкаф',
+lib\src\screens\network_cabinet.dart:1592:      _showSnack('Добавьте кабели или коммутаторы');
+lib\src\screens\network_cabinet.dart:1615:            child: Text(cable['name'] ?? tr('Кабель')),
+lib\src\screens\network_cabinet.dart:1624:            child: Text(sw['name'] ?? tr('Коммутатор')),
+lib\src\screens\network_cabinet.dart:1646:          child: Text(tr('Порт {value}', {'value': '${index + 1}'})),
+lib\src\screens\network_cabinet.dart:1671:            decoration: InputDecoration(labelText: tr('Тип точки')),
+lib\src\screens\network_cabinet.dart:1674:                DropdownMenuItem(value: 'cable', child: Text(tr('Кабель'))),
+lib\src\screens\network_cabinet.dart:1678:                  child: Text(tr('Коммутатор')),
+lib\src\screens\network_cabinet.dart:1687:              decoration: InputDecoration(labelText: tr('Кабель')),
+lib\src\screens\network_cabinet.dart:1694:              decoration: InputDecoration(labelText: tr('Волокно')),
+lib\src\screens\network_cabinet.dart:1702:              decoration: InputDecoration(labelText: tr('Коммутатор')),
+lib\src\screens\network_cabinet.dart:1709:              decoration: InputDecoration(labelText: tr('Порт')),
+lib\src\screens\network_cabinet.dart:1724:              title: Text(tr('Добавить соединение')),
+lib\src\screens\network_cabinet.dart:1732:                        label: 'Откуда',
+lib\src\screens\network_cabinet.dart:1771:                        label: 'Куда',
+lib\src\screens\network_cabinet.dart:1815:                  child: Text(tr('Отмена')),
+lib\src\screens\network_cabinet.dart:1834:                      _showSnack('Нельзя соединять волокна одного кабеля');
+lib\src\screens\network_cabinet.dart:1840:                      _showSnack('Нельзя соединять порты одного коммутатора');
+lib\src\screens\network_cabinet.dart:1855:                      _showSnack('Конечная точка уже используется');
+lib\src\screens\network_cabinet.dart:1877:                      _showSnack('Такое соединение уже есть');
+lib\src\screens\network_cabinet.dart:1889:                      kind: 'Добавлено соединение в шкаф',
+lib\src\screens\network_cabinet.dart:1891:                        cabinet['name']?.toString() ?? 'Шкаф',
+lib\src\screens\network_cabinet.dart:1900:                  label: Text(tr('Добавить')),
+lib\src\screens\network_cabinet.dart:1913:      return '${cable?['name'] ?? 'Кабель'}[${(connection['fiber1'] as int) + 1}]';
+lib\src\screens\network_cabinet.dart:1919:      return '${cable?['name'] ?? 'Кабель'}[${(connection['fiber2'] as int) + 1}]';
+lib\src\screens\network_cabinet.dart:1923:      return '${sw?['name'] ?? 'Свитч'} порт ${(connection['port1'] as int) + 1}';
+lib\src\screens\network_cabinet.dart:1929:      return '${sw?['name'] ?? 'Свитч'} порт ${(connection['port2'] as int) + 1}';
+lib\src\screens\network_cabinet.dart:1931:    return 'Точка';
+lib\src\screens\network_cabinet.dart:2000:                cabinet['name'] ?? tr('Без названия'),
+lib\src\screens\network_cabinet.dart:2011:                    child: Text(tr('Закрыть')),
+lib\src\screens\network_cabinet.dart:2022:                    child: Text(tr('Открыть')),
+lib\src\screens\network_cabinet.dart:2041:          tr('Шкафов пока нет. Добавьте первую запись.'),
+lib\src\screens\network_cabinet.dart:2060:            title: Text(cabinet['name'] ?? tr('Без названия')),
+lib\src\screens\network_cabinet.dart:2064:                  tr('Задача: {name}', {
+lib\src\screens\network_cabinet.dart:2084:                PopupMenuItem(value: 'edit', child: Text(tr('Редактировать'))),
+lib\src\screens\network_cabinet.dart:2085:                PopupMenuItem(value: 'geo', child: Text(tr('Геопозиция'))),
+lib\src\screens\network_cabinet.dart:2086:                PopupMenuItem(value: 'delete', child: Text(tr('Удалить'))),
+lib\src\screens\network_cabinet.dart:2121:                    '${sw['name'] ?? 'Коммутатор'} ${sw['model'] ?? ''}'.trim(),
+lib\src\screens\network_cabinet.dart:2126:                  tooltip: tr('Типы портов'),
+lib\src\screens\network_cabinet.dart:2137:                    PopupMenuItem(value: 'delete', child: Text(tr('Удалить'))),
+lib\src\screens\network_cabinet.dart:2291:            'Порт $label: ${_portTypeLabels[portType] ?? _portTypeLabels[_portTypeOptical]}',
+lib\src\screens\network_cabinet.dart:2306:        if (cables.isEmpty) Text(tr('Нет кабелей')),
+lib\src\screens\network_cabinet.dart:2336:                      cable['name'] ?? 'Кабель',
+lib\src\screens\network_cabinet.dart:2352:                        child: Text(tr('Переименовать')),
+lib\src\screens\network_cabinet.dart:2354:                      PopupMenuItem(value: 'delete', child: Text(tr('Удалить'))),
+lib\src\screens\network_cabinet.dart:2536:              Text(tr('Сплиттер {value}', {'value': '${entry.value}'})),
+lib\src\screens\network_cabinet.dart:2548:            tr('Кабель: {name}', {'name': '${cable['name']}'}),
+lib\src\screens\network_cabinet.dart:2553:            Text(tr('Комментарии по волокнам:')),
+lib\src\screens\network_cabinet.dart:2558:            Text(tr('Сплиттеры:')),
+lib\src\screens\network_cabinet.dart:2570:          'Выберите шкаф слева',
+lib\src\screens\network_cabinet.dart:2602:                label: Text(tr('К списку')),
+lib\src\screens\network_cabinet.dart:2619:                            cabinet['name'] ?? tr('Без названия'),
+lib\src\screens\network_cabinet.dart:2624:                          tooltip: tr('Геопозиция'),
+lib\src\screens\network_cabinet.dart:2646:                  tr('Коммутаторы'),
+lib\src\screens\network_cabinet.dart:2653:                  label: Text(tr('Добавить')),
+lib\src\screens\network_cabinet.dart:2673:                            Text(tr('Нет коммутаторов'))
+lib\src\screens\network_cabinet.dart:2682:                                  tr('Кабели'),
+lib\src\screens\network_cabinet.dart:2689:                                  label: Text(tr('Добавить кабель')),
+lib\src\screens\network_cabinet.dart:2724:                  tr('Соединения'),
+lib\src\screens\network_cabinet.dart:2731:                  label: Text(tr('Добавить')),
+lib\src\screens\network_cabinet.dart:2744:                    label: Text(tr('Очистить все')),
+lib\src\screens\network_cabinet.dart:2752:              child: Text(tr('Соединений пока нет')),
+lib\src\screens\network_cabinet.dart:2789:        title: Text(tr('Сетевые шкафы')),
+lib\src\screens\network_cabinet.dart:2792:            tooltip: tr('Слой карты'),
+lib\src\screens\network_cabinet.dart:2816:            tooltip: tr('Синхронизировать'),
+lib\src\screens\network_cabinet.dart:2819:            tooltip: tr('Фильтр по задаче'),
+lib\src\screens\network_cabinet.dart:2830:                child: Text(tr('Все задачи')),
+lib\src\screens\network_cabinet.dart:2848:            tooltip: _mapView ? tr('Список') : tr('Карта'),
+lib\src\screens\network_cabinet.dart:2853:            tooltip: tr('Обновить'),
+lib\src\screens\network_cabinet.dart:2858:            tooltip: tr('Новый шкаф'),
+lib\src\screens\auth_page.dart:120:                                  Tab(text: tr('Вход')),
+lib\src\screens\auth_page.dart:121:                                  Tab(text: tr('Регистрация')),
+lib\src\screens\auth_page.dart:208:      _showErrorMessage(widget.controller.errorMessage ?? tr('Не удалось войти.'));
+lib\src\screens\auth_page.dart:228:          widget.controller.errorMessage ?? tr('Не удалось создать аккаунт.');
+lib\src\screens\auth_page.dart:250:        widget.controller.errorMessage ?? tr('Не удалось обновить пароль.'),
+lib\src\screens\auth_page.dart:259:      _showErrorMessage(widget.controller.errorMessage ?? tr('Выйти'));
+lib\src\screens\auth_page.dart:275:          title: Text(tr('Восстановить пароль')),
+lib\src\screens\auth_page.dart:284:                    'Введите рабочий email. Мы отправим письмо со ссылкой для смены пароля.',
+lib\src\screens\auth_page.dart:292:                    labelText: tr('Рабочий email'),
+lib\src\screens\auth_page.dart:301:              child: Text(tr('Отмена')),
+lib\src\screens\auth_page.dart:319:                          'Не удалось отправить письмо для восстановления пароля.',
+lib\src\screens\auth_page.dart:324:              child: Text(tr('Отправить письмо')),
+lib\src\screens\auth_page.dart:347:              'Аккаунт с таким email уже существует. Попробуйте войти или восстановить пароль.',
+lib\src\screens\auth_page.dart:349:        normalized.contains('email уже существует') ||
+lib\src\screens\auth_page.dart:356:      'Аккаунт с таким email уже существует. Перейдите ко входу или восстановите пароль.',
+lib\src\screens\auth_page.dart:367:            label: tr('Войти'),
+lib\src\screens\auth_page.dart:428:              tr('Управление инфраструктурой для компаний и их команд'),
+lib\src\screens\auth_page.dart:436:                'Входите в рабочее пространство компании, создавайте первую организацию и готовьте доступ для сотрудников на общей платформе.',
+lib\src\screens\auth_page.dart:441:              title: tr('Один аккаунт на компанию'),
+lib\src\screens\auth_page.dart:443:                'Владелец создаёт рабочее пространство и затем добавляет сотрудников.',
+lib\src\screens\auth_page.dart:448:              title: tr('Сессии Supabase'),
+lib\src\screens\auth_page.dart:450:                'Приложение автоматически восстанавливает активную сессию пользователя.',
+lib\src\screens\auth_page.dart:455:              title: tr('Готово для multi-tenant'),
+lib\src\screens\auth_page.dart:457:                'Профили, компании и роли сотрудников уже разделены на уровне базы.',
+lib\src\screens\auth_page.dart:606:            tr('Вход для сотрудников'),
+lib\src\screens\auth_page.dart:612:              'Используйте рабочий email и пароль, чтобы открыть пространство компании.',
+lib\src\screens\auth_page.dart:619:            decoration: InputDecoration(labelText: tr('Рабочий email')),
+lib\src\screens\auth_page.dart:626:            decoration: InputDecoration(labelText: tr('Пароль')),
+lib\src\screens\auth_page.dart:633:              child: Text(tr('Восстановить пароль')),
+lib\src\screens\auth_page.dart:645:                : Text(tr('Войти')),
+lib\src\screens\auth_page.dart:688:            tr('Регистрация владельца компании'),
+lib\src\screens\auth_page.dart:694:              'Создайте первый аккаунт компании. После этого можно будет добавлять сотрудников.',
+lib\src\screens\auth_page.dart:700:            decoration: InputDecoration(labelText: tr('Ваше имя')),
+lib\src\screens\auth_page.dart:706:            decoration: InputDecoration(labelText: tr('Должность')),
+lib\src\screens\auth_page.dart:724:            decoration: InputDecoration(labelText: tr('Название компании')),
+lib\src\screens\auth_page.dart:731:            decoration: InputDecoration(labelText: tr('Рабочий email')),
+lib\src\screens\auth_page.dart:738:            decoration: InputDecoration(labelText: tr('Пароль')),
+lib\src\screens\auth_page.dart:748:                child: Text(tr('Перейти ко входу')),
+lib\src\screens\auth_page.dart:752:                child: Text(tr('Восстановить пароль')),
+lib\src\screens\auth_page.dart:765:                : Text(tr('Создать компанию')),
+lib\src\screens\auth_page.dart:799:            tr('Задайте новый пароль'),
+lib\src\screens\auth_page.dart:807:              'Мы подтвердили ссылку восстановления. Теперь можно задать новый пароль для аккаунта.',
+lib\src\screens\auth_page.dart:814:            decoration: InputDecoration(labelText: tr('Новый пароль')),
+lib\src\screens\auth_page.dart:822:              labelText: tr('Повторите новый пароль'),
+lib\src\screens\auth_page.dart:830:                return tr('Пароли не совпадают.');
+lib\src\screens\auth_page.dart:844:                : Text(tr('Сохранить новый пароль')),
+lib\src\screens\auth_page.dart:849:            child: Text(tr('Выйти из режима восстановления')),
+lib\src\screens\auth_page.dart:859:    return tr('Поле обязательно.');
+lib\src\screens\auth_page.dart:867:    return tr('Введите email.');
+lib\src\screens\auth_page.dart:871:    return tr('Введите корректный email.');
+lib\src\screens\auth_page.dart:879:    return tr('Введите пароль.');
+lib\src\screens\auth_page.dart:883:    return tr('Минимум 8 символов.');
+lib\src\screens\muff_location_picker.dart:37:        title: Text(tr('Выбор геопозиции муфты')),
+lib\src\screens\muff_location_picker.dart:40:            tooltip: tr('Моё местоположение'),
+lib\src\screens\muff_location_picker.dart:45:            tooltip: tr('Выбрать слой карты'),
+lib\src\screens\muff_location_picker.dart:64:            tooltip: tr('Сохранить точку'),
+lib\src\screens\muff_location_picker.dart:122:                      tr('Выбранная точка'),
+lib\src\screens\muff_location_picker.dart:130:                          ? tr('Коснитесь карты, чтобы выбрать координаты.')
+lib\src\screens\muff_location_picker.dart:157:      final message = tr('Не удалось определить позицию: {error}', {
+lib\src\screens\infrastructure_map_page.dart:326:        _errorMessage = 'Компания не найдена для текущего пользователя.';
+lib\src\screens\infrastructure_map_page.dart:350:          'Не удалось обновить муфты для карты.',
+lib\src\screens\infrastructure_map_page.dart:365:          'Не удалось обновить шкафы для карты.',
+lib\src\screens\infrastructure_map_page.dart:380:          'Не удалось обновить задачи для карты.',
+lib\src\screens\infrastructure_map_page.dart:395:          'Не удалось обновить кабельные маршруты для карты.',
+lib\src\screens\infrastructure_map_page.dart:444:        'Не удалось загрузить сущности инфраструктуры.',
+lib\src\screens\infrastructure_map_page.dart:454:        _errorMessage = 'Не удалось загрузить карту инфраструктуры.';
+lib\src\screens\infrastructure_map_page.dart:489:                : 'Без названия',
+lib\src\screens\infrastructure_map_page.dart:495:            subtitle: isPonBox ? 'PON бокс' : 'Муфта',
+lib\src\screens\infrastructure_map_page.dart:498:                'Задача': _projectNameFor(record)!,
+lib\src\screens\infrastructure_map_page.dart:499:              if (district.isNotEmpty) 'Район': district,
+lib\src\screens\infrastructure_map_page.dart:500:              'Кабели': '${cables.length}',
+lib\src\screens\infrastructure_map_page.dart:501:              'Соединения': '${connections.length}',
+lib\src\screens\infrastructure_map_page.dart:533:                : 'Без названия',
+lib\src\screens\infrastructure_map_page.dart:539:            subtitle: 'Сетевой шкаф',
+lib\src\screens\infrastructure_map_page.dart:542:                'Задача': _projectNameFor(record)!,
+lib\src\screens\infrastructure_map_page.dart:543:              'Коммутаторы': '${switches.length}',
+lib\src\screens\infrastructure_map_page.dart:544:              'Кабели': '${cables.length}',
+lib\src\screens\infrastructure_map_page.dart:565:      name: name?.isNotEmpty == true ? name! : 'Кабельная линия',
+lib\src\screens\infrastructure_map_page.dart:569:        if (_projectNameFor(record) != null) 'Задача': _projectNameFor(record)!,
+lib\src\screens\infrastructure_map_page.dart:570:        'Длина': _formatRouteLength(lengthMeters),
+lib\src\screens\infrastructure_map_page.dart:571:        'Точек': '${points.length}',
+lib\src\screens\infrastructure_map_page.dart:572:        if (startAnchor != null) 'Начало': startAnchor['name'] ?? 'Привязано',
+lib\src\screens\infrastructure_map_page.dart:573:        if (endAnchor != null) 'Конец': endAnchor['name'] ?? 'Привязано',
+lib\src\screens\infrastructure_map_page.dart:574:        if (note != null && note.isNotEmpty) 'Примечание': note,
+lib\src\screens\infrastructure_map_page.dart:639:      return '${kilometers.toStringAsFixed(kilometers >= 10 ? 1 : 2)} км';
+lib\src\screens\infrastructure_map_page.dart:641:    return '${lengthMeters.toStringAsFixed(lengthMeters >= 100 ? 0 : 1)} м';
+lib\src\screens\infrastructure_map_page.dart:731:        ? 'Трассу от порта $portLabel построить не удалось.'
+lib\src\screens\infrastructure_map_page.dart:732:        : 'Трасса от ${cabinet?.name ?? 'шкафа'} порт $portLabel: объектов ${result.entityKeys.length}, маршрутов ${result.routeIds.length}.';
+lib\src\screens\infrastructure_map_page.dart:1236:        cableName: cableName?.isNotEmpty == true ? cableName! : 'Кабель #$cableId',
+lib\src\screens\infrastructure_map_page.dart:1283:                          tr('Волокон: {value}', {
+lib\src\screens\infrastructure_map_page.dart:1449:                            ? 'У этого объекта пока нет привязанных маршрутов.'
+lib\src\screens\infrastructure_map_page.dart:1450:                            : 'Маршруты от этого объекта',
+lib\src\screens\infrastructure_map_page.dart:1460:                          'Список пуст. Когда маршрут будет начинаться или заканчиваться на этом объекте, он появится здесь.',
+lib\src\screens\infrastructure_map_page.dart:1473:                              ? 'Начало'
+lib\src\screens\infrastructure_map_page.dart:1475:                                  ? 'Конец'
+lib\src\screens\infrastructure_map_page.dart:1476:                                  : 'Маршрут';
+lib\src\screens\infrastructure_map_page.dart:1500:                              '$role • ${_formatRouteLength(route.lengthMeters)} • Точек: ${route.points.length}',
+lib\src\screens\infrastructure_map_page.dart:1610:        _showSnackBar(tr('Начало выбрано. Теперь выберите конец маршрута.'));
+lib\src\screens\infrastructure_map_page.dart:1615:        _showSnackBar('Начало и конец маршрута должны быть разными.');
+lib\src\screens\infrastructure_map_page.dart:1621:        _showSnackBar('Не удалось найти начальную точку маршрута.');
+lib\src\screens\infrastructure_map_page.dart:1641:            title: tr('Выберите свободный кабель начала маршрута'),
+lib\src\screens\infrastructure_map_page.dart:1653:              'Начало и кабель выбраны. Теперь выберите объект с таким же количеством волокон.',
+lib\src\screens\infrastructure_map_page.dart:1661:        _showSnackBar(tr('Начало и конец маршрута должны быть разными.'));
+lib\src\screens\infrastructure_map_page.dart:1667:        _showSnackBar(tr('Не удалось найти начальную точку маршрута.'));
+lib\src\screens\infrastructure_map_page.dart:1679:        _showSnackBar(tr('Сначала выберите стартовый кабель.'));
+lib\src\screens\infrastructure_map_page.dart:1694:            'Стартовый кабель больше недоступен. Выберите начало маршрута заново.',
+lib\src\screens\infrastructure_map_page.dart:1707:          tr('У этого объекта нет свободных кабелей на {count} волокон.', {
+lib\src\screens\infrastructure_map_page.dart:1717:          title: tr('Выберите свободный кабель конца маршрута'),
+lib\src\screens\infrastructure_map_page.dart:1794:      kind: 'Добавлен маршрут',
+lib\src\screens\infrastructure_map_page.dart:1796:        routeRecord['name']?.toString() ?? 'Маршрут',
+lib\src\screens\infrastructure_map_page.dart:1797:        if ((start.location).trim().isNotEmpty) 'старт: ${start.location}',
+lib\src\screens\infrastructure_map_page.dart:1798:        if ((end.location).trim().isNotEmpty) 'финиш: ${end.location}',
+lib\src\screens\infrastructure_map_page.dart:1812:    _showSnackBar('Маршрут создан. Тапните по сегменту, чтобы добавить точку.');
+lib\src\screens\infrastructure_map_page.dart:1824:      _showSnackBar('Не удалось найти записи объектов для привязки кабелей.');
+lib\src\screens\infrastructure_map_page.dart:1926:      kind: 'Добавлен маршрут',
+lib\src\screens\infrastructure_map_page.dart:1928:        routeRecord['name']?.toString() ?? 'Маршрут',
+lib\src\screens\infrastructure_map_page.dart:1929:        'кабель старта: ${startCable.cableName} (${startCable.fibers} вол.)',
+lib\src\screens\infrastructure_map_page.dart:1930:        'кабель финиша: ${endCable.cableName} (${endCable.fibers} вол.)',
+lib\src\screens\infrastructure_map_page.dart:1942:    _showSnackBar('Маршрут и привязки кабелей созданы.');
+lib\src\screens\infrastructure_map_page.dart:1954:        title: Text(tr('Удалить маршрут')),
+lib\src\screens\infrastructure_map_page.dart:1956:          tr('Маршрут "{name}" будет удалён.', {'name': route.name}),
+lib\src\screens\infrastructure_map_page.dart:1961:            child: Text(tr('Отмена')),
+lib\src\screens\infrastructure_map_page.dart:1965:            child: Text(tr('Удалить')),
+lib\src\screens\infrastructure_map_page.dart:2104:        'Не удалось сохранить кабельный маршрут.',
+lib\src\screens\infrastructure_map_page.dart:2115:      _showSnackBar('Не удалось сохранить маршрут.');
+lib\src\screens\infrastructure_map_page.dart:2216:        'Не удалось сохранить маршрут и привязки кабелей.',
+lib\src\screens\infrastructure_map_page.dart:2227:      _showSnackBar('Не удалось сохранить маршрут и привязки.');
+lib\src\screens\infrastructure_map_page.dart:2418:                    'Карта инфраструктуры',
+lib\src\screens\infrastructure_map_page.dart:2427:                    label: 'Муфты',
+lib\src\screens\infrastructure_map_page.dart:2433:                    label: 'PON боксы',
+lib\src\screens\infrastructure_map_page.dart:2439:                    label: 'Сетевые шкафы',
+lib\src\screens\infrastructure_map_page.dart:2445:                    label: 'Кабельные маршруты',
+lib\src\screens\infrastructure_map_page.dart:2451:                          ? 'Выберите начало маршрута по муфте или шкафу.'
+lib\src\screens\infrastructure_map_page.dart:2452:                          : 'Теперь выберите конец маршрута.',
+lib\src\screens\infrastructure_map_page.dart:2457:                      'Тапните рядом с линией, чтобы вставить точку. Промежуточные точки можно перетаскивать.',
+lib\src\screens\infrastructure_map_page.dart:2462:                      'Длина маршрута: ${_formatRouteLength(selectedRoute.lengthMeters)}',
+lib\src\screens\infrastructure_map_page.dart:2487:                    'Точек: ${_entities.length} • Маршрутов: ${_routes.length}',
+lib\src\screens\infrastructure_map_page.dart:2555:                        'Активный',
+lib\src\screens\infrastructure_map_page.dart:2589:                  'Маршрутов пока нет. Нажмите "+" и выберите сначала начало, затем конец по существующим муфтам или шкафам.',
+lib\src\screens\infrastructure_map_page.dart:2622:                            'Маршруты',
+lib\src\screens\infrastructure_map_page.dart:2628:                            '${filteredRoutes.length} из ${_routes.length}',
+lib\src\screens\infrastructure_map_page.dart:2639:                            'Поиск по названию, началу, концу, примечанию',
+lib\src\screens\infrastructure_map_page.dart:2645:                                  tooltip: tr('Очистить поиск'),
+lib\src\screens\infrastructure_map_page.dart:2668:                          'Выбранный маршрут',
+lib\src\screens\infrastructure_map_page.dart:2686:                        'По этому запросу маршруты не найдены.',
+lib\src\screens\infrastructure_map_page.dart:2725:              'Маршрутов пока нет. Нажмите "+" и выберите сначала начало, затем конец по существующим муфтам или шкафам.',
+lib\src\screens\infrastructure_map_page.dart:2820:            'На карте пока нет сущностей с координатами и кабельных маршрутов.',
+lib\src\screens\infrastructure_map_page.dart:3029:                  ? 'Активная задача: ${activeProject.name}'
+lib\src\screens\infrastructure_map_page.dart:3030:                  : 'Активная задача не выбрана',
+lib\src\screens\infrastructure_map_page.dart:3050:        title: Text(tr('Карта инфраструктуры')),
+lib\src\screens\infrastructure_map_page.dart:3054:              tooltip: tr('Очистить подсветку трассы'),
+lib\src\screens\infrastructure_map_page.dart:3060:                ? tr('Отменить создание маршрута')
+lib\src\screens\infrastructure_map_page.dart:3061:                : tr('Новый маршрут'),
+lib\src\screens\infrastructure_map_page.dart:3071:                ? tr('Завершить редактирование маршрута')
+lib\src\screens\infrastructure_map_page.dart:3072:                : tr('Редактировать выбранный маршрут'),
+lib\src\screens\infrastructure_map_page.dart:3081:            tooltip: tr('Удалить выбранный маршрут'),
+lib\src\screens\infrastructure_map_page.dart:3088:            tooltip: tr('Слой карты'),
+lib\src\screens\infrastructure_map_page.dart:3107:            tooltip: tr('Фильтр по задаче'),
+lib\src\screens\infrastructure_map_page.dart:3118:                child: Text(tr('Все задачи')),
+lib\src\screens\infrastructure_map_page.dart:3130:            tooltip: tr('Обновить'),
+lib\src\auth\auth_controller.dart:173:        _errorMessage ?? tr('Не удалось загрузить сессию.'),
+lib\src\auth\auth_controller.dart:221:        return tr('Аккаунт создан. Подтвердите email и затем войдите в систему.');
+lib\src\auth\auth_controller.dart:230:      return tr('Компания создана, можно продолжать работу.');
+lib\src\auth\auth_controller.dart:277:          ? tr('Приглашение создано.')
+lib\src\auth\auth_controller.dart:278:          : tr('Приглашение создано. Код приглашения: {token}', {
+lib\src\auth\auth_controller.dart:466:      throw AuthException(tr('Укажите название компании.'));
+lib\src\auth\auth_controller.dart:475:    return tr('Компания подключена, учётная запись готова.');
+lib\src\auth\auth_controller.dart:503:          'Аккаунт с таким email уже существует. Попробуйте войти или восстановить пароль.',
+lib\src\auth\auth_controller.dart:533:        _errorMessage ?? tr('Произошла ошибка.'),
+lib\src\auth\auth_controller.dart:556:        throw AuthException(tr('Введите email для восстановления пароля.'));
+lib\src\auth\auth_controller.dart:565:        'Мы отправили письмо для восстановления пароля, если аккаунт с таким email существует.',
+lib\src\auth\auth_controller.dart:579:        throw AuthException(tr('Введите новый пароль.'));
+lib\src\auth\auth_controller.dart:582:        throw AuthException(tr('Минимум 8 символов.'));
+lib\src\auth\auth_controller.dart:585:        throw AuthException(tr('Пароли не совпадают.'));
+lib\src\auth\auth_controller.dart:593:      return tr('Пароль обновлён.');
+lib\src\core\strings.dart:162:    'Вход': signIn,
+lib\src\core\strings.dart:163:    'Регистрация': signUp,
+lib\src\core\strings.dart:164:    'Выйти': signOut,
+lib\src\core\strings.dart:165:    'Выйти из аккаунта': signOutOfAccount,
+lib\src\core\strings.dart:166:    'Повторить': retry,
+lib\src\core\strings.dart:167:    'Отмена': cancel,
+lib\src\core\strings.dart:168:    'Сохранить': save,
+lib\src\core\strings.dart:169:    'Создать': create,
+lib\src\core\strings.dart:170:    'Удалить': delete,
+lib\src\core\strings.dart:171:    'Редактировать': edit,
+lib\src\core\strings.dart:172:    'Закрыть': close,
+lib\src\core\strings.dart:173:    'Открыть': open,
+lib\src\core\strings.dart:174:    'Обновить': refresh,
+lib\src\core\strings.dart:175:    'Профиль': profile,
+lib\src\core\strings.dart:176:    'Компания': company,
+lib\src\core\strings.dart:177:    'Сотрудник': employee,
+lib\src\core\strings.dart:178:    'Владелец': owner,
+lib\src\core\strings.dart:179:    'Администратор': administrator,
+lib\src\core\strings.dart:180:    'Инженер': engineer,
+lib\src\core\strings.dart:181:    'Главный инженер': chiefEngineer,
+lib\src\core\strings.dart:182:    'Монтажник': installer,
+lib\src\core\strings.dart:183:    'Supabase ещё не настроен': setupSupabaseTitle,
+lib\src\core\strings.dart:184:    'Перед запуском передайте проекту два dart-define параметра: SUPABASE_URL и SUPABASE_ANON_KEY.':
+lib\src\core\strings.dart:186:    'После этого приложение покажет экран входа и onboarding компании.':
+lib\src\core\strings.dart:188:    'Управление инфраструктурой для компаний и их команд': authHeroTitle,
+lib\src\core\strings.dart:189:    'Входите в рабочее пространство компании, создавайте первую организацию и готовьте доступ для сотрудников на общей платформе.':
+lib\src\core\strings.dart:191:    'Один аккаунт на компанию': oneAccountPerCompany,
+lib\src\core\strings.dart:192:    'Владелец создаёт рабочее пространство и затем добавляет сотрудников.':
+lib\src\core\strings.dart:194:    'Сессии Supabase': supabaseSessions,
+lib\src\core\strings.dart:195:    'Приложение автоматически восстанавливает активную сессию пользователя.':
+lib\src\core\strings.dart:197:    'Готово для multi-tenant': readyForMultiTenant,
+lib\src\core\strings.dart:198:    'Профили, компании и роли сотрудников уже разделены на уровне базы.':
+lib\src\core\strings.dart:200:    'Вход для сотрудников': employeeSignIn,
+lib\src\core\strings.dart:201:    'Используйте рабочий email и пароль, чтобы открыть пространство компании.':
+lib\src\core\strings.dart:203:    'Регистрация владельца компании': companyOwnerSignUp,
+lib\src\core\strings.dart:204:    'Создайте первый аккаунт компании. После этого можно будет добавлять сотрудников.':
+lib\src\core\strings.dart:206:    'Восстановить пароль': restorePassword,
+lib\src\core\strings.dart:207:    'Введите рабочий email. Мы отправим письмо со ссылкой для смены пароля.':
+lib\src\core\strings.dart:209:    'Отправить письмо': sendEmail,
+lib\src\core\strings.dart:210:    'Рабочий email': workEmail,
+lib\src\core\strings.dart:211:    'Пароль': password,
+lib\src\core\strings.dart:212:    'Новый пароль': newPassword,
+lib\src\core\strings.dart:213:    'Повторите новый пароль': repeatNewPassword,
+lib\src\core\strings.dart:214:    'Сохранить новый пароль': saveNewPassword,
+lib\src\core\strings.dart:215:    'Выйти из режима восстановления': leaveRecoveryMode,
+lib\src\core\strings.dart:216:    'Задайте новый пароль': setNewPassword,
+lib\src\core\strings.dart:217:    'Мы подтвердили ссылку восстановления. Теперь можно задать новый пароль для аккаунта.':
+lib\src\core\strings.dart:219:    'Ваше имя': yourName,
+lib\src\core\strings.dart:220:    'Должность': position,
+lib\src\core\strings.dart:221:    'Название компании': companyName,
+lib\src\core\strings.dart:222:    'Перейти ко входу': goToSignIn,
+lib\src\core\strings.dart:223:    'Создать компанию': createCompany,
+lib\src\core\strings.dart:224:    'Завершите настройку компании': completeCompanySetup,
+lib\src\core\strings.dart:225:    'Вы вошли как {email}, но рабочее пространство компании ещё не создано.':
+lib\src\core\strings.dart:227:    'Создать рабочее пространство': createWorkspace,
+lib\src\core\strings.dart:228:    'Пользователь': user,
+lib\src\core\strings.dart:229:    'Профиль сотрудника': employeeProfile,
+lib\src\core\strings.dart:230:    'Личные данные': personalDetails,
+lib\src\core\strings.dart:231:    'Здесь можно обновить имя и должность. Email и роль доступны только для просмотра.':
+lib\src\core\strings.dart:233:    'Роль в компании': companyRole,
+lib\src\core\strings.dart:234:    'Имя сотрудника': employeeName,
+lib\src\core\strings.dart:235:    'Сохранить профиль': saveProfile,
+lib\src\core\strings.dart:236:    'Профиль обновлён.': profileUpdated,
+lib\src\core\strings.dart:237:    'Есть проблема с загрузкой данных': dataLoadProblem,
+lib\src\core\strings.dart:238:    'Не удалось загрузить сессию.': sessionLoadFailed,
+lib\src\core\strings.dart:239:    'Произошла ошибка.': genericError,
+lib\src\core\strings.dart:240:    'Не удалось войти.': signInFailed,
+lib\src\core\strings.dart:241:    'Не удалось создать аккаунт.': signUpFailed,
+lib\src\core\strings.dart:242:    'Не удалось обновить пароль.': passwordUpdateFailed,
+lib\src\core\strings.dart:243:    'Не удалось отправить письмо для восстановления пароля.':
+lib\src\core\strings.dart:245:    'Не удалось завершить настройку компании.': companySetupFailed,
+lib\src\core\strings.dart:246:    'Не удалось создать приглашение.': inviteCreateFailed,
+lib\src\core\strings.dart:247:    'Не удалось обновить данные.': dataRefreshFailed,
+lib\src\core\strings.dart:248:    'Не удалось обновить профиль.': profileUpdateFailed,
+lib\src\core\strings.dart:249:    'Укажите название компании.': createCompanyNameRequired,
+lib\src\core\strings.dart:250:    'Поле обязательно.': fieldRequired,
+lib\src\core\strings.dart:251:    'Введите email.': enterEmail,
+lib\src\core\strings.dart:252:    'Введите корректный email.': enterValidEmail,
+lib\src\core\strings.dart:253:    'Введите пароль.': enterPassword,
+lib\src\core\strings.dart:254:    'Введите новый пароль.': enterNewPassword,
+lib\src\core\strings.dart:255:    'Минимум 8 символов.': minEightCharacters,
+lib\src\core\strings.dart:256:    'Пароли не совпадают.': passwordsDoNotMatch,
+lib\src\core\strings.dart:257:    'Введите имя сотрудника.': enterEmployeeName,
+lib\src\core\strings.dart:258:    'Аккаунт создан. Подтвердите email и затем войдите в систему.':
+lib\src\core\strings.dart:260:    'Компания создана, можно продолжать работу.': companyCreatedContinue,
+lib\src\core\strings.dart:261:    'Компания подключена, учётная запись готова.': companyLinkedAccountReady,
+lib\src\core\strings.dart:262:    'Приглашение создано.': inviteCreated,
+lib\src\core\strings.dart:263:    'Приглашение создано. Код приглашения: {token}': inviteCreatedWithCode,
+lib\src\core\strings.dart:264:    'Введите email для восстановления пароля.': resetEmailRequired,
+lib\src\core\strings.dart:265:    'Мы отправили письмо для восстановления пароля, если аккаунт с таким email существует.':
+lib\src\core\strings.dart:267:    'Пароль обновлён.': passwordUpdated,
+lib\src\core\strings.dart:268:    'Аккаунт с таким email уже существует. Попробуйте войти или восстановить пароль.':
+lib\src\core\strings.dart:270:    'Аккаунт с таким email уже существует. Перейдите ко входу или восстановите пароль.':
+lib\src\core\strings.dart:272:    'Вы вошли как {name}.': dashboardSignedInAs,
+lib\src\core\strings.dart:273:    'Роль в компании: {role}': dashboardRole,
+lib\src\core\strings.dart:274:    'Slug компании: {slug}': dashboardSlug,
+lib\src\core\strings.dart:275:    'Сотрудники': employees,
+lib\src\core\strings.dart:276:    'Инвайты': invites,
+lib\src\core\strings.dart:277:    'Активных участников команды': activeTeamMembers,
+lib\src\core\strings.dart:278:    'Ожидают принятия': awaitingAcceptance,
+lib\src\core\strings.dart:280:    'Должность: {value}': positionValue,
+lib\src\core\strings.dart:281:    'Имя: {value}': nameValue,
+lib\src\core\strings.dart:282:    'Название: {value}': titleValue,
+lib\src\core\strings.dart:283:    'Роль: {value}': roleValue,
+lib\src\core\strings.dart:284:    'Ниже можно приглашать сотрудников по email.': belowYouCanInvite,
+lib\src\core\strings.dart:285:    'Если сотрудник зарегистрируется с этим email, его membership подключится автоматически.':
+lib\src\core\strings.dart:287:    'Список команды и pending invites доступен для просмотра.':
+lib\src\core\strings.dart:289:    'Создание приглашений доступно владельцам и администраторам.':
+lib\src\core\strings.dart:291:    'Пригласить сотрудника': inviteEmployee,
+lib\src\core\strings.dart:292:    'Создайте приглашение по рабочему email. Сотрудник зарегистрируется с этим email и автоматически попадёт в компанию.':
+lib\src\core\strings.dart:294:    'Email сотрудника': employeeEmail,
+lib\src\core\strings.dart:295:    'Отправить приглашение': sendInvite,
+lib\src\core\strings.dart:296:    'Команда компании': companyTeam,
+lib\src\core\strings.dart:297:    'Пока нет сотрудников.': noEmployeesYet,
+lib\src\core\strings.dart:298:    'Ожидающие приглашения': pendingInvites,
+lib\src\core\strings.dart:299:    'Нет активных приглашений.': noActiveInvites,
+lib\src\core\strings.dart:300:    'Код: {token} • {date}': inviteCodeDate,
+lib\src\core\strings.dart:302:    'Должность назначает только владелец компании. Для сотрудников по умолчанию будет использована стандартная должность.':
+lib\src\core\employee_positions.dart:1:const String employeePositionChiefEngineer = 'Главный инженер';
+lib\src\core\employee_positions.dart:2:const String employeePositionEngineer = 'Инженер';
+lib\src\core\employee_positions.dart:3:const String employeePositionInstaller = 'Монтажник';
+lib\src\screens\dashboard_page.dart:42:            tooltip: tr('Профиль'),
+lib\src\screens\dashboard_page.dart:56:            tooltip: tr('Обновить'),
+lib\src\screens\dashboard_page.dart:62:            child: Text(tr('Выйти')),
+lib\src\screens\dashboard_page.dart:88:                              membership?.companyName ?? tr('Компания'),
+lib\src\screens\dashboard_page.dart:94:                              tr('Вы вошли как {name}.', {
+lib\src\screens\dashboard_page.dart:98:                                        : user?.email ?? tr('Сотрудник'),
+lib\src\screens\dashboard_page.dart:103:                              tr('Роль в компании: {role}', {
+lib\src\screens\dashboard_page.dart:109:                              tr('Slug компании: {slug}', {
+lib\src\screens\dashboard_page.dart:117:                        title: tr('Сотрудники'),
+lib\src\screens\dashboard_page.dart:119:                        caption: tr('Активных участников команды'),
+lib\src\screens\dashboard_page.dart:122:                        title: tr('Инвайты'),
+lib\src\screens\dashboard_page.dart:124:                        caption: tr('Ожидают принятия'),
+lib\src\screens\dashboard_page.dart:136:                    title: tr('Профиль'),
+lib\src\screens\dashboard_page.dart:141:                      tr('Должность: {value}', {
+lib\src\screens\dashboard_page.dart:147:                      tr('Имя: {value}', {
+lib\src\screens\dashboard_page.dart:156:                    title: tr('Компания'),
+lib\src\screens\dashboard_page.dart:158:                      tr('Название: {value}', {
+lib\src\screens\dashboard_page.dart:162:                      tr('Роль: {value}', {
+lib\src\screens\dashboard_page.dart:170:                    title: tr('Приглашения'),
+lib\src\screens\dashboard_page.dart:173:                            tr('Ниже можно приглашать сотрудников по email.'),
+lib\src\screens\dashboard_page.dart:175:                              'Если сотрудник зарегистрируется с этим email, его membership подключится автоматически.',
+lib\src\screens\dashboard_page.dart:180:                              'Список команды и pending invites доступен для просмотра.',
+lib\src\screens\dashboard_page.dart:183:                              'Создание приглашений доступно владельцам и администраторам.',
+lib\src\screens\dashboard_page.dart:248:                tr('Пригласить сотрудника'),
+lib\src\screens\dashboard_page.dart:256:                  'Создайте приглашение по рабочему email. Сотрудник зарегистрируется с этим email и автоматически попадёт в компанию.',
+lib\src\screens\dashboard_page.dart:263:                  decoration: InputDecoration(labelText: tr('Должность')),
+lib\src\screens\dashboard_page.dart:287:                    'Должность назначает только владелец компании. Для сотрудников по умолчанию будет использована стандартная должность.',
+lib\src\screens\dashboard_page.dart:294:                decoration: InputDecoration(labelText: tr('Email сотрудника')),
+lib\src\screens\dashboard_page.dart:297:                    return tr('Введите email.');
+lib\src\screens\dashboard_page.dart:301:                    return tr('Введите корректный email.');
+lib\src\screens\dashboard_page.dart:310:                decoration: InputDecoration(labelText: tr('Роль в компании')),
+lib\src\screens\dashboard_page.dart:312:                  DropdownMenuItem(value: 'member', child: Text(tr('Сотрудник'))),
+lib\src\screens\dashboard_page.dart:315:                    child: Text(tr('Администратор')),
+lib\src\screens\dashboard_page.dart:339:                    : Text(tr('Отправить приглашение')),
+lib\src\screens\dashboard_page.dart:358:              tr('Команда компании'),
+lib\src\screens\dashboard_page.dart:365:              Text(tr('Пока нет сотрудников.'))
+lib\src\screens\dashboard_page.dart:373:                      : '${tr('Сотрудник')} ${member.userId.substring(0, member.userId.length < 8 ? member.userId.length : 8)}',
+lib\src\screens\dashboard_page.dart:398:              tr('Ожидающие приглашения'),
+lib\src\screens\dashboard_page.dart:405:              Text(tr('Нет активных приглашений.'))
+lib\src\screens\dashboard_page.dart:411:                      tr('Код: {token} • {date}', {
+lib\src\screens\dashboard_page.dart:456:          widget.controller.errorMessage ?? tr('Не удалось создать приглашение.');
+lib\src\screens\dashboard_page.dart:473:          widget.controller.errorMessage ?? tr('Не удалось обновить данные.');
+lib\src\screens\dashboard_page.dart:493:        return tr('Владелец');
+lib\src\screens\dashboard_page.dart:495:        return tr('Администратор');
+lib\src\screens\dashboard_page.dart:497:        return tr('Сотрудник');
+lib\src\screens\dashboard_page.dart:644:        return tr('Владелец');
+lib\src\screens\dashboard_page.dart:646:        return tr('Администратор');
+lib\src\screens\dashboard_page.dart:648:        return tr('Сотрудник');
+lib\src\core\map_geolocator.dart:6:    throw Exception('Службы геолокации отключены на устройстве.');
+lib\src\core\map_geolocator.dart:15:    throw Exception('Доступ к геолокации отклонён пользователем.');
+lib\src\core\map_geolocator.dart:20:      'Доступ к геолокации навсегда запрещён. Разрешите его в настройках системы.',
+lib\src\core\project_scope.dart:4:const String projectCreatorPositionChiefEngineer = 'Главный инженер';
+lib\src\core\project_scope.dart:5:const String projectCreatorPositionEngineer = 'Инженер';

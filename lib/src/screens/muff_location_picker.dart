@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/map_geolocator.dart';
 import '../core/map_tile_providers.dart';
@@ -33,15 +34,15 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Выбор геопозиции муфты'),
+        title: Text(tr('Closure location picker')),
         actions: [
           IconButton(
-            tooltip: 'Моё местоположение',
+            tooltip: tr('My location'),
             onPressed: _goToCurrentLocation,
             icon: const Icon(Icons.my_location_rounded),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Выбрать слой карты',
+            tooltip: tr('Choose map layer'),
             initialValue: _selectedTileLayerId,
             onSelected: (value) {
               setState(() {
@@ -60,7 +61,7 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
                 .toList(growable: false),
           ),
           IconButton(
-            tooltip: 'Сохранить точку',
+            tooltip: tr('Save point'),
             onPressed: _selected == null
                 ? null
                 : () => Navigator.of(context).pop(_selected),
@@ -118,7 +119,7 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Выбранная точка',
+                      tr('Selected point'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -126,7 +127,7 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
                     const SizedBox(height: 8),
                     Text(
                       _selected == null
-                          ? 'Коснитесь карты, чтобы выбрать координаты.'
+                          ? tr('Tap the map to choose coordinates.')
                           : 'lat: ${_selected!.latitude.toStringAsFixed(6)}, '
                                 'lng: ${_selected!.longitude.toStringAsFixed(6)}',
                     ),
@@ -153,7 +154,9 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
         return;
       }
 
-      final message = 'Не удалось определить позицию: $error';
+      final message = tr('Failed to detect position: {error}', {
+        'error': '$error',
+      });
       logUserFacingError(
         message,
         source: 'muff.location_picker',

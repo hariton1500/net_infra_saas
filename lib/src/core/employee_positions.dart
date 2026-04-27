@@ -1,6 +1,6 @@
-const String employeePositionChiefEngineer = 'Главный инженер';
-const String employeePositionEngineer = 'Инженер';
-const String employeePositionInstaller = 'Монтажник';
+const String employeePositionChiefEngineer = 'Chief Engineer';
+const String employeePositionEngineer = 'Engineer';
+const String employeePositionInstaller = 'Installer';
 
 const List<String> employeePositions = [
   employeePositionChiefEngineer,

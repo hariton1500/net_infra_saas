@@ -170,7 +170,7 @@ class AuthController extends ChangeNotifier {
     } catch (error, stackTrace) {
       _errorMessage = _humanizeError(error);
       logUserFacingError(
-        _errorMessage ?? tr('Не удалось загрузить сессию.'),
+        _errorMessage ?? tr('Failed to load session.'),
         source: 'auth.refresh',
         error: error,
         stackTrace: stackTrace,
@@ -218,7 +218,7 @@ class AuthController extends ChangeNotifier {
       if (response.session == null) {
         _view = AuthView.signedOut;
         notifyListeners();
-        return tr('Аккаунт создан. Подтвердите email и затем войдите в систему.');
+        return tr('The account has been created. Confirm your email and then sign in.');
       }
 
       await refresh();
@@ -227,7 +227,7 @@ class AuthController extends ChangeNotifier {
         await _createCompany(companyName: companyName.trim());
       }
 
-      return tr('Компания создана, можно продолжать работу.');
+      return tr('The company has been created. You can continue working.');
     });
   }
 
@@ -274,8 +274,8 @@ class AuthController extends ChangeNotifier {
       final token = invite['token'] as String? ?? '';
 
       return token.isEmpty
-          ? tr('Приглашение создано.')
-          : tr('Приглашение создано. Код приглашения: {token}', {
+          ? tr('Invite created.')
+          : tr('Invite created. Invite code: {token}', {
               'token': token,
             });
     });
@@ -463,7 +463,7 @@ class AuthController extends ChangeNotifier {
 
   Future<String> _createCompany({required String companyName}) async {
     if (companyName.isEmpty) {
-      throw AuthException(tr('Укажите название компании.'));
+      throw AuthException(tr('Please enter a company name.'));
     }
 
     await _client.rpc(
@@ -472,7 +472,7 @@ class AuthController extends ChangeNotifier {
     );
 
     await refresh();
-    return tr('Компания подключена, учётная запись готова.');
+    return tr('The company is connected and the account is ready.');
   }
 
   Future<void> _acceptPendingInviteIfNeeded() async {
@@ -500,7 +500,7 @@ class AuthController extends ChangeNotifier {
           authMessage.contains('already registered') ||
           authMessage.contains('already exists')) {
         return tr(
-          'Аккаунт с таким email уже существует. Попробуйте войти или восстановить пароль.',
+          'An account with this email already exists. Try signing in or resetting the password.',
         );
       }
       return error is AuthException ? error.message : authMessage;
@@ -530,7 +530,7 @@ class AuthController extends ChangeNotifier {
     } catch (error, stackTrace) {
       _errorMessage = _humanizeError(error);
       logUserFacingError(
-        _errorMessage ?? tr('Произошла ошибка.'),
+        _errorMessage ?? tr('Something went wrong.'),
         source: 'auth.runBusy',
         error: error,
         stackTrace: stackTrace,
@@ -553,7 +553,7 @@ class AuthController extends ChangeNotifier {
     return _runBusy(() async {
       final normalizedEmail = email.trim();
       if (normalizedEmail.isEmpty) {
-        throw AuthException(tr('Введите email для восстановления пароля.'));
+        throw AuthException(tr('Enter the email address for password recovery.'));
       }
 
       final redirectTo = _passwordRecoveryRedirectUrl();
@@ -562,7 +562,7 @@ class AuthController extends ChangeNotifier {
         redirectTo: redirectTo,
       );
       return tr(
-        'Мы отправили письмо для восстановления пароля, если аккаунт с таким email существует.',
+        'We sent a password recovery email if an account with this address exists.',
       );
     });
   }
@@ -576,13 +576,13 @@ class AuthController extends ChangeNotifier {
       final normalizedConfirmPassword = confirmPassword.trim();
 
       if (normalizedPassword.isEmpty) {
-        throw AuthException(tr('Введите новый пароль.'));
+        throw AuthException(tr('Enter a new password.'));
       }
       if (normalizedPassword.length < 8) {
-        throw AuthException(tr('Минимум 8 символов.'));
+        throw AuthException(tr('Minimum 8 characters.'));
       }
       if (normalizedPassword != normalizedConfirmPassword) {
-        throw AuthException(tr('Пароли не совпадают.'));
+        throw AuthException(tr('Passwords do not match.'));
       }
 
       await _client.auth.updateUser(
@@ -590,7 +590,7 @@ class AuthController extends ChangeNotifier {
       );
       _isRecoveringPassword = false;
       await refresh();
-      return tr('Пароль обновлён.');
+      return tr('Password updated.');
     });
   }
 

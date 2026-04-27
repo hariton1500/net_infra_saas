@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../auth/auth_controller.dart';
+import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
@@ -66,8 +67,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   };
 
   static const Map<String, String> _portTypeLabels = {
-    _portTypeCopper: 'Медный',
-    _portTypeOptical: 'Оптический',
+    _portTypeCopper: 'Copper',
+    _portTypeOptical: 'Optical',
     _portTypePon: 'PON',
   };
 
@@ -222,12 +223,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       }
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось загрузить шкафы из Supabase.',
+        'Failed to load cabinets from Supabase.',
         source: 'network_cabinet.load',
         error: error,
         stackTrace: stackTrace,
       );
-      _showSnack('Не удалось загрузить шкафы из облака.');
+      _showSnack('Failed to load cabinets from the cloud.');
     }
 
     _rebuildView(
@@ -303,12 +304,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       );
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Не удалось синхронизировать шкафы.',
+        'Failed to synchronize cabinets.',
         source: 'network_cabinet.sync',
         error: error,
         stackTrace: stackTrace,
       );
-      _showSnack('Ошибка синхронизации шкафов.');
+      _showSnack('Cabinet sync error.');
     } finally {
       if (mounted) {
         setState(() {
@@ -445,8 +446,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? 'Активная задача: ${activeProject.name}'
-                  : 'Активная задача не выбрана',
+                  ? 'Active task: ${activeProject.name}'
+                  : 'No active task selected',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -544,7 +545,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: Text(
-                cabinet == null ? 'Новый шкаф' : 'Редактировать шкаф',
+                tr(cabinet == null ? 'New cabinet' : 'Edit cabinet'),
               ),
               content: SizedBox(
                 width: 420,
@@ -554,21 +555,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     children: [
                       TextField(
                         controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Название',
-                        ),
+                        decoration: InputDecoration(labelText: tr('Name')),
                       ),
                       TextField(
                         controller: locationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Адрес/место',
-                        ),
+                        decoration: InputDecoration(labelText: tr('Address/place')),
                       ),
                       TextField(
                         controller: commentController,
-                        decoration: const InputDecoration(
-                          labelText: 'Комментарий',
-                        ),
+                        decoration: InputDecoration(labelText: tr('Comment')),
                         maxLines: 2,
                       ),
                       const SizedBox(height: 12),
@@ -580,7 +575,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                             child: Text(
                               lat != null && lng != null
                                   ? '${lat!.toStringAsFixed(6)}, ${lng!.toStringAsFixed(6)}'
-                                  : 'Геопозиция не задана',
+                                  : tr('Location is not set'),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
@@ -607,7 +602,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               }
                             },
                             icon: const Icon(Icons.map),
-                            label: const Text('На карте'),
+                            label: Text(tr('On map')),
                           ),
                         ],
                       ),
@@ -618,7 +613,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -673,13 +668,13 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     }
                     if (cabinet == null) {
                       await _recordTaskAddition(
-                        kind: 'Добавлен шкаф',
+                        kind: tr('Cabinet added'),
                         summary: [
                           if (payload['name']?.toString().trim().isNotEmpty ==
                               true)
                             payload['name'].toString().trim()
                           else
-                            'Без названия',
+                            tr('Untitled'),
                           if ((payload['location'] ?? '')
                               .toString()
                               .trim()
@@ -689,7 +684,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               .toString()
                               .trim()
                               .isNotEmpty)
-                            'примечание: ${payload['comment'].toString().trim()}',
+                            tr('note: {value}', {
+                              'value': payload['comment'].toString().trim(),
+                            }),
                         ].join(' • '),
                         targetRecordId: payload['id'] as int?,
                       );
@@ -699,7 +696,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     setState(() {});
                   },
                   icon: const Icon(Icons.save),
-                  label: const Text('Сохранить'),
+                  label: Text(tr('Save')),
                 ),
               ],
             );
@@ -823,7 +820,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       return;
     }
 
-    final nameController = TextEditingController(text: 'Коммутатор');
+    final nameController = TextEditingController(text: 'Switch');
     final modelController = TextEditingController();
     int ports = 24;
 
@@ -833,7 +830,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Добавить коммутатор'),
+              title: Text(tr('Add switch')),
               content: SizedBox(
                 width: 380,
                 child: Column(
@@ -841,16 +838,16 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   children: [
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Название'),
+                      decoration: InputDecoration(labelText: tr('Name')),
                     ),
                     TextField(
                       controller: modelController,
-                      decoration: const InputDecoration(labelText: 'Модель'),
+                      decoration: InputDecoration(labelText: tr('Model')),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('Портов:'),
+                        Text(tr('Ports:')),
                         const SizedBox(width: 12),
                         DropdownButton<int>(
                           value: ports,
@@ -876,7 +873,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -888,7 +885,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     switches.add({
                       'id': DateTime.now().microsecondsSinceEpoch,
                       'name': nameController.text.trim().isEmpty
-                          ? 'Коммутатор'
+                          ? tr('Switch')
                           : nameController.text.trim(),
                       'model': modelController.text.trim(),
                       'ports': ports,
@@ -904,16 +901,20 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       return;
                     }
                     await _recordTaskAddition(
-                      kind: 'Добавлен коммутатор в шкаф',
+                      kind: 'Switch added to cabinet',
                       summary: [
-                        '${cabinet['name'] ?? 'Шкаф'}',
-                        '${switches.last['name'] ?? 'Коммутатор'}',
+                        '${cabinet['name'] ?? tr('Cabinet')}',
+                        '${switches.last['name'] ?? tr('Switch')}',
                         if ((switches.last['model'] ?? '')
                             .toString()
                             .trim()
                             .isNotEmpty)
-                          'модель: ${switches.last['model']}',
-                        'портов: ${switches.last['ports'] ?? ports}',
+                          tr('model: {value}', {
+                            'value': '${switches.last['model']}',
+                          }),
+                        tr('ports: {value}', {
+                          'value': '${switches.last['ports'] ?? ports}',
+                        }),
                       ].join(' • '),
                       targetRecordId: cabinet['id'] as int?,
                     );
@@ -921,7 +922,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
               ],
             );
@@ -979,7 +980,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text('Типы портов: ${sw['name'] ?? 'Коммутатор'}'),
+              title: Text(
+                tr('Port types: {name}', {
+                  'name': '${sw['name'] ?? tr('Switch')}',
+                }),
+              ),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -992,7 +997,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           children: [
                             SizedBox(
                               width: 72,
-                              child: Text('Порт ${index + 1}'),
+                              child: Text(
+                                tr('Port {value}', {
+                                  'value': '${index + 1}',
+                                }),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1006,7 +1015,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                                     .map(
                                       (entry) => DropdownMenuItem<String>(
                                         value: entry.key,
-                                        child: Text(entry.value),
+                                        child: Text(tr(entry.value)),
                                       ),
                                     )
                                     .toList(),
@@ -1030,7 +1039,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -1046,7 +1055,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.save),
-                  label: const Text('Сохранить'),
+                  label: Text(tr('Save')),
                 ),
               ],
             );
@@ -1071,22 +1080,22 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Добавить кабель'),
+              title: Text(tr('Add cable')),
               content: SizedBox(
                 width: 420,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
-                      decoration: const InputDecoration(
-                        labelText: 'Направление/имя',
+                      decoration: InputDecoration(
+                        labelText: tr('Direction/name'),
                       ),
                       onChanged: (value) => name = value,
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('Волокон:'),
+                        Text(tr('Fibers:')),
                         const SizedBox(width: 12),
                         DropdownButton<int>(
                           value: fibersNumber,
@@ -1109,7 +1118,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('Маркировка:'),
+                        Text(tr('Label:')),
                         const SizedBox(width: 12),
                         DropdownButton<String>(
                           value: scheme,
@@ -1135,7 +1144,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -1146,7 +1155,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     );
                     cables.add({
                       'id': DateTime.now().microsecondsSinceEpoch,
-                      'name': name.isEmpty ? 'Кабель' : name,
+                      'name': name.isEmpty ? tr('Cable') : name,
                       'fibers': fibersNumber,
                       'color_scheme': scheme,
                       'fiber_comments': List<String>.filled(fibersNumber, ''),
@@ -1159,16 +1168,16 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       return;
                     }
                     await _recordTaskAddition(
-                      kind: 'Добавлен кабель в шкаф',
+                      kind: 'Cable added to cabinet',
                       summary: [
-                        '${cabinet['name'] ?? 'Шкаф'}',
-                        '${cables.last['name'] ?? 'Кабель'}',
-                        'волокон: ${cables.last['fibers'] ?? fibersNumber}',
+                        '${cabinet['name'] ?? 'Cabinet'}',
+                        '${cables.last['name'] ?? 'Cable'}',
+                        'fibers: ${cables.last['fibers'] ?? fibersNumber}',
                         if ((cables.last['color_scheme'] ?? '')
                             .toString()
                             .trim()
                             .isNotEmpty)
-                          'маркировка: ${cables.last['color_scheme']}',
+                          'label: ${cables.last['color_scheme']}',
                       ].join(' • '),
                       targetRecordId: cabinet['id'] as int?,
                     );
@@ -1176,7 +1185,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
               ],
             );
@@ -1225,7 +1234,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Редактировать имя кабеля'),
+          title: Text(tr('Edit cable name')),
           content: TextField(
             controller: controller,
             decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -1233,7 +1242,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Отмена'),
+              child: Text(tr('Cancel')),
             ),
             FilledButton.tonal(
               onPressed: () async {
@@ -1249,7 +1258,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 setState(() {});
                 navigator.pop();
               },
-              child: const Text('Сохранить'),
+              child: Text(tr('Save')),
             ),
           ],
         );
@@ -1288,16 +1297,21 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Кабель: ${cable['name']} | Волокно ${fiberIndex + 1}'),
+                  Text(
+                    tr('Cable: {name} | Fiber {fiber}', {
+                      'name': '${cable['name']}',
+                      'fiber': '${fiberIndex + 1}',
+                    }),
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: commentController,
-                    decoration: const InputDecoration(labelText: 'Комментарий'),
+                    decoration: InputDecoration(labelText: tr('Comment')),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Text('Сплиттер:'),
+                      Text(tr('Splitter:')),
                       const SizedBox(width: 12),
                       DropdownButton<int>(
                         value: spliter,
@@ -1305,7 +1319,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                             .map(
                               (value) => DropdownMenuItem(
                                 value: value,
-                                child: Text(value == 0 ? 'Нет' : '$value'),
+                                child: Text(value == 0 ? 'No' : '$value'),
                               ),
                             )
                             .toList(),
@@ -1323,7 +1337,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Отмена'),
+                        child: Text(tr('Cancel')),
                       ),
                       const SizedBox(width: 8),
                       FilledButton.tonalIcon(
@@ -1344,7 +1358,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           navigator.pop();
                         },
                         icon: const Icon(Icons.save),
-                        label: const Text('Сохранить'),
+                        label: Text(tr('Save')),
                       ),
                     ],
                   ),
@@ -1423,7 +1437,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         (_endpointPortType(endpoint2) == _portTypeCopper &&
             endpoint1['cableId'] != null);
     if (isCopperToFiber) {
-      return 'Медный порт нельзя соединять с волокном кабеля';
+      return 'A copper port cannot be connected to a cable fiber';
     }
 
     final isPortToPort =
@@ -1438,7 +1452,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     final type1 = _endpointPortType(endpoint1);
     final type2 = _endpointPortType(endpoint2);
     if (type1 != null && type2 != null && type1 != type2) {
-      return 'Между коммутаторами нельзя соединять порты разных типов';
+      return 'Switch ports of different types cannot be connected';
     }
 
     return null;
@@ -1518,13 +1532,13 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     if (leftEndpoint['cableId'] != null &&
         rightEndpoint['cableId'] != null &&
         leftEndpoint['cableId'] == rightEndpoint['cableId']) {
-      _showSnack('Нельзя соединять волокна одного кабеля');
+      _showSnack('Fibers of the same cable cannot be connected');
       return;
     }
     if (leftEndpoint['switchId'] != null &&
         rightEndpoint['switchId'] != null &&
         leftEndpoint['switchId'] == rightEndpoint['switchId']) {
-      _showSnack('Нельзя соединять порты одного коммутатора');
+      _showSnack('Ports of the same switch cannot be connected');
       return;
     }
 
@@ -1536,12 +1550,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
     if (_isEndpointBusy(connections, leftEndpoint) ||
         _isEndpointBusy(connections, rightEndpoint)) {
-      _showSnack('Конечная точка уже используется');
+      _showSnack('The end point is already in use');
       return;
     }
 
     if (_connectionExists(connections, connection)) {
-      _showSnack('Такое соединение уже есть');
+      _showSnack('This connection already exists');
       return;
     }
 
@@ -1551,9 +1565,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     await _persist();
     if (mounted) {
       await _recordTaskAddition(
-        kind: 'Добавлено соединение в шкаф',
+        kind: 'Connection added to cabinet',
         summary: [
-          cabinet['name']?.toString() ?? 'Шкаф',
+          cabinet['name']?.toString() ?? 'Cabinet',
           '${_connectionLabelPart(connection, true)} ↔ ${_connectionLabelPart(connection, false)}',
         ].join(' • '),
         targetRecordId: cabinet['id'] as int?,
@@ -1575,7 +1589,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       cabinet['switches'] ?? const [],
     );
     if (cables.isEmpty && switches.isEmpty) {
-      _showSnack('Добавьте кабели или коммутаторы');
+      _showSnack('Add cables or switches');
       return;
     }
 
@@ -1598,7 +1612,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         .map(
           (cable) => DropdownMenuItem<int>(
             value: cable['id'] as int,
-            child: Text(cable['name'] ?? 'Кабель'),
+            child: Text(cable['name'] ?? tr('Cable')),
           ),
         )
         .toList(growable: false);
@@ -1607,7 +1621,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         .map(
           (sw) => DropdownMenuItem<int>(
             value: sw['id'] as int,
-            child: Text(sw['name'] ?? 'Коммутатор'),
+            child: Text(sw['name'] ?? tr('Switch')),
           ),
         )
         .toList(growable: false);
@@ -1629,7 +1643,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         portsCount,
         (index) => DropdownMenuItem<int>(
           value: index,
-          child: Text('Порт ${index + 1}'),
+          child: Text(tr('Port {value}', {'value': '${index + 1}'})),
         ),
       );
     }
@@ -1654,14 +1668,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: type,
-            decoration: const InputDecoration(labelText: 'Тип точки'),
+            decoration: InputDecoration(labelText: tr('Point type')),
             items: [
               if (cables.isNotEmpty)
-                const DropdownMenuItem(value: 'cable', child: Text('Кабель')),
+                DropdownMenuItem(value: 'cable', child: Text(tr('Cable'))),
               if (switches.isNotEmpty)
-                const DropdownMenuItem(
+                DropdownMenuItem(
                   value: 'switch',
-                  child: Text('Коммутатор'),
+                  child: Text(tr('Switch')),
                 ),
             ],
             onChanged: onTypeChanged,
@@ -1670,14 +1684,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           if (type == 'cable' && cables.isNotEmpty) ...[
             DropdownButtonFormField<int>(
               initialValue: cableId,
-              decoration: const InputDecoration(labelText: 'Кабель'),
+              decoration: InputDecoration(labelText: tr('Cable')),
               items: cableItems(),
               onChanged: onCableChanged,
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               initialValue: fiberIndex,
-              decoration: const InputDecoration(labelText: 'Волокно'),
+              decoration: InputDecoration(labelText: tr('Fiber')),
               items: fiberItems(cableId ?? cables.first['id'] as int),
               onChanged: onFiberChanged,
             ),
@@ -1685,14 +1699,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           if (type == 'switch' && switches.isNotEmpty) ...[
             DropdownButtonFormField<int>(
               initialValue: switchId,
-              decoration: const InputDecoration(labelText: 'Коммутатор'),
+              decoration: InputDecoration(labelText: tr('Switch')),
               items: switchItems(),
               onChanged: onSwitchChanged,
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               initialValue: portIndex,
-              decoration: const InputDecoration(labelText: 'Порт'),
+              decoration: InputDecoration(labelText: tr('Port')),
               items: portItems(switchId ?? switches.first['id'] as int),
               onChanged: onPortChanged,
             ),
@@ -1707,7 +1721,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Добавить соединение'),
+              title: Text(tr('Add connection')),
               content: SizedBox(
                 width: 520,
                 child: SingleChildScrollView(
@@ -1715,7 +1729,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       endpointEditor(
-                        label: 'Откуда',
+                        label: 'From',
                         type: leftType,
                         onTypeChanged: (value) {
                           if (value == null) {
@@ -1754,7 +1768,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       ),
                       const SizedBox(height: 16),
                       endpointEditor(
-                        label: 'Куда',
+                        label: 'To',
                         type: rightType,
                         onTypeChanged: (value) {
                           if (value == null) {
@@ -1798,7 +1812,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -1817,13 +1831,13 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     if (leftEndpoint['cableId'] != null &&
                         rightEndpoint['cableId'] != null &&
                         leftEndpoint['cableId'] == rightEndpoint['cableId']) {
-                      _showSnack('Нельзя соединять волокна одного кабеля');
+                      _showSnack('Fibers of the same cable cannot be connected');
                       return;
                     }
                     if (leftEndpoint['switchId'] != null &&
                         rightEndpoint['switchId'] != null &&
                         leftEndpoint['switchId'] == rightEndpoint['switchId']) {
-                      _showSnack('Нельзя соединять порты одного коммутатора');
+                      _showSnack('Ports of the same switch cannot be connected');
                       return;
                     }
 
@@ -1838,7 +1852,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
                     if (_isEndpointBusy(connections, leftEndpoint) ||
                         _isEndpointBusy(connections, rightEndpoint)) {
-                      _showSnack('Конечная точка уже используется');
+                      _showSnack('The end point is already in use');
                       return;
                     }
 
@@ -1860,7 +1874,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     };
 
                     if (_connectionExists(connections, payload)) {
-                      _showSnack('Такое соединение уже есть');
+                      _showSnack('This connection already exists');
                       return;
                     }
 
@@ -1872,9 +1886,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       return;
                     }
                     await _recordTaskAddition(
-                      kind: 'Добавлено соединение в шкаф',
+                      kind: 'Connection added to cabinet',
                       summary: [
-                        cabinet['name']?.toString() ?? 'Шкаф',
+                        cabinet['name']?.toString() ?? 'Cabinet',
                         '${_connectionLabelPart(payload, true)} ↔ ${_connectionLabelPart(payload, false)}',
                       ].join(' • '),
                       targetRecordId: cabinet['id'] as int?,
@@ -1883,7 +1897,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     navigator.pop();
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
               ],
             );
@@ -1896,25 +1910,25 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   String _connectionLabelPart(Map<String, dynamic> connection, bool first) {
     if (first && connection['cable1'] != null && connection['fiber1'] != null) {
       final cable = _getCableById(connection['cable1'] as int);
-      return '${cable?['name'] ?? 'Кабель'}[${(connection['fiber1'] as int) + 1}]';
+      return '${cable?['name'] ?? 'Cable'}[${(connection['fiber1'] as int) + 1}]';
     }
     if (!first &&
         connection['cable2'] != null &&
         connection['fiber2'] != null) {
       final cable = _getCableById(connection['cable2'] as int);
-      return '${cable?['name'] ?? 'Кабель'}[${(connection['fiber2'] as int) + 1}]';
+      return '${cable?['name'] ?? 'Cable'}[${(connection['fiber2'] as int) + 1}]';
     }
     if (first && connection['switch1'] != null && connection['port1'] != null) {
       final sw = _getSwitchById(connection['switch1'] as int);
-      return '${sw?['name'] ?? 'Свитч'} порт ${(connection['port1'] as int) + 1}';
+      return '${sw?['name'] ?? 'Switch'} port ${(connection['port1'] as int) + 1}';
     }
     if (!first &&
         connection['switch2'] != null &&
         connection['port2'] != null) {
       final sw = _getSwitchById(connection['switch2'] as int);
-      return '${sw?['name'] ?? 'Свитч'} порт ${(connection['port2'] as int) + 1}';
+      return '${sw?['name'] ?? 'Switch'} port ${(connection['port2'] as int) + 1}';
     }
-    return 'Точка';
+    return 'Point';
   }
 
   Widget _buildMapPane() {
@@ -1983,7 +1997,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                cabinet['name'] ?? 'Без названия',
+                cabinet['name'] ?? tr('Untitled'),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 6),
@@ -1994,7 +2008,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Закрыть'),
+                    child: Text(tr('Close')),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.tonal(
@@ -2005,7 +2019,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       });
                       Navigator.of(context).pop();
                     },
-                    child: const Text('Открыть'),
+                    child: Text(tr('Open')),
                   ),
                 ],
               ),
@@ -2024,7 +2038,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     if (visibleCabinets.isEmpty) {
       return Center(
         child: Text(
-          'Шкафов пока нет. Добавьте первую запись.',
+          tr('There are no cabinets yet. Add the first record.'),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -2043,11 +2057,13 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               : null,
           child: ListTile(
             leading: _statusDot(cabinet['dirty'] == true),
-            title: Text(cabinet['name'] ?? 'Без названия'),
+            title: Text(cabinet['name'] ?? tr('Untitled')),
             subtitle: Text(
               [
                 if (_projectNameFor(cabinet) != null)
-                  'Задача: ${_projectNameFor(cabinet)}',
+                  tr('Task: {name}', {
+                    'name': _projectNameFor(cabinet)!,
+                  }),
                 (cabinet['location'] ?? '').toString(),
               ].where((line) => line.trim().isNotEmpty).join('\n'),
             ),
@@ -2064,10 +2080,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   _deleteCabinet(cabinet);
                 }
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'edit', child: Text('Редактировать')),
-                PopupMenuItem(value: 'geo', child: Text('Геопозиция')),
-                PopupMenuItem(value: 'delete', child: Text('Удалить')),
+              itemBuilder: (context) => [
+                PopupMenuItem(value: 'edit', child: Text(tr('Edit'))),
+                PopupMenuItem(value: 'geo', child: Text(tr('Location'))),
+                PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
               ],
             ),
             onTap: () => _selectCabinet(cabinet),
@@ -2102,12 +2118,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               children: [
                 Expanded(
                   child: Text(
-                    '${sw['name'] ?? 'Коммутатор'} ${sw['model'] ?? ''}'.trim(),
+                    '${sw['name'] ?? 'Switch'} ${sw['model'] ?? ''}'.trim(),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Типы портов',
+                  tooltip: tr('Port types'),
                   onPressed: () => _editSwitchPortTypes(sw['id'] as int),
                   icon: const Icon(Icons.tune),
                 ),
@@ -2117,8 +2133,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       _deleteSwitch(sw['id'] as int);
                     }
                   },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'delete', child: Text('Удалить')),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
                   ],
                 ),
               ],
@@ -2272,7 +2288,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       ),
       child: Tooltip(
         message:
-            'Порт $label: ${_portTypeLabels[portType] ?? _portTypeLabels[_portTypeOptical]}',
+            'Port $label: ${_portTypeLabels[portType] ?? _portTypeLabels[_portTypeOptical]}',
         child: Center(
           child: Text('$label', style: const TextStyle(fontSize: 10)),
         ),
@@ -2287,7 +2303,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (cables.isEmpty) const Text('Нет кабелей'),
+        if (cables.isEmpty) Text(tr('No cables')),
         ...cables.map(_buildCableCard),
       ],
     );
@@ -2317,7 +2333,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      cable['name'] ?? 'Кабель',
+                      cable['name'] ?? 'Cable',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -2330,12 +2346,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         _deleteCable(cable['id'] as int);
                       }
                     },
-                    itemBuilder: (context) => const [
+                    itemBuilder: (context) => [
                       PopupMenuItem(
                         value: 'rename',
-                        child: Text('Переименовать'),
+                        child: Text(tr('Rename')),
                       ),
-                      PopupMenuItem(value: 'delete', child: Text('Удалить')),
+                      PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
                     ],
                   ),
                 ],
@@ -2517,7 +2533,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           (entry) => Row(
             children: [
               Text('[${entry.key + 1}]: '),
-              Text('Сплиттер ${entry.value}'),
+              Text(tr('Splitter {value}', {'value': '${entry.value}'})),
             ],
           ),
         )
@@ -2529,17 +2545,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Кабель: ${cable['name']}',
+            tr('Cable: {name}', {'name': '${cable['name']}'}),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           if (commentItems.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Text('Комментарии по волокнам:'),
+            Text(tr('Fiber comments:')),
             ...commentItems,
           ],
           if (spliterItems.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Text('Сплиттеры:'),
+            Text(tr('Splitters:')),
             ...spliterItems,
           ],
         ],
@@ -2551,7 +2567,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     if (_selectedCabinet == null) {
       return Center(
         child: Text(
-          'Выберите шкаф слева',
+          'Select a cabinet on the left',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -2583,7 +2599,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   });
                 },
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('К списку'),
+                label: Text(tr('Back to list')),
               ),
             ),
           Padding(
@@ -2600,12 +2616,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            cabinet['name'] ?? 'Без названия',
+                            cabinet['name'] ?? tr('Untitled'),
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Геопозиция',
+                          tooltip: tr('Location'),
                           onPressed: () => _openCabinetLocation(cabinet),
                           icon: const Icon(Icons.map),
                         ),
@@ -2626,15 +2642,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Text(
-                  'Коммутаторы',
+                Text(
+                  tr('Switches'),
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _addSwitch,
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
               ],
             ),
@@ -2654,7 +2670,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (switches.isEmpty)
-                            const Text('Нет коммутаторов')
+                            Text(tr('No switches'))
                           else
                             ...switches.map(_buildSwitchCard),
                           const SizedBox(height: 12),
@@ -2662,15 +2678,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 0),
                             child: Row(
                               children: [
-                                const Text(
-                                  'Кабели',
+                                Text(
+                                  tr('Cables'),
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 const Spacer(),
                                 TextButton.icon(
                                   onPressed: _addCable,
                                   icon: const Icon(Icons.add),
-                                  label: const Text('Добавить кабель'),
+                                  label: Text(tr('Add cable')),
                                 ),
                               ],
                             ),
@@ -2704,15 +2720,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Text(
-                  'Соединения',
+                Text(
+                  tr('Connections'),
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _addConnection,
                   icon: const Icon(Icons.add),
-                  label: const Text('Добавить'),
+                  label: Text(tr('Add')),
                 ),
                 if (connections.isNotEmpty)
                   TextButton.icon(
@@ -2725,15 +2741,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       }
                     },
                     icon: const Icon(Icons.delete_forever_outlined),
-                    label: const Text('Очистить все'),
+                    label: Text(tr('Clear all')),
                   ),
               ],
             ),
           ),
           if (connections.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(12),
-              child: Text('Соединений пока нет'),
+              child: Text(tr('There are no connections yet')),
             )
           else
             Column(
@@ -2770,10 +2786,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Сетевые шкафы'),
+        title: Text(tr('Network cabinets')),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Слой карты',
+            tooltip: tr('Map layer'),
             initialValue: _selectedTileLayerId,
             onSelected: (value) {
               setState(() {
@@ -2797,10 +2813,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               Icons.cloud_upload_outlined,
               color: _hasDirtyRecords ? Colors.redAccent : Colors.greenAccent,
             ),
-            tooltip: 'Синхронизировать',
+            tooltip: tr('Sync'),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Фильтр по задаче',
+            tooltip: tr('Task filter'),
             icon: Icon(
               _projectFilterId == null
                   ? Icons.workspaces_outline
@@ -2811,7 +2827,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               CheckedPopupMenuItem<String>(
                 value: '__all_projects__',
                 checked: _projectFilterId == null,
-                child: const Text('Все задачи'),
+                child: Text(tr('All tasks')),
               ),
               ..._projectOptions.entries.map(
                 (entry) => CheckedPopupMenuItem<String>(
@@ -2829,17 +2845,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               });
             },
             icon: Icon(_mapView ? Icons.list : Icons.map),
-            tooltip: _mapView ? 'Список' : 'Карта',
+            tooltip: _mapView ? tr('List') : tr('Map'),
           ),
           IconButton(
             onPressed: _syncing ? null : _loadFromStorage,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Обновить',
+            tooltip: tr('Refresh'),
           ),
           IconButton(
             onPressed: () => _showCabinetEditor(),
             icon: const Icon(Icons.add),
-            tooltip: 'Новый шкаф',
+            tooltip: tr('New cabinet'),
           ),
         ],
       ),

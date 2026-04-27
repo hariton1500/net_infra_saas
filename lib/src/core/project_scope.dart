@@ -1,8 +1,8 @@
 const String projectsModuleKey = 'projects';
 const String projectsCacheKey = 'projects.records.v1';
 
-const String projectCreatorPositionChiefEngineer = 'Главный инженер';
-const String projectCreatorPositionEngineer = 'Инженер';
+const String projectCreatorPositionChiefEngineer = 'Chief Engineer';
+const String projectCreatorPositionEngineer = 'Engineer';
 
 class ProjectSelection {
   const ProjectSelection({

@@ -1,0 +1,4 @@
+storeFile=../keystore/net_infra_saas-upload-keystore.jks
+storePassword=CHANGE_ME
+keyAlias=upload
+keyPassword=CHANGE_ME

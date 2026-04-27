@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_i18n.dart';
-import '../widgets/language_selector.dart';
+import '../core/strings.dart';
 
 class SetupRequiredPage extends StatelessWidget {
   const SetupRequiredPage({super.key});
@@ -21,35 +21,22 @@ class SetupRequiredPage extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Align(
-                      alignment: Alignment.centerRight,
-                      child: LanguageSelector(),
-                    ),
-                    const SizedBox(height: 20),
                     Text(
-                      tr('Supabase ещё не настроен'),
+                      tr(AppStrings.setupSupabaseTitle),
                       style: const TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      tr(
-                        'Перед запуском передайте проекту два dart-define параметра: SUPABASE_URL и SUPABASE_ANON_KEY.',
-                      ),
-                    ),
+                    Text(tr(AppStrings.setupSupabaseBody)),
                     const SizedBox(height: 16),
                     const SelectableText(
                       'flutter run --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co '
                       '--dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY',
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      tr(
-                        'После этого приложение покажет экран входа и onboarding компании.',
-                      ),
-                    ),
+                    Text(tr(AppStrings.setupSupabaseAfter)),
                   ],
                 ),
               ),
