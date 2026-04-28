@@ -4,6 +4,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/strings.dart';
+import '../widgets/screen_instruction.dart';
 
 class CompanySetupPage extends StatefulWidget {
   const CompanySetupPage({super.key, required this.controller});
@@ -60,6 +61,12 @@ class _CompanySetupPageState extends State<CompanySetupPage> {
                         tr(AppStrings.completeCompanySetupBody, {
                           'email': user?.email ?? tr(AppStrings.user),
                         }),
+                      ),
+                      const SizedBox(height: 16),
+                      ScreenInstruction(
+                        text: tr(
+                          'Check the company name, create the workspace, then invite employees from the main screen.',
+                        ),
                       ),
                       const SizedBox(height: 24),
                       TextFormField(

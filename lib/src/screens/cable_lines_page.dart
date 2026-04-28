@@ -8,6 +8,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/screen_instruction.dart';
 
 class CableLinesPage extends StatefulWidget {
   const CableLinesPage({
@@ -135,7 +136,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
     if (companyId == null) {
       setState(() {
         _loading = false;
-          _errorMessage = tr('Company was not found for the current user.');
+        _errorMessage = tr('Company was not found for the current user.');
       });
       return;
     }
@@ -366,7 +367,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
               type: type,
               entityId: id,
               name: (record['name'] as String?)?.trim().isNotEmpty == true
-              ? (record['name'] as String).trim()
+                  ? (record['name'] as String).trim()
                   : tr('Untitled'),
               subtitle: isPonBox ? tr('PON box') : tr('Closure'),
               location: (record['location'] as String?)?.trim() ?? '',
@@ -642,9 +643,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
     }
     if (_draftStartAnchorKey != null &&
         _draftStartAnchorKey == _draftEndAnchorKey) {
-      _showSnackBar(
-        tr('The route start and end must be different points.'),
-      );
+      _showSnackBar(tr('The route start and end must be different points.'));
       return;
     }
 
@@ -713,9 +712,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
               'value': _anchorByKey(_draftEndAnchorKey)!.location,
             }),
           if (_noteController.text.trim().isNotEmpty)
-            tr('note: {value}', {
-              'value': _noteController.text.trim(),
-            }),
+            tr('note: {value}', {'value': _noteController.text.trim()}),
         ].join(' • '),
         targetRecordId: recordId,
       );
@@ -783,7 +780,9 @@ class _CableLinesPageState extends State<CableLinesPage> {
     _activeProject = await _syncRepository.readActiveProject();
   }
 
-  void _hydrateDirtyRoutesWithActiveProject(List<Map<String, dynamic>> records) {
+  void _hydrateDirtyRoutesWithActiveProject(
+    List<Map<String, dynamic>> records,
+  ) {
     final activeProject = _activeProject;
     if (activeProject == null) {
       return;
@@ -889,9 +888,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _editing
-                        ? tr('Route building')
-                        : tr('Cable lines'),
+                    _editing ? tr('Route building') : tr('Cable lines'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -1034,9 +1031,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
             child: Text(
               _editing
                   ? tr('Add points on the map and save the first route.')
-                  : tr(
-                      'There are no routes yet. Press "New route" to start.',
-                    ),
+                  : tr('There are no routes yet. Press "New route" to start.'),
               textAlign: TextAlign.center,
             ),
           ),
@@ -1265,9 +1260,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
                         onPressed: _syncing ? null : _saveDraft,
                         icon: const Icon(Icons.save_rounded),
                         label: Text(
-                          _editingRouteId == null
-                              ? tr('Create')
-                              : tr('Save'),
+                          _editingRouteId == null ? tr('Create') : tr('Save'),
                         ),
                       ),
                     ],
@@ -1383,6 +1376,12 @@ class _CableLinesPageState extends State<CableLinesPage> {
       body: Column(
         children: [
           _buildActiveProjectBanner(),
+          ScreenInstruction(
+            text: tr(
+              'Press the route button, tap points on the map, then save or clear the route from the editor panel.',
+            ),
+            margin: const EdgeInsets.all(12),
+          ),
           Expanded(child: _buildBody()),
         ],
       ),
@@ -1413,7 +1412,9 @@ class _CableLinesPageState extends State<CableLinesPage> {
       child: Row(
         children: [
           Icon(
-            hasActiveProject ? Icons.task_alt_rounded : Icons.workspaces_outline,
+            hasActiveProject
+                ? Icons.task_alt_rounded
+                : Icons.workspaces_outline,
             size: 18,
             color: hasActiveProject
                 ? const Color(0xFF8BF0B8)
@@ -1423,9 +1424,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? tr('Active task: {name}', {
-                      'name': activeProject.name,
-                    })
+                  ? tr('Active task: {name}', {'name': activeProject.name})
                   : tr('No active task selected'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

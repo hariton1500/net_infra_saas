@@ -14,6 +14,19 @@ const List<String> employeePositions = [
   employeePositionInstaller,
 ];
 
+String employeePositionLabel(String position) {
+  switch (normalizeEmployeePosition(position)) {
+    case employeePositionChiefEngineer:
+      return 'Chief Engineer';
+    case employeePositionEngineer:
+      return 'Engineer';
+    case employeePositionInstaller:
+      return 'Installer';
+    default:
+      return position;
+  }
+}
+
 String normalizeEmployeePosition(String position) {
   final normalized = position.trim();
   if (employeePositions.contains(normalized)) {

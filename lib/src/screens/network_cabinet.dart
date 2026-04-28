@@ -11,6 +11,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/screen_instruction.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_location_picker.dart';
 
@@ -436,7 +437,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       child: Row(
         children: [
           Icon(
-            hasActiveProject ? Icons.task_alt_rounded : Icons.workspaces_outline,
+            hasActiveProject
+                ? Icons.task_alt_rounded
+                : Icons.workspaces_outline,
             size: 18,
             color: hasActiveProject
                 ? const Color(0xFF8BF0B8)
@@ -544,9 +547,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text(
-                tr(cabinet == null ? 'New cabinet' : 'Edit cabinet'),
-              ),
+              title: Text(tr(cabinet == null ? 'New cabinet' : 'Edit cabinet')),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -559,7 +560,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       ),
                       TextField(
                         controller: locationController,
-                        decoration: InputDecoration(labelText: tr('Address/place')),
+                        decoration: InputDecoration(
+                          labelText: tr('Address/place'),
+                        ),
                       ),
                       TextField(
                         controller: commentController,
@@ -647,7 +650,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           cabinet['cables'] ?? <Map<String, dynamic>>[];
                       payload['connections'] =
                           cabinet['connections'] ?? <Map<String, dynamic>>[];
-                      if (projectIdOf(cabinet) == null && _activeProject != null) {
+                      if (projectIdOf(cabinet) == null &&
+                          _activeProject != null) {
                         applyProjectSelection(payload, _activeProject);
                       } else {
                         payload['task_id'] = cabinet['task_id'];
@@ -728,18 +732,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Future<void> _openCabinetLocation(Map<String, dynamic> cabinet) async {
     final lat = cabinet['location_lat'] as double?;
     final lng = cabinet['location_lng'] as double?;
-    final initial =
-        lat != null && lng != null
-            ? LatLng(lat, lng)
-            : await _syncRepository.readLastPickedLocation();
+    final initial = lat != null && lng != null
+        ? LatLng(lat, lng)
+        : await _syncRepository.readLastPickedLocation();
     if (!mounted) {
       return;
     }
     final result = await Navigator.of(context).push<LatLng>(
       MaterialPageRoute(
-        builder: (_) => MuffLocationPickerPage(
-          initial: initial,
-        ),
+        builder: (_) => MuffLocationPickerPage(initial: initial),
       ),
     );
 
@@ -1074,9 +1075,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                             SizedBox(
                               width: 72,
                               child: Text(
-                                tr('Port {value}', {
-                                  'value': '${index + 1}',
-                                }),
+                                tr('Port {value}', {'value': '${index + 1}'}),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1749,10 +1748,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               if (cables.isNotEmpty)
                 DropdownMenuItem(value: 'cable', child: Text(tr('Cable'))),
               if (switches.isNotEmpty)
-                DropdownMenuItem(
-                  value: 'switch',
-                  child: Text(tr('Switch')),
-                ),
+                DropdownMenuItem(value: 'switch', child: Text(tr('Switch'))),
             ],
             onChanged: onTypeChanged,
           ),
@@ -1907,13 +1903,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     if (leftEndpoint['cableId'] != null &&
                         rightEndpoint['cableId'] != null &&
                         leftEndpoint['cableId'] == rightEndpoint['cableId']) {
-                      _showSnack('Fibers of the same cable cannot be connected');
+                      _showSnack(
+                        'Fibers of the same cable cannot be connected',
+                      );
                       return;
                     }
                     if (leftEndpoint['switchId'] != null &&
                         rightEndpoint['switchId'] != null &&
                         leftEndpoint['switchId'] == rightEndpoint['switchId']) {
-                      _showSnack('Ports of the same switch cannot be connected');
+                      _showSnack(
+                        'Ports of the same switch cannot be connected',
+                      );
                       return;
                     }
 
@@ -2137,9 +2137,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             subtitle: Text(
               [
                 if (_projectNameFor(cabinet) != null)
-                  tr('Task: {name}', {
-                    'name': _projectNameFor(cabinet)!,
-                  }),
+                  tr('Task: {name}', {'name': _projectNameFor(cabinet)!}),
                 (cabinet['location'] ?? '').toString(),
               ].where((line) => line.trim().isNotEmpty).join('\n'),
             ),
@@ -2427,10 +2425,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       }
                     },
                     itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'rename',
-                        child: Text(tr('Rename')),
-                      ),
+                      PopupMenuItem(value: 'rename', child: Text(tr('Rename'))),
                       PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
                     ],
                   ),
@@ -2640,6 +2635,13 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           ],
         ],
       ),
+    );
+  }
+
+  void _showCabinetHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => const _CabinetHelpDialog(),
     );
   }
 
@@ -2933,6 +2935,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             tooltip: tr('Refresh'),
           ),
           IconButton(
+            onPressed: _showCabinetHelp,
+            icon: const Icon(Icons.info_outline_rounded),
+            tooltip: tr('Screen guide'),
+          ),
+          IconButton(
             onPressed: () => _showCabinetEditor(),
             icon: const Icon(Icons.add),
             tooltip: tr('New cabinet'),
@@ -2942,6 +2949,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       body: Column(
         children: [
           _buildActiveProjectBanner(),
+          ScreenInstruction(
+            text: tr(
+              'Create a cabinet, select it, then add switches, cables, ports, and connections from the detail pane.',
+            ),
+            margin: const EdgeInsets.all(12),
+          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -2969,6 +2982,453 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       ),
     );
   }
+}
+
+class _CabinetHelpDialog extends StatelessWidget {
+  const _CabinetHelpDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(tr('Network cabinets guide'))),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CabinetHelpSection(
+                icon: Icons.add_location_alt_outlined,
+                title: tr('Create and edit cabinets'),
+                body: tr(
+                  'Use the plus button to create a cabinet. Add a name, address/place, comment, and map point. Use the cabinet menu to edit, change location, or delete the cabinet.',
+                ),
+                image: const _CabinetEditorHelpPicture(),
+              ),
+              _CabinetHelpSection(
+                icon: Icons.view_sidebar_outlined,
+                title: tr('List and details'),
+                body: tr(
+                  'Select a cabinet from the list to open its detail pane. On smaller screens, open a cabinet from the list and use Back to list to return.',
+                ),
+                image: const _CabinetListHelpPicture(),
+              ),
+              _CabinetHelpSection(
+                icon: Icons.map_outlined,
+                title: tr('Map view'),
+                body: tr(
+                  'Use the map/list button to switch views. In map view, tap a cabinet marker to inspect it and open the cabinet notebook.',
+                ),
+                image: const _CabinetMapHelpPicture(),
+              ),
+              _CabinetHelpSection(
+                icon: Icons.dns_rounded,
+                title: tr('Switches and ports'),
+                body: tr(
+                  'Press Add in the Switches section to create equipment. Choose the port count and port type, then use each port menu to edit comments, change type, add splitter data, or trace the port on the infrastructure map.',
+                ),
+                image: const _CabinetSwitchHelpPicture(),
+              ),
+              _CabinetHelpSection(
+                icon: Icons.cable_rounded,
+                title: tr('Cables and fibers'),
+                body: tr(
+                  'Press Add cable to add incoming or outgoing cable fibers. Select a cable to see fiber comments and splitter marks. Rename or delete cables from the cable menu.',
+                ),
+                image: const _CabinetCableHelpPicture(),
+              ),
+              _CabinetHelpSection(
+                icon: Icons.route_rounded,
+                title: tr('Connections'),
+                body: tr(
+                  'Connect fibers and switch ports by dragging one endpoint onto another, or press Add in the Connections section and choose endpoints manually. Connection lines are drawn over the cabinet scheme.',
+                ),
+                image: const _CabinetConnectionHelpPicture(),
+              ),
+              _CabinetHelpSection(
+                icon: Icons.layers_outlined,
+                title: tr('Filters and map layer'),
+                body: tr(
+                  'Use the task filter to show all cabinets or only cabinets connected with one task. Use the layers button to change the map background.',
+                ),
+                image: const _CabinetFilterHelpPicture(),
+              ),
+              _CabinetHelpSection(
+                icon: Icons.cloud_upload_outlined,
+                title: tr('Sync and refresh'),
+                body: tr(
+                  'The colored cloud button uploads local changes. Red means there are unsynced records, green means everything is clean. Refresh reloads cabinet records from storage/cloud.',
+                ),
+                image: const _CabinetSyncHelpPicture(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr('Close')),
+        ),
+      ],
+    );
+  }
+}
+
+class _CabinetHelpSection extends StatelessWidget {
+  const _CabinetHelpSection({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.image,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Widget image;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 720;
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(body),
+      ],
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [image, const SizedBox(height: 12), text],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 170, child: image),
+                const SizedBox(width: 14),
+                Expanded(child: text),
+              ],
+            ),
+    );
+  }
+}
+
+class _CabinetHelpPictureFrame extends StatelessWidget {
+  const _CabinetHelpPictureFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1.7,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C1D33),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF1E466A)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _CabinetEditorHelpPicture extends StatelessWidget {
+  const _CabinetEditorHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _CabinetHelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.dns_rounded, color: Color(0xFF8BF0B8), size: 48),
+      ),
+    );
+  }
+}
+
+class _CabinetListHelpPicture extends StatelessWidget {
+  const _CabinetListHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _CabinetHelpPictureFrame(
+      child: CustomPaint(painter: _CabinetListHelpPainter()),
+    );
+  }
+}
+
+class _CabinetMapHelpPicture extends StatelessWidget {
+  const _CabinetMapHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _CabinetHelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.place_rounded, color: Colors.lightBlue, size: 48),
+      ),
+    );
+  }
+}
+
+class _CabinetSwitchHelpPicture extends StatelessWidget {
+  const _CabinetSwitchHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _CabinetHelpPictureFrame(
+      child: CustomPaint(painter: _CabinetSwitchHelpPainter()),
+    );
+  }
+}
+
+class _CabinetCableHelpPicture extends StatelessWidget {
+  const _CabinetCableHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _CabinetHelpPictureFrame(
+      child: CustomPaint(painter: _CabinetCableHelpPainter()),
+    );
+  }
+}
+
+class _CabinetConnectionHelpPicture extends StatelessWidget {
+  const _CabinetConnectionHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _CabinetHelpPictureFrame(
+      child: CustomPaint(painter: _CabinetConnectionHelpPainter()),
+    );
+  }
+}
+
+class _CabinetFilterHelpPicture extends StatelessWidget {
+  const _CabinetFilterHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _CabinetHelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.workspaces_rounded,
+          color: Color(0xFFA6F6E8),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _CabinetSyncHelpPicture extends StatelessWidget {
+  const _CabinetSyncHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _CabinetHelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.cloud_upload_outlined,
+          color: Color(0xFF35C886),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _CabinetListHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final listPaint = Paint()..color = const Color(0xFF143456);
+    final selectedPaint = Paint()..color = const Color(0xFF1E466A);
+    final detailPaint = Paint()..color = const Color(0xFF123524);
+    final gap = size.width * 0.04;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(gap, gap, size.width * 0.36, size.height - gap * 2),
+        const Radius.circular(8),
+      ),
+      listPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          size.width * 0.44,
+          gap,
+          size.width * 0.52,
+          size.height - gap * 2,
+        ),
+        const Radius.circular(8),
+      ),
+      detailPaint,
+    );
+    for (var i = 0; i < 3; i++) {
+      final top = gap + 12 + i * 20;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(gap + 10, top, size.width * 0.24, 10),
+          const Radius.circular(4),
+        ),
+        i == 0 ? selectedPaint : Paint()
+          ..color = const Color(0xFF50749A),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CabinetSwitchHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bodyPaint = Paint()..color = const Color(0xFF143456);
+    final portPaint = Paint()..color = const Color(0xFF35C886);
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * 0.18,
+        size.height * 0.3,
+        size.width * 0.64,
+        size.height * 0.4,
+      ),
+      const Radius.circular(8),
+    );
+    canvas.drawRRect(rect, bodyPaint);
+    for (var i = 0; i < 6; i++) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            size.width * (0.24 + i * 0.09),
+            size.height * 0.44,
+            12,
+            12,
+          ),
+          const Radius.circular(3),
+        ),
+        portPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CabinetCableHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final colors = [
+      Colors.blue,
+      Colors.orange,
+      Colors.green,
+      Colors.brown,
+      Colors.grey,
+      Colors.white,
+    ];
+    final cablePaint = Paint()
+      ..color = const Color(0xFF1E466A)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * 0.2, size.height * 0.5),
+      Offset(size.width * 0.8, size.height * 0.5),
+      cablePaint,
+    );
+    for (var i = 0; i < colors.length; i++) {
+      final x = size.width * (0.22 + i * 0.11);
+      canvas.drawCircle(
+        Offset(x, size.height * 0.5),
+        7,
+        Paint()..color = colors[i],
+      );
+      canvas.drawCircle(
+        Offset(x, size.height * 0.5),
+        7,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = Colors.black,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CabinetConnectionHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final left = Offset(size.width * 0.24, size.height * 0.66);
+    final right = Offset(size.width * 0.76, size.height * 0.34);
+    final path = ui.Path()
+      ..moveTo(left.dx, left.dy)
+      ..cubicTo(
+        size.width * 0.42,
+        left.dy,
+        size.width * 0.58,
+        right.dy,
+        right.dx,
+        right.dy,
+      );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFFFFA629)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(left, 10, Paint()..color = Colors.blue);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: right, width: 22, height: 16),
+        const Radius.circular(4),
+      ),
+      Paint()..color = const Color(0xFF35C886),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ConnectionsPainter extends CustomPainter {

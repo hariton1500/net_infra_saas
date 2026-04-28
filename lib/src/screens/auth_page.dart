@@ -4,6 +4,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
+import '../widgets/screen_instruction.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, required this.controller});
@@ -72,10 +73,17 @@ class _AuthPageState extends State<AuthPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        ScreenInstruction(
+                          text: tr(
+                            'Enter your new password twice, save it, then sign in with the updated credentials.',
+                          ),
+                        ),
+                        const SizedBox(height: 18),
                         _ResetPasswordForm(
                           formKey: _resetPasswordFormKey,
                           passwordController: _newPasswordController,
-                          confirmPasswordController: _confirmNewPasswordController,
+                          confirmPasswordController:
+                              _confirmNewPasswordController,
                           controller: widget.controller,
                           onSubmit: _handleCompletePasswordRecovery,
                           onSignOut: _handleSignOut,
@@ -123,6 +131,12 @@ class _AuthPageState extends State<AuthPage>
                               ),
                             ),
                             const SizedBox(height: 24),
+                            ScreenInstruction(
+                              text: tr(
+                                'Use the sign-in tab for an existing employee account, or create the first company account on the sign-up tab.',
+                              ),
+                            ),
+                            const SizedBox(height: 18),
                             SizedBox(
                               height: 560,
                               child: TabBarView(
@@ -205,7 +219,9 @@ class _AuthPageState extends State<AuthPage>
         password: _signInPasswordController.text,
       );
     } catch (_) {
-      _showErrorMessage(widget.controller.errorMessage ?? tr('Failed to sign in.'));
+      _showErrorMessage(
+        widget.controller.errorMessage ?? tr('Failed to sign in.'),
+      );
     }
   }
 
@@ -288,9 +304,7 @@ class _AuthPageState extends State<AuthPage>
                 TextField(
                   controller: _recoveryEmailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: tr('Work email'),
-                  ),
+                  decoration: InputDecoration(labelText: tr('Work email')),
                 ),
               ],
             ),
@@ -315,9 +329,7 @@ class _AuthPageState extends State<AuthPage>
                 } catch (_) {
                   _showErrorMessage(
                     widget.controller.errorMessage ??
-                        tr(
-                          'Failed to send the password recovery email.',
-                        ),
+                        tr('Failed to send the password recovery email.'),
                   );
                 }
               },
@@ -708,7 +720,7 @@ class _SignUpForm extends StatelessWidget {
                 .map(
                   (position) => DropdownMenuItem<String>(
                     value: position,
-                    child: Text(tr(position)),
+                    child: Text(employeePositionLabel(position)),
                   ),
                 )
                 .toList(growable: false),
@@ -818,9 +830,7 @@ class _ResetPasswordForm extends StatelessWidget {
           TextFormField(
             controller: confirmPasswordController,
             obscureText: true,
-            decoration: InputDecoration(
-              labelText: tr('Repeat new password'),
-            ),
+            decoration: InputDecoration(labelText: tr('Repeat new password')),
             validator: (value) {
               final baseValidation = _validatePassword(value);
               if (baseValidation != null) {

@@ -11,6 +11,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/screen_instruction.dart';
 import 'muff_location_picker.dart';
 
 class MuffNotebookPage extends StatefulWidget {
@@ -374,7 +375,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   }
 
   Future<void> _loadFromStorage() async {
-    final selectedMuffId = (_selectedMuff?['id'] as int?) ?? widget.initialMuffId;
+    final selectedMuffId =
+        (_selectedMuff?['id'] as int?) ?? widget.initialMuffId;
     final selectedCableId = _selectedCableId;
     _activeProject = await _syncRepository.readActiveProject();
     _projectRecords = await _syncRepository.readCache(projectsCacheKey);
@@ -686,9 +688,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text(
-                tr(muff == null ? 'New closure' : 'Edit closure'),
-              ),
+              title: Text(tr(muff == null ? 'New closure' : 'Edit closure')),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -705,7 +705,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       ),
                       TextField(
                         controller: locationController,
-                        decoration: InputDecoration(labelText: tr('Address/place')),
+                        decoration: InputDecoration(
+                          labelText: tr('Address/place'),
+                        ),
                       ),
                       TextField(
                         controller: commentController,
@@ -891,18 +893,15 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   Future<void> _openMuffLocation(Map<String, dynamic> muff) async {
     final lat = muff['location_lat'] as double?;
     final lng = muff['location_lng'] as double?;
-    final initial =
-        lat != null && lng != null
-            ? LatLng(lat, lng)
-            : await _syncRepository.readLastPickedLocation();
+    final initial = lat != null && lng != null
+        ? LatLng(lat, lng)
+        : await _syncRepository.readLastPickedLocation();
     if (!mounted) {
       return;
     }
     final result = await Navigator.of(context).push<LatLng>(
       MaterialPageRoute(
-        builder: (_) => MuffLocationPickerPage(
-          initial: initial,
-        ),
+        builder: (_) => MuffLocationPickerPage(initial: initial),
       ),
     );
 
@@ -998,7 +997,10 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                           value: side,
                           items: [
                             DropdownMenuItem(value: 0, child: Text(tr('Left'))),
-                            DropdownMenuItem(value: 1, child: Text(tr('Right'))),
+                            DropdownMenuItem(
+                              value: 1,
+                              child: Text(tr('Right')),
+                            ),
                           ],
                           onChanged: (value) {
                             setStateDialog(() {
@@ -1551,7 +1553,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     );
                     splitters.add({
                       'id': DateTime.now().microsecondsSinceEpoch,
-                      'name': name.isEmpty ? tr('Splitter 1:{ratio}', {'ratio': '$ratio'}) : name,
+                      'name': name.isEmpty
+                          ? tr('Splitter 1:{ratio}', {'ratio': '$ratio'})
+                          : name,
                       'ratio': ratio,
                       'side': side,
                       'orientation': orientation,
@@ -1782,7 +1786,9 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       child: Row(
         children: [
           Icon(
-            hasActiveProject ? Icons.task_alt_rounded : Icons.workspaces_outline,
+            hasActiveProject
+                ? Icons.task_alt_rounded
+                : Icons.workspaces_outline,
             size: 18,
             color: hasActiveProject
                 ? const Color(0xFF8BF0B8)
@@ -1817,6 +1823,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         color: dirty ? Colors.red : Colors.green,
         shape: BoxShape.circle,
       ),
+    );
+  }
+
+  void _showClosureNotebookHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => const _ClosureNotebookHelpDialog(),
     );
   }
 
@@ -1914,6 +1927,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             tooltip: tr('Refresh'),
           ),
           IconButton(
+            onPressed: _showClosureNotebookHelp,
+            icon: const Icon(Icons.info_outline_rounded),
+            tooltip: tr('Screen guide'),
+          ),
+          IconButton(
             onPressed: () => _showMuffEditor(),
             icon: const Icon(Icons.add),
             tooltip: tr('New closure'),
@@ -1923,6 +1941,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       body: Column(
         children: [
           _buildActiveProjectBanner(),
+          ScreenInstruction(
+            text: tr(
+              'Create a closure, select it in the list, then add cables, splitters, and connections in the detail pane.',
+            ),
+            margin: const EdgeInsets.all(12),
+          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -2016,11 +2040,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               ],
               const SizedBox(height: 6),
               if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
-                Text(
-                  tr('Area: {value}', {
-                    'value': '${muff['district']}',
-                  }),
-                ),
+                Text(tr('Area: {value}', {'value': '${muff['district']}'})),
               if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
                 const SizedBox(height: 6),
               Text(muff['location'] ?? ''),
@@ -2200,9 +2220,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     if (((muff['district'] as String?)?.trim() ?? '')
                         .isNotEmpty)
                       Text(
-                        tr('Area: {value}', {
-                          'value': '${muff['district']}',
-                        }),
+                        tr('Area: {value}', {'value': '${muff['district']}'}),
                       ),
                     if (((muff['district'] as String?)?.trim() ?? '')
                         .isNotEmpty)
@@ -2523,9 +2541,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: [
-                              fiberWidget,
-                            ],
+                            children: [fiberWidget],
                           ),
                         );
                       }),
@@ -2544,8 +2560,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   Widget _buildSplitterCard(Map<String, dynamic> splitter, int side) {
     final ratio = (splitter['ratio'] as int?) ?? 8;
     final splitterId = splitter['id'] as int;
-    final orientation =
-        (splitter['orientation'] as String?) == 'horizontal'
+    final orientation = (splitter['orientation'] as String?) == 'horizontal'
         ? 'horizontal'
         : 'vertical';
     final inputColor = Colors.teal;
@@ -2574,11 +2589,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     });
 
     final outputsWidget = orientation == 'horizontal'
-        ? Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: outputs,
-          )
+        ? Wrap(spacing: 8, runSpacing: 8, children: outputs)
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: outputs
@@ -2623,14 +2634,8 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     }
                   },
                   itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'edit',
-                      child: Text(tr('Edit')),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text(tr('Delete')),
-                    ),
+                    PopupMenuItem(value: 'edit', child: Text(tr('Edit'))),
+                    PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
                   ],
                 ),
               ],
@@ -2867,6 +2872,430 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       ),
     );
   }
+}
+
+class _ClosureNotebookHelpDialog extends StatelessWidget {
+  const _ClosureNotebookHelpDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(tr('Closure notebook guide'))),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _MuffHelpSection(
+                icon: Icons.add_location_alt_outlined,
+                title: tr('Create and edit closures'),
+                body: tr(
+                  'Use the plus button to create a closure. Fill in the name, area, address, comment, map point, and PON box flag. Use the item menu to edit, move on the map, or delete a closure.',
+                ),
+                image: const _MuffEditorHelpPicture(),
+              ),
+              _MuffHelpSection(
+                icon: Icons.view_sidebar_outlined,
+                title: tr('List and details'),
+                body: tr(
+                  'Select a closure in the left list to open its detail pane. On narrow screens, open a closure from the list and use Back to list to return.',
+                ),
+                image: const _MuffListHelpPicture(),
+              ),
+              _MuffHelpSection(
+                icon: Icons.map_outlined,
+                title: tr('Map view'),
+                body: tr(
+                  'Switch between list and map with the map/list button. In map view, tap a marker to inspect the closure and open it in the notebook.',
+                ),
+                image: const _MuffMapHelpPicture(),
+              ),
+              _MuffHelpSection(
+                icon: Icons.cable_rounded,
+                title: tr('Cables and fibers'),
+                body: tr(
+                  'Open a closure and press Add cable. Choose fiber count, side, color scheme, and label. Tap a fiber to add a comment, rename cables from the cable menu, or move them to the other side.',
+                ),
+                image: const _MuffCableHelpPicture(),
+              ),
+              _MuffHelpSection(
+                icon: Icons.call_split_rounded,
+                title: tr('Splitters'),
+                body: tr(
+                  'Press Add splitter to add a PON splitter. Choose ratio, side, and orientation. Splitter ports can be connected to fibers or other endpoints.',
+                ),
+                image: const _MuffSplitterHelpPicture(),
+              ),
+              _MuffHelpSection(
+                icon: Icons.route_rounded,
+                title: tr('Connections'),
+                body: tr(
+                  'Create connections by dragging one fiber or splitter port onto another, or press Add in the Connections section and choose endpoints manually. Use Clear all only when the whole connection scheme should be removed.',
+                ),
+                image: const _MuffConnectionHelpPicture(),
+              ),
+              _MuffHelpSection(
+                icon: Icons.layers_outlined,
+                title: tr('Filters and map layer'),
+                body: tr(
+                  'Use the area filter to show one district, the task filter to show objects linked to a task, and the layers button to change the map background.',
+                ),
+                image: const _MuffFilterHelpPicture(),
+              ),
+              _MuffHelpSection(
+                icon: Icons.cloud_upload_outlined,
+                title: tr('Sync and refresh'),
+                body: tr(
+                  'The colored cloud button uploads local changes. Red means there are unsynced records, green means the notebook is clean. Refresh reloads records from storage/cloud.',
+                ),
+                image: const _MuffSyncHelpPicture(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr('Close')),
+        ),
+      ],
+    );
+  }
+}
+
+class _MuffHelpSection extends StatelessWidget {
+  const _MuffHelpSection({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.image,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Widget image;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 720;
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(body),
+      ],
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [image, const SizedBox(height: 12), text],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 170, child: image),
+                const SizedBox(width: 14),
+                Expanded(child: text),
+              ],
+            ),
+    );
+  }
+}
+
+class _MuffHelpPictureFrame extends StatelessWidget {
+  const _MuffHelpPictureFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1.7,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C1D33),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF1E466A)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _MuffEditorHelpPicture extends StatelessWidget {
+  const _MuffEditorHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MuffHelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.add_location_alt_outlined,
+          color: Color(0xFF8BF0B8),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _MuffListHelpPicture extends StatelessWidget {
+  const _MuffListHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _MuffHelpPictureFrame(
+      child: CustomPaint(painter: _MuffListHelpPainter()),
+    );
+  }
+}
+
+class _MuffMapHelpPicture extends StatelessWidget {
+  const _MuffMapHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MuffHelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.place_rounded, color: Colors.redAccent, size: 48),
+      ),
+    );
+  }
+}
+
+class _MuffCableHelpPicture extends StatelessWidget {
+  const _MuffCableHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _MuffHelpPictureFrame(
+      child: CustomPaint(painter: _MuffCableHelpPainter()),
+    );
+  }
+}
+
+class _MuffSplitterHelpPicture extends StatelessWidget {
+  const _MuffSplitterHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MuffHelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.call_split_rounded,
+          color: Color(0xFFFFA629),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _MuffConnectionHelpPicture extends StatelessWidget {
+  const _MuffConnectionHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _MuffHelpPictureFrame(
+      child: CustomPaint(painter: _MuffConnectionHelpPainter()),
+    );
+  }
+}
+
+class _MuffFilterHelpPicture extends StatelessWidget {
+  const _MuffFilterHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MuffHelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.filter_list_alt, color: Color(0xFFA6F6E8), size: 48),
+      ),
+    );
+  }
+}
+
+class _MuffSyncHelpPicture extends StatelessWidget {
+  const _MuffSyncHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MuffHelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.cloud_upload_outlined,
+          color: Color(0xFF35C886),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _MuffListHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final listPaint = Paint()..color = const Color(0xFF143456);
+    final selectedPaint = Paint()..color = const Color(0xFF1E466A);
+    final detailPaint = Paint()..color = const Color(0xFF123524);
+    final gap = size.width * 0.04;
+    final listRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(gap, gap, size.width * 0.36, size.height - gap * 2),
+      const Radius.circular(8),
+    );
+    final detailRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * 0.44,
+        gap,
+        size.width * 0.52,
+        size.height - gap * 2,
+      ),
+      const Radius.circular(8),
+    );
+    canvas.drawRRect(listRect, listPaint);
+    canvas.drawRRect(detailRect, detailPaint);
+    for (var i = 0; i < 3; i++) {
+      final top = gap + 12 + i * 20;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(gap + 10, top, size.width * 0.24, 10),
+          const Radius.circular(4),
+        ),
+        i == 1 ? selectedPaint : Paint()
+          ..color = const Color(0xFF50749A),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MuffCableHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final colors = [
+      Colors.blue,
+      Colors.orange,
+      Colors.green,
+      Colors.brown,
+      Colors.grey,
+      Colors.white,
+    ];
+    final cablePaint = Paint()
+      ..color = const Color(0xFF1E466A)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(size.width * 0.2, size.height * 0.5),
+      Offset(size.width * 0.8, size.height * 0.5),
+      cablePaint,
+    );
+    for (var i = 0; i < colors.length; i++) {
+      final x = size.width * (0.22 + i * 0.11);
+      canvas.drawCircle(
+        Offset(x, size.height * 0.5),
+        7,
+        Paint()..color = colors[i],
+      );
+      canvas.drawCircle(
+        Offset(x, size.height * 0.5),
+        7,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = Colors.black,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MuffConnectionHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final left = Offset(size.width * 0.24, size.height * 0.35);
+    final right = Offset(size.width * 0.76, size.height * 0.65);
+    final path = ui.Path()
+      ..moveTo(left.dx, left.dy)
+      ..cubicTo(
+        size.width * 0.48,
+        left.dy,
+        size.width * 0.52,
+        right.dy,
+        right.dx,
+        right.dy,
+      );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFFFFA629)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(left, 10, Paint()..color = Colors.blue);
+    canvas.drawCircle(right, 10, Paint()..color = Colors.indigo);
+    canvas.drawCircle(
+      left,
+      10,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = Colors.white,
+    );
+    canvas.drawCircle(
+      right,
+      10,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = Colors.white,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ConnectionsPainter extends CustomPainter {

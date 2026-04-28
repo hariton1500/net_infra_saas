@@ -6,6 +6,7 @@ import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/map_geolocator.dart';
 import '../core/map_tile_providers.dart';
+import '../widgets/screen_instruction.dart';
 
 class MuffLocationPickerPage extends StatefulWidget {
   const MuffLocationPickerPage({super.key, this.initial});
@@ -106,6 +107,16 @@ class _MuffLocationPickerPageState extends State<MuffLocationPickerPage> {
                   ],
                 ),
             ],
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            top: 16,
+            child: ScreenInstruction(
+              text: tr(
+                'Tap the map or use your current location, then press the check button to save the point.',
+              ),
+            ),
           ),
           Positioned(
             left: 16,

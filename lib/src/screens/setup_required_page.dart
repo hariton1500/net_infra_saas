@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_i18n.dart';
 import '../core/strings.dart';
+import '../widgets/screen_instruction.dart';
 
 class SetupRequiredPage extends StatelessWidget {
   const SetupRequiredPage({super.key});
@@ -30,6 +31,12 @@ class SetupRequiredPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(tr(AppStrings.setupSupabaseBody)),
+                    const SizedBox(height: 16),
+                    ScreenInstruction(
+                      text: tr(
+                        'Add both dart-define values, restart the app, and continue from the sign-in screen.',
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     const SelectableText(
                       'flutter run --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co '

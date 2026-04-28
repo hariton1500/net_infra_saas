@@ -5,6 +5,7 @@ import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
 import '../core/strings.dart';
+import '../widgets/screen_instruction.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.controller});
@@ -69,6 +70,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 12),
                         Text(tr(AppStrings.personalDetailsBody)),
+                        const SizedBox(height: 16),
+                        ScreenInstruction(
+                          text: tr(
+                            'Edit your display name and position, then save the profile so team lists show the current details.',
+                          ),
+                        ),
                         const SizedBox(height: 24),
                         TextFormField(
                           initialValue: email,
@@ -108,7 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               .map(
                                 (position) => DropdownMenuItem<String>(
                                   value: position,
-                                  child: Text(tr(position)),
+                                  child: Text(employeePositionLabel(position)),
                                 ),
                               )
                               .toList(growable: false),

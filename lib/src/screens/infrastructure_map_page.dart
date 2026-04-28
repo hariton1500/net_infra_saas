@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -11,6 +12,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/screen_instruction.dart';
 
 class InfrastructureSignalTraceRequest {
   const InfrastructureSignalTraceRequest({
@@ -3774,6 +3776,13 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     );
   }
 
+  void _showInfrastructureHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => const _InfrastructureHelpDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3879,16 +3888,407 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                   )
                 : const Icon(Icons.refresh_rounded),
           ),
+          IconButton(
+            tooltip: tr('Screen guide'),
+            onPressed: _showInfrastructureHelp,
+            icon: const Icon(Icons.info_outline_rounded),
+          ),
         ],
       ),
       body: Column(
         children: [
           _buildActiveProjectBanner(),
+          ScreenInstruction(
+            text: tr(
+              'Use the road button to draw a cable route, select routes or map objects to inspect them, and use edit tools for route changes.',
+            ),
+            margin: const EdgeInsets.all(12),
+          ),
           Expanded(child: _buildBody()),
         ],
       ),
     );
   }
+}
+
+class _InfrastructureHelpDialog extends StatelessWidget {
+  const _InfrastructureHelpDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(tr('Infrastructure map guide'))),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _HelpSection(
+                icon: Icons.workspaces_outline,
+                title: tr('Active task'),
+                body: tr(
+                  'The banner under the app bar shows the active task. New map changes are linked to this task when one is selected on the main screen.',
+                ),
+                image: const _TaskHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.add_road_rounded,
+                title: tr('Create cable route'),
+                body: tr(
+                  'Press the road button, tap a start point, add intermediate points on the map, then tap the end point. Confirm the route name and parameters in the route panel.',
+                ),
+                image: const _RouteHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.edit_rounded,
+                title: tr('Edit selected route'),
+                body: tr(
+                  'Select a route on the map, press edit, then drag orange intermediate points to adjust the route. Press the check button to finish editing.',
+                ),
+                image: const _EditRouteHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.call_split_rounded,
+                title: tr('Install closure on route'),
+                body: tr(
+                  'Select a route and press the split button. Tap the route where the break or closure should be installed, choose the closure data, then confirm.',
+                ),
+                image: const _ClosureHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.touch_app_rounded,
+                title: tr('Inspect objects'),
+                body: tr(
+                  'Tap closures, PON boxes, cabinets, connection points, or routes to open details. Selected routes unlock edit, split, and delete actions.',
+                ),
+                image: const _InspectHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.layers_outlined,
+                title: tr('Map layer'),
+                body: tr(
+                  'Use the layers button to switch between available map providers. The selected layer affects only the map background.',
+                ),
+                image: const _LayerHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.workspaces_rounded,
+                title: tr('Task filter'),
+                body: tr(
+                  'Use the task filter to show all infrastructure or only objects and routes connected with one task.',
+                ),
+                image: const _FilterHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.delete_outline_rounded,
+                title: tr('Delete selected route'),
+                body: tr(
+                  'Select a route and press the delete button. The app asks for confirmation before removing the route.',
+                ),
+                image: const _DeleteHelpPicture(),
+              ),
+              _HelpSection(
+                icon: Icons.refresh_rounded,
+                title: tr('Refresh and trace'),
+                body: tr(
+                  'Refresh reloads map data and route state from storage/cloud. If a signal trace is opened from a cabinet port, the highlight button clears that trace.',
+                ),
+                image: const _RefreshHelpPicture(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr('Close')),
+        ),
+      ],
+    );
+  }
+}
+
+class _HelpSection extends StatelessWidget {
+  const _HelpSection({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.image,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Widget image;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 720;
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(body),
+      ],
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [image, const SizedBox(height: 12), text],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 170, child: image),
+                const SizedBox(width: 14),
+                Expanded(child: text),
+              ],
+            ),
+    );
+  }
+}
+
+class _HelpPictureFrame extends StatelessWidget {
+  const _HelpPictureFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1.7,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C1D33),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF1E466A)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _TaskHelpPicture extends StatelessWidget {
+  const _TaskHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _HelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.task_alt_rounded, color: Color(0xFF8BF0B8), size: 46),
+      ),
+    );
+  }
+}
+
+class _RouteHelpPicture extends StatelessWidget {
+  const _RouteHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _HelpPictureFrame(child: CustomPaint(painter: _RouteHelpPainter()));
+  }
+}
+
+class _EditRouteHelpPicture extends StatelessWidget {
+  const _EditRouteHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _HelpPictureFrame(
+      child: CustomPaint(painter: _EditRouteHelpPainter()),
+    );
+  }
+}
+
+class _ClosureHelpPicture extends StatelessWidget {
+  const _ClosureHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _HelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.call_split_rounded,
+          color: Color(0xFFFFA629),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _InspectHelpPicture extends StatelessWidget {
+  const _InspectHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _HelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.touch_app_rounded,
+          color: Color(0xFF53B6D9),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _LayerHelpPicture extends StatelessWidget {
+  const _LayerHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _HelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.layers_outlined, color: Color(0xFFA6F6E8), size: 48),
+      ),
+    );
+  }
+}
+
+class _FilterHelpPicture extends StatelessWidget {
+  const _FilterHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _HelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.workspaces_rounded,
+          color: Color(0xFF8BF0B8),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteHelpPicture extends StatelessWidget {
+  const _DeleteHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _HelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.delete_outline_rounded,
+          color: Colors.redAccent,
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _RefreshHelpPicture extends StatelessWidget {
+  const _RefreshHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _HelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.refresh_rounded, color: Color(0xFF53B6D9), size: 48),
+      ),
+    );
+  }
+}
+
+class _RouteHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pathPaint = Paint()
+      ..color = const Color(0xFF35C886)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    final pointPaint = Paint()..color = const Color(0xFFF2F7FA);
+    final points = [
+      Offset(size.width * 0.18, size.height * 0.68),
+      Offset(size.width * 0.38, size.height * 0.42),
+      Offset(size.width * 0.64, size.height * 0.56),
+      Offset(size.width * 0.82, size.height * 0.28),
+    ];
+    final path = ui.Path()..moveTo(points.first.dx, points.first.dy);
+    for (final point in points.skip(1)) {
+      path.lineTo(point.dx, point.dy);
+    }
+    canvas.drawPath(path, pathPaint);
+    for (final point in points) {
+      canvas.drawCircle(point, 6, pointPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _EditRouteHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pathPaint = Paint()
+      ..color = const Color(0xFF53B6D9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    final dragPaint = Paint()..color = const Color(0xFFFFA629);
+    final points = [
+      Offset(size.width * 0.18, size.height * 0.62),
+      Offset(size.width * 0.44, size.height * 0.36),
+      Offset(size.width * 0.68, size.height * 0.64),
+      Offset(size.width * 0.84, size.height * 0.36),
+    ];
+    final path = ui.Path()..moveTo(points.first.dx, points.first.dy);
+    for (final point in points.skip(1)) {
+      path.lineTo(point.dx, point.dy);
+    }
+    canvas.drawPath(path, pathPaint);
+    for (final point in points.skip(1).take(2)) {
+      canvas.drawCircle(point, 8, dragPaint);
+      canvas.drawCircle(point, 3, Paint()..color = const Color(0xFF071526));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _LegendRow extends StatelessWidget {

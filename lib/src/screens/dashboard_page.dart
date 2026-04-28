@@ -4,6 +4,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
+import '../widgets/screen_instruction.dart';
 import 'profile_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -77,6 +78,12 @@ class _DashboardPageState extends State<DashboardPage> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
+              ScreenInstruction(
+                text: tr(
+                  'Review company details, manage the team, and use refresh to load the latest employees and invites.',
+                ),
+              ),
+              const SizedBox(height: 20),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(28),
@@ -148,7 +155,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       }),
                       tr('Position: {value}', {
                         'value': profile?.position.isNotEmpty == true
-                            ? profile!.position
+                            ? employeePositionLabel(profile!.position)
                             : '-',
                       }),
                       tr('Name: {value}', {
@@ -271,7 +278,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       .map(
                         (position) => DropdownMenuItem<String>(
                           value: position,
-                          child: Text(tr(position)),
+                          child: Text(employeePositionLabel(position)),
                         ),
                       )
                       .toList(growable: false),
@@ -635,7 +642,7 @@ class _PersonRow extends StatelessWidget {
                 borderColor: const Color(0xFF2A648E),
               ),
               _TagBadge(
-                label: tr(position),
+                label: employeePositionLabel(position),
                 backgroundColor: const Color(0xFF123524),
                 borderColor: const Color(0xFF35C886),
               ),

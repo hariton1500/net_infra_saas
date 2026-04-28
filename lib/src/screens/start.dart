@@ -6,6 +6,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/employee_positions.dart';
 import '../core/project_scope.dart';
+import '../widgets/screen_instruction.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
@@ -1102,6 +1103,13 @@ class _StartPageState extends State<StartPage> {
     });
   }
 
+  void _showMainScreenHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => const _MainScreenHelpDialog(),
+    );
+  }
+
   Widget _buildProjectsCard(BuildContext context) {
     final projects = _visibleProjects;
 
@@ -1259,6 +1267,11 @@ class _StartPageState extends State<StartPage> {
             onPressed: controller.isBusy ? null : _refreshTeam,
             icon: const Icon(Icons.refresh_rounded),
           ),
+          IconButton(
+            tooltip: tr('Screen guide'),
+            onPressed: _showMainScreenHelp,
+            icon: const Icon(Icons.info_outline_rounded),
+          ),
           TextButton(
             onPressed: controller.isBusy ? null : controller.signOut,
             child: Text(tr('Sign out')),
@@ -1281,9 +1294,15 @@ class _StartPageState extends State<StartPage> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
+                  ScreenInstruction(
+                    text: tr(
+                      'Choose or create an active task, then open a work section to add map objects, closures, cabinets, and routes to it.',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   _HeroCard(
                     displayName: displayName,
-                    position: profile?.position ?? '',
+                    position: employeePositionLabel(profile?.position ?? ''),
                     companyName: membership?.companyName ?? tr('Company'),
                     role: membership?.role ?? 'member',
                     slug: membership?.slug ?? '-',
@@ -1484,7 +1503,7 @@ class _StartPageState extends State<StartPage> {
                       .map(
                         (position) => DropdownMenuItem<String>(
                           value: position,
-                          child: Text(position),
+                          child: Text(employeePositionLabel(position)),
                         ),
                       )
                       .toList(growable: false),
@@ -1725,7 +1744,7 @@ class _StartPageState extends State<StartPage> {
   }) {
     final parts = <String>[
       if (email.trim().isNotEmpty) email.trim(),
-      if (position.trim().isNotEmpty) position.trim(),
+      if (position.trim().isNotEmpty) employeePositionLabel(position.trim()),
       if (email.trim().isEmpty && userId.trim().isNotEmpty)
         'ID: ${userId.trim()}',
     ];
@@ -1734,6 +1753,469 @@ class _StartPageState extends State<StartPage> {
     }
     return parts.join(' • ');
   }
+}
+
+class _MainScreenHelpDialog extends StatelessWidget {
+  const _MainScreenHelpDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(tr('Main screen guide'))),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _MainHelpSection(
+                icon: Icons.account_circle_outlined,
+                title: tr('Company summary'),
+                body: tr(
+                  'The top card shows the current user, company, role, position, company slug, team size, and number of pending invites.',
+                ),
+                image: const _MainSummaryHelpPicture(),
+              ),
+              _MainHelpSection(
+                icon: Icons.task_alt_rounded,
+                title: tr('Tasks'),
+                body: tr(
+                  'Tasks group field work. Create a task, assign employees, open task details, then mark it completed, verified, and archived when the workflow is done.',
+                ),
+                image: const _MainTasksHelpPicture(),
+              ),
+              _MainHelpSection(
+                icon: Icons.play_circle_outline_rounded,
+                title: tr('Active task'),
+                body: tr(
+                  'Activate a task before opening work sections. New closures, cabinets, routes, and map changes are linked to the active task. Use Turn off when you need to work without a task.',
+                ),
+                image: const _MainActiveTaskHelpPicture(),
+              ),
+              _MainHelpSection(
+                icon: Icons.apps_rounded,
+                title: tr('Work sections'),
+                body: tr(
+                  'Open Infrastructure map for routes and map objects, Closure notebook for mufts and fibers, Cable lines for route entry, and Network cabinets for cabinets, switches, ports, and connections.',
+                ),
+                image: const _MainSectionsHelpPicture(),
+              ),
+              _MainHelpSection(
+                icon: Icons.group_add_outlined,
+                title: tr('Invite employees'),
+                body: tr(
+                  'Owners and administrators can invite employees by work email, choose their role, and assign a position when allowed. The employee joins automatically after registering with the invited email.',
+                ),
+                image: const _MainInviteHelpPicture(),
+              ),
+              _MainHelpSection(
+                icon: Icons.groups_outlined,
+                title: tr('Company team'),
+                body: tr(
+                  'The team list shows active members, their email, role, and position. Pending invites show emails waiting for acceptance and their invite codes.',
+                ),
+                image: const _MainTeamHelpPicture(),
+              ),
+              _MainHelpSection(
+                icon: Icons.person_outline_rounded,
+                title: tr('Profile'),
+                body: tr(
+                  'Use the profile button to update your display name and position. Email and company role are read-only.',
+                ),
+                image: const _MainProfileHelpPicture(),
+              ),
+              _MainHelpSection(
+                icon: Icons.refresh_rounded,
+                title: tr('Refresh and sign out'),
+                body: tr(
+                  'Refresh reloads company data, tasks, employees, and pending invites. Sign out closes the current account session.',
+                ),
+                image: const _MainRefreshHelpPicture(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr('Close')),
+        ),
+      ],
+    );
+  }
+}
+
+class _MainHelpSection extends StatelessWidget {
+  const _MainHelpSection({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.image,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Widget image;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 720;
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(body),
+      ],
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [image, const SizedBox(height: 12), text],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 170, child: image),
+                const SizedBox(width: 14),
+                Expanded(child: text),
+              ],
+            ),
+    );
+  }
+}
+
+class _MainHelpPictureFrame extends StatelessWidget {
+  const _MainHelpPictureFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1.7,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C1D33),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF1E466A)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _MainSummaryHelpPicture extends StatelessWidget {
+  const _MainSummaryHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _MainHelpPictureFrame(
+      child: CustomPaint(painter: _MainSummaryHelpPainter()),
+    );
+  }
+}
+
+class _MainTasksHelpPicture extends StatelessWidget {
+  const _MainTasksHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _MainHelpPictureFrame(
+      child: CustomPaint(painter: _MainTasksHelpPainter()),
+    );
+  }
+}
+
+class _MainActiveTaskHelpPicture extends StatelessWidget {
+  const _MainActiveTaskHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MainHelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.task_alt_rounded, color: Color(0xFF8BF0B8), size: 48),
+      ),
+    );
+  }
+}
+
+class _MainSectionsHelpPicture extends StatelessWidget {
+  const _MainSectionsHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _MainHelpPictureFrame(
+      child: CustomPaint(painter: _MainSectionsHelpPainter()),
+    );
+  }
+}
+
+class _MainInviteHelpPicture extends StatelessWidget {
+  const _MainInviteHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MainHelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.group_add_outlined,
+          color: Color(0xFFA6F6E8),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _MainTeamHelpPicture extends StatelessWidget {
+  const _MainTeamHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return _MainHelpPictureFrame(
+      child: CustomPaint(painter: _MainTeamHelpPainter()),
+    );
+  }
+}
+
+class _MainProfileHelpPicture extends StatelessWidget {
+  const _MainProfileHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MainHelpPictureFrame(
+      child: Center(
+        child: Icon(
+          Icons.person_outline_rounded,
+          color: Color(0xFF53B6D9),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _MainRefreshHelpPicture extends StatelessWidget {
+  const _MainRefreshHelpPicture();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MainHelpPictureFrame(
+      child: Center(
+        child: Icon(Icons.refresh_rounded, color: Color(0xFF35C886), size: 48),
+      ),
+    );
+  }
+}
+
+class _MainSummaryHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cardPaint = Paint()..color = const Color(0xFF143456);
+    final metricPaint = Paint()..color = const Color(0xFF123524);
+    final linePaint = Paint()..color = const Color(0xFF50749A);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          size.width * 0.08,
+          size.height * 0.16,
+          size.width * 0.84,
+          size.height * 0.68,
+        ),
+        const Radius.circular(8),
+      ),
+      cardPaint,
+    );
+    for (var i = 0; i < 3; i++) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            size.width * 0.16,
+            size.height * (0.28 + i * 0.13),
+            size.width * 0.34,
+            8,
+          ),
+          const Radius.circular(4),
+        ),
+        linePaint,
+      );
+    }
+    for (var i = 0; i < 2; i++) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            size.width * (0.58 + i * 0.14),
+            size.height * 0.34,
+            size.width * 0.1,
+            size.height * 0.24,
+          ),
+          const Radius.circular(6),
+        ),
+        metricPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MainTasksHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final panelPaint = Paint()..color = const Color(0xFF143456);
+    final activePaint = Paint()..color = const Color(0xFF35C886);
+    final donePaint = Paint()..color = const Color(0xFFE0A54A);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          size.width * 0.12,
+          size.height * 0.16,
+          size.width * 0.76,
+          size.height * 0.68,
+        ),
+        const Radius.circular(8),
+      ),
+      panelPaint,
+    );
+    for (var i = 0; i < 3; i++) {
+      final top = size.height * (0.28 + i * 0.16);
+      canvas.drawCircle(
+        Offset(size.width * 0.22, top + 4),
+        5,
+        Paint()..color = i == 0 ? activePaint.color : donePaint.color,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(size.width * 0.3, top, size.width * 0.38, 9),
+          const Radius.circular(4),
+        ),
+        Paint()..color = const Color(0xFF50749A),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MainSectionsHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final colors = [
+      const Color(0xFF143456),
+      const Color(0xFF123524),
+      const Color(0xFF3A2812),
+      const Color(0xFF122E3A),
+    ];
+    final icons = [
+      Icons.map_outlined,
+      Icons.notes_rounded,
+      Icons.timeline_rounded,
+      Icons.dns_rounded,
+    ];
+    final iconPainter = TextPainter(textDirection: TextDirection.ltr);
+    for (var i = 0; i < 4; i++) {
+      final col = i % 2;
+      final row = i ~/ 2;
+      final rect = Rect.fromLTWH(
+        size.width * (0.18 + col * 0.34),
+        size.height * (0.2 + row * 0.32),
+        size.width * 0.24,
+        size.height * 0.22,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+        Paint()..color = colors[i],
+      );
+      iconPainter.text = TextSpan(
+        text: String.fromCharCode(icons[i].codePoint),
+        style: TextStyle(
+          fontFamily: icons[i].fontFamily,
+          package: icons[i].fontPackage,
+          color: const Color(0xFFF2F7FA),
+          fontSize: 24,
+        ),
+      );
+      iconPainter.layout();
+      iconPainter.paint(
+        canvas,
+        Offset(
+          rect.center.dx - iconPainter.width / 2,
+          rect.center.dy - iconPainter.height / 2,
+        ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MainTeamHelpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rowPaint = Paint()..color = const Color(0xFF143456);
+    final badgePaint = Paint()..color = const Color(0xFF35C886);
+    for (var i = 0; i < 3; i++) {
+      final top = size.height * (0.22 + i * 0.2);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(size.width * 0.14, top, size.width * 0.72, 18),
+          const Radius.circular(6),
+        ),
+        rowPaint,
+      );
+      canvas.drawCircle(Offset(size.width * 0.22, top + 9), 5, badgePaint);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(size.width * 0.58, top + 5, size.width * 0.2, 8),
+          const Radius.circular(4),
+        ),
+        badgePaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _HeroCard extends StatelessWidget {
@@ -2119,7 +2601,7 @@ class _InfoRow extends StatelessWidget {
               ),
               if (position.trim().isNotEmpty)
                 _TagBadge(
-                  label: position,
+                  label: employeePositionLabel(position),
                   backgroundColor: const Color(0xFF123524),
                   borderColor: const Color(0xFF35C886),
                 ),
