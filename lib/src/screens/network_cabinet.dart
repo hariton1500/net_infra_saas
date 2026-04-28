@@ -957,6 +957,82 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     }
   }
 
+  Future<void> _editSwitch(int switchId) async {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return;
+    }
+
+    final switches = List<Map<String, dynamic>>.from(
+      cabinet['switches'] ?? const [],
+    );
+    final switchIndex = switches.indexWhere((sw) => sw['id'] == switchId);
+    if (switchIndex == -1) {
+      return;
+    }
+
+    final sw = Map<String, dynamic>.from(switches[switchIndex]);
+    final nameController = TextEditingController(
+      text: (sw['name'] ?? tr('Switch')).toString(),
+    );
+    final modelController = TextEditingController(
+      text: (sw['model'] ?? '').toString(),
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(tr('Edit switch')),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: tr('Name')),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: modelController,
+                  decoration: InputDecoration(labelText: tr('Model')),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(tr('Cancel')),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () async {
+                final navigator = Navigator.of(context);
+                final name = nameController.text.trim();
+                switches[switchIndex] = {
+                  ...sw,
+                  'name': name.isEmpty ? tr('Switch') : name,
+                  'model': modelController.text.trim(),
+                };
+                cabinet['switches'] = switches;
+                _touchCabinet(cabinet);
+                await _persist();
+                if (!mounted) {
+                  return;
+                }
+                setState(() {});
+                navigator.pop();
+              },
+              icon: const Icon(Icons.save),
+              label: Text(tr('Save')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _editSwitchPortTypes(int switchId) async {
     final cabinet = _selectedCabinet;
     if (cabinet == null) {
@@ -2129,11 +2205,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 ),
                 PopupMenuButton<String>(
                   onSelected: (value) {
+                    if (value == 'edit') {
+                      _editSwitch(sw['id'] as int);
+                    }
                     if (value == 'delete') {
                       _deleteSwitch(sw['id'] as int);
                     }
                   },
                   itemBuilder: (context) => [
+                    PopupMenuItem(value: 'edit', child: Text(tr('Edit'))),
                     PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
                   ],
                 ),

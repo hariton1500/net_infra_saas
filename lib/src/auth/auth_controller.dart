@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_i18n.dart';
@@ -82,6 +83,8 @@ class CompanyInviteData {
 
 class AuthController extends ChangeNotifier {
   AuthController({required SupabaseClient client}) : _client = client;
+
+  static const Duration _authRequestTimeout = Duration(seconds: 12);
 
   final SupabaseClient _client;
 
@@ -165,7 +168,9 @@ class AuthController extends ChangeNotifier {
       if (_isRecoveringPassword) {
         _view = AuthView.passwordRecovery;
       } else {
-        _view = _membership == null ? AuthView.needsCompanySetup : AuthView.ready;
+        _view = _membership == null
+            ? AuthView.needsCompanySetup
+            : AuthView.ready;
       }
     } catch (error, stackTrace) {
       _errorMessage = _humanizeError(error);
@@ -218,7 +223,9 @@ class AuthController extends ChangeNotifier {
       if (response.session == null) {
         _view = AuthView.signedOut;
         notifyListeners();
-        return tr('The account has been created. Confirm your email and then sign in.');
+        return tr(
+          'The account has been created. Confirm your email and then sign in.',
+        );
       }
 
       await refresh();
@@ -275,9 +282,7 @@ class AuthController extends ChangeNotifier {
 
       return token.isEmpty
           ? tr('Invite created.')
-          : tr('Invite created. Invite code: {token}', {
-              'token': token,
-            });
+          : tr('Invite created. Invite code: {token}', {'token': token});
     });
   }
 
@@ -325,20 +330,24 @@ class AuthController extends ChangeNotifier {
     final fullName = _readString(user.userMetadata, 'full_name');
     final position = _readString(user.userMetadata, 'position');
 
-    await _client.from('profiles').upsert({
-      'id': user.id,
-      'email': user.email,
-      if (fullName.isNotEmpty) 'full_name': fullName,
-      if (position.isNotEmpty) 'position': position,
+    await _runAuthRequest(() {
+      return _client.from('profiles').upsert({
+        'id': user.id,
+        'email': user.email,
+        if (fullName.isNotEmpty) 'full_name': fullName,
+        if (position.isNotEmpty) 'position': position,
+      });
     });
   }
 
   Future<ProfileData> _fetchProfile(User user) async {
-    final response = await _client
-        .from('profiles')
-        .select('id, email, full_name, position')
-        .eq('id', user.id)
-        .maybeSingle();
+    final response = await _runAuthRequest(() {
+      return _client
+          .from('profiles')
+          .select('id, email, full_name, position')
+          .eq('id', user.id)
+          .maybeSingle();
+    });
 
     if (response == null) {
       return ProfileData(
@@ -360,11 +369,13 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<CompanyMembershipData?> _fetchMembership(User user) async {
-    final membershipResponse = await _client
-        .from('company_members')
-        .select('company_id, role')
-        .eq('user_id', user.id)
-        .maybeSingle();
+    final membershipResponse = await _runAuthRequest(() {
+      return _client
+          .from('company_members')
+          .select('company_id, role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+    });
 
     if (membershipResponse == null) {
       return null;
@@ -372,11 +383,13 @@ class AuthController extends ChangeNotifier {
 
     final companyId = membershipResponse['company_id'] as String;
 
-    final companyResponse = await _client
-        .from('companies')
-        .select('id, name, slug')
-        .eq('id', companyId)
-        .single();
+    final companyResponse = await _runAuthRequest(() {
+      return _client
+          .from('companies')
+          .select('id, name, slug')
+          .eq('id', companyId)
+          .single();
+    });
 
     return CompanyMembershipData(
       companyId: companyId,
@@ -395,11 +408,13 @@ class AuthController extends ChangeNotifier {
       return;
     }
 
-    final membersResponse = await _client
-        .from('company_members')
-        .select('user_id, role')
-        .eq('company_id', membership.companyId)
-        .order('created_at');
+    final membersResponse = await _runAuthRequest(() {
+      return _client
+          .from('company_members')
+          .select('user_id, role')
+          .eq('company_id', membership.companyId)
+          .order('created_at');
+    });
 
     final memberRows = (membersResponse as List<dynamic>)
         .cast<Map<String, dynamic>>();
@@ -410,10 +425,12 @@ class AuthController extends ChangeNotifier {
     Map<String, Map<String, dynamic>> profilesById = const {};
 
     if (userIds.isNotEmpty) {
-      final profilesResponse = await _client
-          .from('profiles')
-          .select('id, email, full_name, position')
-          .inFilter('id', userIds);
+      final profilesResponse = await _runAuthRequest(() {
+        return _client
+            .from('profiles')
+            .select('id, email, full_name, position')
+            .inFilter('id', userIds);
+      });
 
       profilesById = {
         for (final entry
@@ -437,12 +454,14 @@ class AuthController extends ChangeNotifier {
         })
         .toList(growable: false);
 
-    final invitesResponse = await _client
-        .from('company_invites')
-        .select('id, invited_email, role, position, status, token, created_at')
-        .eq('company_id', membership.companyId)
-        .eq('status', 'pending')
-        .order('created_at', ascending: false);
+    final invitesResponse = await _runAuthRequest(() {
+      return _client
+          .from('company_invites')
+          .select('id, invited_email, role, position, status, token, created_at')
+          .eq('company_id', membership.companyId)
+          .eq('status', 'pending')
+          .order('created_at', ascending: false);
+    });
 
     _pendingInvites = (invitesResponse as List<dynamic>)
         .map((entry) {
@@ -493,8 +512,9 @@ class AuthController extends ChangeNotifier {
   }
 
   String _humanizeError(Object error) {
-    final authMessage =
-        error is AuthException ? error.message.trim().toLowerCase() : '';
+    final authMessage = error is AuthException
+        ? error.message.trim().toLowerCase()
+        : '';
     if (authMessage.isNotEmpty) {
       if (authMessage.contains('user already registered') ||
           authMessage.contains('already registered') ||
@@ -507,10 +527,53 @@ class AuthController extends ChangeNotifier {
     }
 
     if (error is PostgrestException && error.message.isNotEmpty) {
-      return error.message;
+      return normalizeErrorText(error.message);
     }
 
-    return error.toString();
+    return normalizeErrorText(error, fallback: tr('Failed to load session.'));
+  }
+
+  Future<T> _runAuthRequest<T>(
+    Future<T> Function() action, {
+    int attempts = 3,
+  }) async {
+    Object? lastError;
+    StackTrace? lastStackTrace;
+
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      try {
+        return await action().timeout(_authRequestTimeout);
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastStackTrace = stackTrace;
+
+        final canRetry =
+            attempt < attempts - 1 && _isTransientAuthNetworkError(error);
+        if (!canRetry) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+
+        await Future<void>.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+      }
+    }
+
+    Error.throwWithStackTrace(lastError!, lastStackTrace!);
+  }
+
+  bool _isTransientAuthNetworkError(Object error) {
+    if (error is TimeoutException || error is http.ClientException) {
+      return true;
+    }
+
+    final text = error.toString().toLowerCase();
+    return text.contains('timeout') ||
+        text.contains('timed out') ||
+        text.contains('connection closed') ||
+        text.contains('connection reset') ||
+        text.contains('failed host lookup') ||
+        text.contains('network is unreachable') ||
+        text.contains('таймаут') ||
+        text.contains('семафора');
   }
 
   void _assertValidPosition(String position) {
@@ -553,7 +616,9 @@ class AuthController extends ChangeNotifier {
     return _runBusy(() async {
       final normalizedEmail = email.trim();
       if (normalizedEmail.isEmpty) {
-        throw AuthException(tr('Enter the email address for password recovery.'));
+        throw AuthException(
+          tr('Enter the email address for password recovery.'),
+        );
       }
 
       final redirectTo = _passwordRecoveryRedirectUrl();
