@@ -21,6 +21,13 @@ class _DashboardPageState extends State<DashboardPage> {
   String _selectedRole = 'member';
   String _selectedPosition = employeePositionEngineer;
 
+  String get _selectedInvitePosition {
+    final normalized = normalizeEmployeePosition(_selectedPosition);
+    return employeePositions.contains(normalized)
+        ? normalized
+        : employeePositionEngineer;
+  }
+
   @override
   void dispose() {
     _inviteEmailController.dispose();
@@ -92,16 +99,17 @@ class _DashboardPageState extends State<DashboardPage> {
                             const SizedBox(height: 10),
                             Text(
                               tr('You are signed in as {name}.', {
-                                'name':
-                                    profile?.fullName.isNotEmpty == true
-                                        ? profile!.fullName
-                                        : user?.email ?? tr('Employee'),
+                                'name': profile?.fullName.isNotEmpty == true
+                                    ? profile!.fullName
+                                    : user?.email ?? tr('Employee'),
                               }),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               tr('Company role: {role}', {
-                                'role': _roleLabel(membership?.role ?? 'member'),
+                                'role': _roleLabel(
+                                  membership?.role ?? 'member',
+                                ),
                               }),
                             ),
                             const SizedBox(height: 6),
@@ -139,16 +147,14 @@ class _DashboardPageState extends State<DashboardPage> {
                         'value': profile?.email ?? user?.email ?? '-',
                       }),
                       tr('Position: {value}', {
-                        'value':
-                            profile?.position.isNotEmpty == true
-                                ? profile!.position
-                                : '-',
+                        'value': profile?.position.isNotEmpty == true
+                            ? profile!.position
+                            : '-',
                       }),
                       tr('Name: {value}', {
-                        'value':
-                            profile?.fullName.isNotEmpty == true
-                                ? profile!.fullName
-                                : '-',
+                        'value': profile?.fullName.isNotEmpty == true
+                            ? profile!.fullName
+                            : '-',
                       }),
                     ],
                   ),
@@ -259,7 +265,7 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 14),
               if (canAssignPosition)
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedPosition,
+                  initialValue: _selectedInvitePosition,
                   decoration: InputDecoration(labelText: tr('Position')),
                   items: employeePositions
                       .map(
@@ -309,7 +315,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 initialValue: _selectedRole,
                 decoration: InputDecoration(labelText: tr('Company role')),
                 items: [
-                  DropdownMenuItem(value: 'member', child: Text(tr('Employee'))),
+                  DropdownMenuItem(
+                    value: 'member',
+                    child: Text(tr('Employee')),
+                  ),
                   DropdownMenuItem(
                     value: 'admin',
                     child: Text(tr('Administrator')),
@@ -407,11 +416,10 @@ class _DashboardPageState extends State<DashboardPage> {
               for (final invite in invites) ...[
                 _PersonRow(
                   title: invite.email,
-                  subtitle:
-                      tr('Code: {token} • {date}', {
-                        'token': invite.token,
-                        'date': _formatDate(invite.createdAt),
-                      }),
+                  subtitle: tr('Code: {token} • {date}', {
+                    'token': invite.token,
+                    'date': _formatDate(invite.createdAt),
+                  }),
                   role: invite.role,
                   position: invite.position,
                 ),
@@ -432,7 +440,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final message = await widget.controller.inviteEmployee(
         email: _inviteEmailController.text,
         role: _selectedRole,
-        position: _selectedPosition,
+        position: _selectedInvitePosition,
       );
 
       _inviteEmailController.clear();

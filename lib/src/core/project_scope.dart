@@ -1,8 +1,11 @@
+import 'employee_positions.dart';
+
 const String projectsModuleKey = 'projects';
 const String projectsCacheKey = 'projects.records.v1';
 
-const String projectCreatorPositionChiefEngineer = 'Chief Engineer';
-const String projectCreatorPositionEngineer = 'Engineer';
+const String projectCreatorPositionChiefEngineer =
+    employeePositionChiefEngineer;
+const String projectCreatorPositionEngineer = employeePositionEngineer;
 
 class ProjectSelection {
   const ProjectSelection({
@@ -19,7 +22,7 @@ class ProjectSelection {
 }
 
 bool canCreateProjectsForPosition(String position) {
-  final normalized = position.trim();
+  final normalized = normalizeEmployeePosition(position);
   return normalized == projectCreatorPositionEngineer ||
       normalized == projectCreatorPositionChiefEngineer;
 }
@@ -36,8 +39,7 @@ int? projectIdOf(Map<String, dynamic> record) {
 }
 
 String? projectNameOf(Map<String, dynamic> record) {
-  final value =
-      (record['project_name'] ?? record['name'])?.toString().trim();
+  final value = (record['project_name'] ?? record['name'])?.toString().trim();
   if (value == null || value.isEmpty) {
     return null;
   }

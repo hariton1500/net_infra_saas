@@ -25,8 +25,11 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     final profile = widget.controller.profile;
     _fullNameController = TextEditingController(text: profile?.fullName ?? '');
-    _selectedPosition = employeePositions.contains(profile?.position)
-        ? profile!.position
+    final normalizedPosition = normalizeEmployeePosition(
+      profile?.position ?? '',
+    );
+    _selectedPosition = employeePositions.contains(normalizedPosition)
+        ? normalizedPosition
         : employeePositionEngineer;
   }
 

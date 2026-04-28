@@ -205,13 +205,13 @@ class AuthController extends ChangeNotifier {
     required String password,
   }) async {
     return _runBusy(() async {
-      _assertValidPosition(position);
+      final normalizedPosition = _assertValidPosition(position);
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
         data: {
           'full_name': fullName.trim(),
-          'position': position.trim(),
+          'position': normalizedPosition,
           'company_name': companyName.trim(),
         },
       );
@@ -262,7 +262,7 @@ class AuthController extends ChangeNotifier {
   }) async {
     return _runBusy(() async {
       final normalizedPosition = canAssignEmployeePosition
-          ? position.trim()
+          ? normalizeEmployeePosition(position)
           : employeePositionEngineer;
       _assertValidPosition(normalizedPosition);
       final response = await _client.rpc(
@@ -298,14 +298,13 @@ class AuthController extends ChangeNotifier {
     required String position,
   }) async {
     await _runBusy(() async {
-      _assertValidPosition(position);
+      final normalizedPosition = _assertValidPosition(position);
       final user = currentUser;
       if (user == null) {
         throw const AuthException('Authentication required');
       }
 
       final normalizedFullName = fullName.trim();
-      final normalizedPosition = position.trim();
       final mergedMetadata = <String, dynamic>{
         ...?user.userMetadata,
         'full_name': normalizedFullName,
@@ -457,7 +456,9 @@ class AuthController extends ChangeNotifier {
     final invitesResponse = await _runAuthRequest(() {
       return _client
           .from('company_invites')
-          .select('id, invited_email, role, position, status, token, created_at')
+          .select(
+            'id, invited_email, role, position, status, token, created_at',
+          )
           .eq('company_id', membership.companyId)
           .eq('status', 'pending')
           .order('created_at', ascending: false);
@@ -576,11 +577,12 @@ class AuthController extends ChangeNotifier {
         text.contains('семафора');
   }
 
-  void _assertValidPosition(String position) {
-    final normalizedPosition = position.trim();
-    if (!employeePositions.contains(normalizedPosition)) {
+  String _assertValidPosition(String position) {
+    final normalizedPosition = normalizeEmployeePosition(position);
+    if (!isSupportedEmployeePosition(normalizedPosition)) {
       throw const AuthException('Unsupported position');
     }
+    return normalizedPosition;
   }
 
   Future<T> _runBusy<T>(Future<T> Function() action) async {

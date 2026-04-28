@@ -82,6 +82,13 @@ class _StartPageState extends State<StartPage> {
   String get _effectiveTaskListFilter =>
       _canSwitchTaskListFilter ? _taskListFilter : _taskListFilterMine;
 
+  String get _selectedInvitePosition {
+    final normalized = normalizeEmployeePosition(_selectedPosition);
+    return employeePositions.contains(normalized)
+        ? normalized
+        : employeePositionEngineer;
+  }
+
   List<Map<String, dynamic>> get _visibleProjects {
     final projects = _projects;
     if (_effectiveTaskListFilter != _taskListFilterMine) {
@@ -140,9 +147,11 @@ class _StartPageState extends State<StartPage> {
           }
 
           final inferredMember = membersByEmail[normalizedUpdatedBy];
-          final inferredUserId = inferredMember?.userId ??
+          final inferredUserId =
+              inferredMember?.userId ??
               (normalizedUpdatedBy == _currentUserEmail ? _currentUserId : '');
-          final inferredName = inferredMember?.fullName ??
+          final inferredName =
+              inferredMember?.fullName ??
               (normalizedUpdatedBy == _currentUserEmail
                   ? (currentProfile?.fullName ?? '')
                   : '');
@@ -512,7 +521,8 @@ class _StartPageState extends State<StartPage> {
     return authorEmail.isNotEmpty && authorEmail == _currentUserEmail;
   }
 
-  bool _canAdministrateTask(Map<String, dynamic> record) => _isTaskAuthor(record);
+  bool _canAdministrateTask(Map<String, dynamic> record) =>
+      _isTaskAuthor(record);
 
   List<Map<String, String>> _assignedEmployeesOf(Map<String, dynamic> record) {
     final raw = record['assignees'];
@@ -558,7 +568,9 @@ class _StartPageState extends State<StartPage> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text('There are no employees in the company yet.')),
+          const SnackBar(
+            content: Text('There are no employees in the company yet.'),
+          ),
         );
       return;
     }
@@ -690,7 +702,9 @@ class _StartPageState extends State<StartPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if ((currentTask['description'] as String?)?.trim().isNotEmpty ==
+                  if ((currentTask['description'] as String?)
+                          ?.trim()
+                          .isNotEmpty ==
                       true)
                     Text((currentTask['description'] as String).trim())
                   else
@@ -733,9 +747,9 @@ class _StartPageState extends State<StartPage> {
                     assignees.isEmpty
                         ? 'No assignees assigned'
                         : 'Assigned employees',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   if (assignees.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -755,9 +769,9 @@ class _StartPageState extends State<StartPage> {
                   const SizedBox(height: 20),
                   Text(
                     'Work list',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   if (workLog.isEmpty)
@@ -773,7 +787,9 @@ class _StartPageState extends State<StartPage> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF0C1D33),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: const Color(0xFF1E466A)),
+                              border: Border.all(
+                                color: const Color(0xFF1E466A),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,7 +799,9 @@ class _StartPageState extends State<StartPage> {
                                     _syncRepository.parseTime(entry['at']),
                                   ),
                                   style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: const Color(0xFF9FB7CC)),
+                                      ?.copyWith(
+                                        color: const Color(0xFF9FB7CC),
+                                      ),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
@@ -791,10 +809,13 @@ class _StartPageState extends State<StartPage> {
                                   style: Theme.of(context).textTheme.bodyLarge
                                       ?.copyWith(fontWeight: FontWeight.w700),
                                 ),
-                                for (final detail in _workLogDetailsOf(entry)) ...[
+                                for (final detail in _workLogDetailsOf(
+                                  entry,
+                                )) ...[
                                   const SizedBox(height: 6),
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Padding(
                                         padding: EdgeInsets.only(top: 6),
@@ -816,13 +837,17 @@ class _StartPageState extends State<StartPage> {
                                     ],
                                   ),
                                 ],
-                                if (_workLogTargetButtonLabel(entry) != null) ...[
+                                if (_workLogTargetButtonLabel(entry) !=
+                                    null) ...[
                                   const SizedBox(height: 12),
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: OutlinedButton.icon(
-                                      onPressed: () => _openWorkLogTarget(entry),
-                                      icon: const Icon(Icons.open_in_new_rounded),
+                                      onPressed: () =>
+                                          _openWorkLogTarget(entry),
+                                      icon: const Icon(
+                                        Icons.open_in_new_rounded,
+                                      ),
                                       label: Text(
                                         _workLogTargetButtonLabel(entry)!,
                                       ),
@@ -837,9 +862,9 @@ class _StartPageState extends State<StartPage> {
                   const SizedBox(height: 20),
                   Text(
                     'Actions',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -895,7 +920,9 @@ class _StartPageState extends State<StartPage> {
                           !canMarkCompleted &&
                           !canMarkVerified &&
                           !canMarkArchived)
-                        const Text('There are no actions available for this task now.'),
+                        const Text(
+                          'There are no actions available for this task now.',
+                        ),
                     ],
                   ),
                 ],
@@ -956,9 +983,7 @@ class _StartPageState extends State<StartPage> {
       });
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('Failed to save tasks.')),
-        );
+        ..showSnackBar(const SnackBar(content: Text('Failed to save tasks.')));
     }
   }
 
@@ -1007,7 +1032,8 @@ class _StartPageState extends State<StartPage> {
                   'name': name,
                   'description': descriptionController.text.trim(),
                   'created_by_user_id': _currentUserId,
-                  'created_by_email': widget.controller.currentUser?.email ?? '',
+                  'created_by_email':
+                      widget.controller.currentUser?.email ?? '',
                   'created_by_name': widget.controller.profile?.fullName ?? '',
                   'assignees': const <Map<String, dynamic>>[],
                   'work_log': const <Map<String, dynamic>>[],
@@ -1020,7 +1046,9 @@ class _StartPageState extends State<StartPage> {
                   'deleted': false,
                 };
                 final nextRecords = [
-                  ..._projectRecords.map((record) => _syncRepository.clone(record)),
+                  ..._projectRecords.map(
+                    (record) => _syncRepository.clone(record),
+                  ),
                   record,
                 ];
                 await _persistProjects(nextRecords);
@@ -1045,8 +1073,10 @@ class _StartPageState extends State<StartPage> {
     }
 
     final authorUserId = project['created_by_user_id']?.toString().trim();
-    final authorEmail =
-        project['created_by_email']?.toString().trim().toLowerCase();
+    final authorEmail = project['created_by_email']
+        ?.toString()
+        .trim()
+        .toLowerCase();
     final selection = ProjectSelection(
       id: id,
       name: name,
@@ -1085,9 +1115,9 @@ class _StartPageState extends State<StartPage> {
               children: [
                 Text(
                   'Tasks',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const Spacer(),
                 if (_canManageProjects)
@@ -1181,7 +1211,8 @@ class _StartPageState extends State<StartPage> {
                           !_isTaskArchived(project),
                       onOpenDetails: () => _showTaskDetailsDialog(project),
                       onActivate: () => _activateProject(project),
-                      onManageAssignees: () => _showTaskAssigneesEditor(project),
+                      onManageAssignees: () =>
+                          _showTaskAssigneesEditor(project),
                       onMarkCompleted: () => _markTaskCompleted(project),
                       onMarkVerified: () => _markTaskVerified(project),
                       onMarkArchived: () => _markTaskArchived(project),
@@ -1448,7 +1479,7 @@ class _StartPageState extends State<StartPage> {
               const SizedBox(height: 14),
               if (canAssignPosition)
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedPosition,
+                  initialValue: _selectedInvitePosition,
                   items: employeePositions
                       .map(
                         (position) => DropdownMenuItem<String>(
@@ -1478,9 +1509,7 @@ class _StartPageState extends State<StartPage> {
               TextFormField(
                 controller: _inviteEmailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Employee email',
-                ),
+                decoration: const InputDecoration(labelText: 'Employee email'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Enter an email address.';
@@ -1617,7 +1646,7 @@ class _StartPageState extends State<StartPage> {
       final message = await widget.controller.inviteEmployee(
         email: _inviteEmailController.text,
         role: _selectedRole,
-        position: _selectedPosition,
+        position: _selectedInvitePosition,
       );
 
       _inviteEmailController.clear();
@@ -1697,8 +1726,7 @@ class _StartPageState extends State<StartPage> {
     final parts = <String>[
       if (email.trim().isNotEmpty) email.trim(),
       if (position.trim().isNotEmpty) position.trim(),
-      if (email.trim().isEmpty &&
-          userId.trim().isNotEmpty)
+      if (email.trim().isEmpty && userId.trim().isNotEmpty)
         'ID: ${userId.trim()}',
     ];
     if (parts.isEmpty) {
@@ -1982,9 +2010,7 @@ class _ProjectRow extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           Text(
-            assignees.isEmpty
-                ? 'No employees assigned'
-                : 'Assigned employees',
+            assignees.isEmpty ? 'No employees assigned' : 'Assigned employees',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
