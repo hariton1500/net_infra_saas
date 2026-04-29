@@ -62,33 +62,36 @@ class _AuthPageState extends State<AuthPage>
     if (widget.controller.view == AuthView.passwordRecovery) {
       return Scaffold(
         body: _BackgroundShell(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ScreenInstruction(
-                          text: tr(
-                            'Enter your new password twice, save it, then sign in with the updated credentials.',
+          child: _AuthHelpShell(
+            onHelp: _showAuthHelp,
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(28),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ScreenInstruction(
+                            text: tr(
+                              'Enter your new password twice, save it, then sign in with the updated credentials.',
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        _ResetPasswordForm(
-                          formKey: _resetPasswordFormKey,
-                          passwordController: _newPasswordController,
-                          confirmPasswordController:
-                              _confirmNewPasswordController,
-                          controller: widget.controller,
-                          onSubmit: _handleCompletePasswordRecovery,
-                          onSignOut: _handleSignOut,
-                        ),
-                      ],
+                          const SizedBox(height: 18),
+                          _ResetPasswordForm(
+                            formKey: _resetPasswordFormKey,
+                            passwordController: _newPasswordController,
+                            confirmPasswordController:
+                                _confirmNewPasswordController,
+                            controller: widget.controller,
+                            onSubmit: _handleCompletePasswordRecovery,
+                            onSignOut: _handleSignOut,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -101,110 +104,123 @@ class _AuthPageState extends State<AuthPage>
 
     return Scaffold(
       body: _BackgroundShell(
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1040),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isCompact = constraints.maxWidth < 840;
-                    final authCard = Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(28),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0C1D33),
-                                borderRadius: BorderRadius.circular(18),
+        child: _AuthHelpShell(
+          onHelp: _showAuthHelp,
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1040),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isCompact = constraints.maxWidth < 840;
+                      final authCard = Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0C1D33),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: TabBar(
+                                  controller: _tabController,
+                                  indicatorSize: TabBarIndicatorSize.tab,
+                                  tabs: [
+                                    Tab(text: tr('Sign in')),
+                                    Tab(text: tr('Sign up')),
+                                  ],
+                                ),
                               ),
-                              child: TabBar(
-                                controller: _tabController,
-                                indicatorSize: TabBarIndicatorSize.tab,
-                                tabs: [
-                                  Tab(text: tr('Sign in')),
-                                  Tab(text: tr('Sign up')),
-                                ],
+                              const SizedBox(height: 24),
+                              ScreenInstruction(
+                                text: tr(
+                                  'Use the sign-in tab for an existing employee account, or create the first company account on the sign-up tab.',
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 24),
-                            ScreenInstruction(
-                              text: tr(
-                                'Use the sign-in tab for an existing employee account, or create the first company account on the sign-up tab.',
+                              const SizedBox(height: 18),
+                              SizedBox(
+                                height: 560,
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    _SignInForm(
+                                      formKey: _signInFormKey,
+                                      emailController: _signInEmailController,
+                                      passwordController:
+                                          _signInPasswordController,
+                                      controller: widget.controller,
+                                      onSubmit: _handleSignIn,
+                                      onForgotPassword:
+                                          _openResetPasswordDialog,
+                                    ),
+                                    _SignUpForm(
+                                      formKey: _signUpFormKey,
+                                      fullNameController:
+                                          _signUpFullNameController,
+                                      selectedPosition: _selectedSignUpPosition,
+                                      onPositionChanged: (value) {
+                                        setState(() {
+                                          _selectedSignUpPosition = value;
+                                        });
+                                      },
+                                      companyController:
+                                          _signUpCompanyController,
+                                      emailController: _signUpEmailController,
+                                      passwordController:
+                                          _signUpPasswordController,
+                                      controller: widget.controller,
+                                      onSubmit: _handleSignUp,
+                                      onGoToSignIn: _switchToSignIn,
+                                      onForgotPassword:
+                                          _openResetPasswordDialog,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 18),
-                            SizedBox(
-                              height: 560,
-                              child: TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  _SignInForm(
-                                    formKey: _signInFormKey,
-                                    emailController: _signInEmailController,
-                                    passwordController:
-                                        _signInPasswordController,
-                                    controller: widget.controller,
-                                    onSubmit: _handleSignIn,
-                                    onForgotPassword: _openResetPasswordDialog,
-                                  ),
-                                  _SignUpForm(
-                                    formKey: _signUpFormKey,
-                                    fullNameController:
-                                        _signUpFullNameController,
-                                    selectedPosition: _selectedSignUpPosition,
-                                    onPositionChanged: (value) {
-                                      setState(() {
-                                        _selectedSignUpPosition = value;
-                                      });
-                                    },
-                                    companyController: _signUpCompanyController,
-                                    emailController: _signUpEmailController,
-                                    passwordController:
-                                        _signUpPasswordController,
-                                    controller: widget.controller,
-                                    onSubmit: _handleSignUp,
-                                    onGoToSignIn: _switchToSignIn,
-                                    onForgotPassword: _openResetPasswordDialog,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
+                      );
 
-                    if (isCompact) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      if (isCompact) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _BrandPanel(isCompact: true),
+                            const SizedBox(height: 24),
+                            authCard,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _BrandPanel(isCompact: true),
-                          const SizedBox(height: 24),
-                          authCard,
+                          const Expanded(child: _BrandPanel(isCompact: false)),
+                          const SizedBox(width: 24),
+                          Expanded(child: authCard),
                         ],
                       );
-                    }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Expanded(child: _BrandPanel(isCompact: false)),
-                        const SizedBox(width: 24),
-                        Expanded(child: authCard),
-                      ],
-                    );
-                  },
+                    },
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  void _showAuthHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => const _AuthHelpDialog(),
     );
   }
 
@@ -408,6 +424,164 @@ class _BackgroundShell extends StatelessWidget {
         ),
       ),
       child: child,
+    );
+  }
+}
+
+class _AuthHelpShell extends StatelessWidget {
+  const _AuthHelpShell({required this.child, required this.onHelp});
+
+  final Widget child;
+  final VoidCallback onHelp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(child: child),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: IconButton.filledTonal(
+                tooltip: tr('Screen guide'),
+                onPressed: onHelp,
+                icon: const Icon(Icons.info_outline_rounded),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AuthHelpDialog extends StatelessWidget {
+  const _AuthHelpDialog();
+
+  static const _supportEmail = 'hariton1500@gmail.com';
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(tr('Authorization guide'))),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _AuthHelpSection(
+                icon: Icons.login_rounded,
+                title: tr('Sign in'),
+                body: tr(
+                  'Use the Sign in tab when your account already exists. Enter your work email and password, then press Sign in to open the company workspace.',
+                ),
+              ),
+              _AuthHelpSection(
+                icon: Icons.business_rounded,
+                title: tr('Create company'),
+                body: tr(
+                  'Use the Sign up tab only for the first company account. Enter your name, position, company name, work email, and password. After registration, confirm email if required and sign in.',
+                ),
+              ),
+              _AuthHelpSection(
+                icon: Icons.mark_email_read_outlined,
+                title: tr('Employee invite'),
+                body: tr(
+                  'If an administrator invited you, register or sign in with the exact email address from the invite. The workspace membership is attached automatically.',
+                ),
+              ),
+              _AuthHelpSection(
+                icon: Icons.lock_reset_rounded,
+                title: tr('Reset password'),
+                body: tr(
+                  'Use Reset password when you cannot sign in. Enter your work email, open the recovery link from email, set a new password twice, and sign in again.',
+                ),
+              ),
+              _AuthHelpSection(
+                icon: Icons.support_agent_rounded,
+                title: tr('Support'),
+                body: tr(
+                  'If sign-in, registration, invite, or password recovery does not work, contact support: {email}',
+                  {'email': _supportEmail},
+                ),
+              ),
+              const SizedBox(height: 6),
+              SelectableText(
+                _supportEmail,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr('Close')),
+        ),
+      ],
+    );
+  }
+}
+
+class _AuthHelpSection extends StatelessWidget {
+  const _AuthHelpSection({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 22, color: theme.colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(body),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
