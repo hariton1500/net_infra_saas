@@ -53,6 +53,10 @@ Flutter-приложение с авторизацией через Supabase д�
   --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
+## 4. Собрать и опубликовать web
+
+Web-сборка и автодеплой в Cloudflare Pages и REG.RU описаны в [docs/web_deployment.md](docs/web_deployment.md).
+
 ## Как работает текущий flow
 
 1. Владелец компании регистрируется по email/password.
