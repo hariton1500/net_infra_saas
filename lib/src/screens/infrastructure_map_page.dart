@@ -2138,10 +2138,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     final suggestedName = 'M-$muffId';
     final now = DateTime.now();
     final comment = [
-      'Автоматически создана при обозначении места разрыва маршрута "${route.name}" #${route.id}.',
-      'Исходный маршрут: $startName -> $endName.',
-      'После установки муфты маршрут #${route.id} изменен на $startName -> $suggestedName, создан новый маршрут $suggestedName -> $endName.',
-      'Дата операции: ${now.toIso8601String()}.',
+      'Automatically created when marking the break point of route "${route.name}" #${route.id}.',
+      'Original route: $startName -> $endName.',
+      'After installing the closure, route #${route.id} was changed to $startName -> $suggestedName, and a new route was created: $suggestedName -> $endName.',
+      'Operation date: ${now.toIso8601String()}.',
     ].join('\n');
 
     final result = await _showRouteSplitConfirmationDialog(

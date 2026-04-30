@@ -1,4 +1,4 @@
-package com.example.net_infra_saas
+package io.netinfra.saas
 
 import io.flutter.embedding.android.FlutterActivity
 
