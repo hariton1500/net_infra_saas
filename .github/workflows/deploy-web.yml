@@ -1,0 +1,123 @@
+name: Build and deploy web
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: web-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Flutter web
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      BASE_HREF: ${{ vars.WEB_BASE_HREF || '/' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build web
+        run: bash scripts/build_web.sh
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy-cloudflare:
+    name: Deploy to Cloudflare Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_PAGES_PROJECT: ${{ secrets.CLOUDFLARE_PAGES_PROJECT }}
+    steps:
+      - name: Skip when Cloudflare is not configured
+        if: ${{ env.CLOUDFLARE_ACCOUNT_ID == '' || env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_PAGES_PROJECT == '' }}
+        run: echo "Cloudflare Pages secrets are not configured; skipping deploy."
+
+      - name: Download web artifact
+        if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_PAGES_PROJECT != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Deploy
+        if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_PAGES_PROJECT != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy build/web --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ github.ref_name }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-reg-ru:
+    name: Deploy to REG.RU hosting
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      REG_RU_HOST: ${{ secrets.REG_RU_HOST }}
+      REG_RU_PORT: ${{ secrets.REG_RU_PORT || '22' }}
+      REG_RU_USER: ${{ secrets.REG_RU_USER }}
+      REG_RU_REMOTE_PATH: ${{ secrets.REG_RU_REMOTE_PATH }}
+      REG_RU_SSH_PRIVATE_KEY: ${{ secrets.REG_RU_SSH_PRIVATE_KEY }}
+    steps:
+      - name: Skip when REG.RU is not configured
+        if: ${{ env.REG_RU_HOST == '' || env.REG_RU_USER == '' || env.REG_RU_REMOTE_PATH == '' || env.REG_RU_SSH_PRIVATE_KEY == '' }}
+        run: echo "REG.RU SSH secrets are not configured; skipping deploy."
+
+      - name: Download web artifact
+        if: ${{ env.REG_RU_HOST != '' && env.REG_RU_USER != '' && env.REG_RU_REMOTE_PATH != '' && env.REG_RU_SSH_PRIVATE_KEY != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Configure SSH
+        if: ${{ env.REG_RU_HOST != '' && env.REG_RU_USER != '' && env.REG_RU_REMOTE_PATH != '' && env.REG_RU_SSH_PRIVATE_KEY != '' }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${REG_RU_SSH_PRIVATE_KEY}" > ~/.ssh/reg_ru_deploy
+          chmod 600 ~/.ssh/reg_ru_deploy
+          ssh-keyscan -p "${REG_RU_PORT}" "${REG_RU_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Sync files
+        if: ${{ env.REG_RU_HOST != '' && env.REG_RU_USER != '' && env.REG_RU_REMOTE_PATH != '' && env.REG_RU_SSH_PRIVATE_KEY != '' }}
+        run: |
+          rsync -az --delete \
+            -e "ssh -p ${REG_RU_PORT} -i ~/.ssh/reg_ru_deploy -o StrictHostKeyChecking=yes" \
+            build/web/ \
+            "${REG_RU_USER}@${REG_RU_HOST}:${REG_RU_REMOTE_PATH}/"

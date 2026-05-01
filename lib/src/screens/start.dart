@@ -58,7 +58,7 @@ class _StartPageState extends State<StartPage> {
       await _syncRepository.removeCache(_legacyWorkOrdersCacheKey);
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Failed to clear the outdated local work order cache.',
+        tr('Failed to clear the outdated local work order cache.'),
         source: 'start.cleanup_legacy_work_orders_cache',
         error: error,
         stackTrace: stackTrace,
@@ -234,7 +234,7 @@ class _StartPageState extends State<StartPage> {
       });
     } catch (error, stackTrace) {
       logUserFacingError(
-        'Failed to load tasks.',
+        tr('Failed to load tasks.'),
         source: 'start.projects_load',
         error: error,
         stackTrace: stackTrace,
@@ -371,11 +371,11 @@ class _StartPageState extends State<StartPage> {
   String? _workLogTargetButtonLabel(Map<String, dynamic> entry) {
     switch (_workLogTargetScreenOf(entry)) {
       case 'muff_notebook':
-        return 'Open closure';
+        return tr('Open closure');
       case 'network_cabinet':
-        return 'Open cabinet';
+        return tr('Open cabinet');
       case 'infrastructure_map':
-        return 'Open route';
+        return tr('Open route');
       default:
         return null;
     }
@@ -557,7 +557,7 @@ class _StartPageState extends State<StartPage> {
     if (normalizedEmail.isNotEmpty) {
       return normalizedEmail;
     }
-    return 'Employee';
+    return tr('Employee');
   }
 
   Future<void> _showTaskAssigneesEditor(Map<String, dynamic> task) async {
@@ -569,8 +569,8 @@ class _StartPageState extends State<StartPage> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('There are no employees in the company yet.'),
+          SnackBar(
+            content: Text(tr('There are no employees in the company yet.')),
           ),
         );
       return;
@@ -588,7 +588,9 @@ class _StartPageState extends State<StartPage> {
           builder: (context, setModalState) {
             return AlertDialog(
               title: Text(
-                'Task employees "${projectNameOf(task) ?? 'Untitled'}"',
+                tr('Task employees "{name}"', {
+                  'name': projectNameOf(task) ?? tr('Untitled'),
+                }),
               ),
               content: SizedBox(
                 width: 460,
@@ -630,7 +632,7 @@ class _StartPageState extends State<StartPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(tr('Cancel')),
                 ),
                 FilledButton(
                   onPressed: () async {
@@ -655,7 +657,7 @@ class _StartPageState extends State<StartPage> {
                     }
                     navigator.pop();
                   },
-                  child: const Text('Save'),
+                  child: Text(tr('Save')),
                 ),
               ],
             );
@@ -695,7 +697,7 @@ class _StartPageState extends State<StartPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(projectNameOf(currentTask) ?? 'Task'),
+          title: Text(projectNameOf(currentTask) ?? tr('Task')),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -709,27 +711,27 @@ class _StartPageState extends State<StartPage> {
                       true)
                     Text((currentTask['description'] as String).trim())
                   else
-                    const Text('Description is empty.'),
+                    Text(tr('Description is empty.')),
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       if (isActive)
-                        const _TagBadge(
-                          label: 'Active',
+                        _TagBadge(
+                          label: tr('Active'),
                           backgroundColor: Color(0xFF123524),
                           borderColor: Color(0xFF35C886),
                         ),
                       if (isCompleted)
-                        const _TagBadge(
-                          label: 'Completed',
+                        _TagBadge(
+                          label: tr('Completed'),
                           backgroundColor: Color(0xFF3A2812),
                           borderColor: Color(0xFFE0A54A),
                         ),
                       if (isVerified)
-                        const _TagBadge(
-                          label: 'Verified',
+                        _TagBadge(
+                          label: tr('Verified'),
                           backgroundColor: Color(0xFF122E3A),
                           borderColor: Color(0xFF53B6D9),
                         ),
@@ -737,17 +739,25 @@ class _StartPageState extends State<StartPage> {
                   ),
                   if (_taskCompletedBy(currentTask) != null) ...[
                     const SizedBox(height: 12),
-                    Text('Completed by: ${_taskCompletedBy(currentTask)}'),
+                    Text(
+                      tr('Completed by: {name}', {
+                        'name': _taskCompletedBy(currentTask)!,
+                      }),
+                    ),
                   ],
                   if (_taskVerifiedBy(currentTask) != null) ...[
                     const SizedBox(height: 6),
-                    Text('Verified by: ${_taskVerifiedBy(currentTask)}'),
+                    Text(
+                      tr('Verified by: {name}', {
+                        'name': _taskVerifiedBy(currentTask)!,
+                      }),
+                    ),
                   ],
                   const SizedBox(height: 16),
                   Text(
                     assignees.isEmpty
-                        ? 'No assignees assigned'
-                        : 'Assigned employees',
+                        ? tr('No assignees assigned')
+                        : tr('Assigned employees'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -769,14 +779,14 @@ class _StartPageState extends State<StartPage> {
                   ],
                   const SizedBox(height: 20),
                   Text(
-                    'Work list',
+                    tr('Work list'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 10),
                   if (workLog.isEmpty)
-                    const Text('There are no recorded additions yet.')
+                    Text(tr('There are no recorded additions yet.'))
                   else
                     Column(
                       children: [
@@ -862,7 +872,7 @@ class _StartPageState extends State<StartPage> {
                     ),
                   const SizedBox(height: 20),
                   Text(
-                    'Actions',
+                    tr('Actions'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -879,7 +889,7 @@ class _StartPageState extends State<StartPage> {
                             navigator.pop();
                             await _showTaskAssigneesEditor(currentTask);
                           },
-                          child: const Text('Assignees'),
+                          child: Text(tr('Assignees')),
                         ),
                       if (canMarkCompleted)
                         FilledButton.tonal(
@@ -891,7 +901,7 @@ class _StartPageState extends State<StartPage> {
                             }
                             navigator.pop();
                           },
-                          child: const Text('Completed'),
+                          child: Text(tr('Completed')),
                         ),
                       if (canMarkVerified)
                         FilledButton.tonal(
@@ -903,7 +913,7 @@ class _StartPageState extends State<StartPage> {
                             }
                             navigator.pop();
                           },
-                          child: const Text('Verified'),
+                          child: Text(tr('Verified')),
                         ),
                       if (canMarkArchived)
                         FilledButton.tonal(
@@ -915,14 +925,16 @@ class _StartPageState extends State<StartPage> {
                             }
                             navigator.pop();
                           },
-                          child: const Text('Archive'),
+                          child: Text(tr('Archive')),
                         ),
                       if (!canManageAssignees &&
                           !canMarkCompleted &&
                           !canMarkVerified &&
                           !canMarkArchived)
-                        const Text(
-                          'There are no actions available for this task now.',
+                        Text(
+                          tr(
+                            'There are no actions available for this task now.',
+                          ),
                         ),
                     ],
                   ),
@@ -933,7 +945,7 @@ class _StartPageState extends State<StartPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: Text(tr('Close')),
             ),
           ],
         );
@@ -984,7 +996,7 @@ class _StartPageState extends State<StartPage> {
       });
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Failed to save tasks.')));
+        ..showSnackBar(SnackBar(content: Text(tr('Failed to save tasks.'))));
     }
   }
 
@@ -996,7 +1008,7 @@ class _StartPageState extends State<StartPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('New task'),
+          title: Text(tr('New task')),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -1004,12 +1016,12 @@ class _StartPageState extends State<StartPage> {
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Short title'),
+                  decoration: InputDecoration(labelText: tr('Short title')),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
+                  decoration: InputDecoration(labelText: tr('Description')),
                   minLines: 2,
                   maxLines: 4,
                 ),
@@ -1019,7 +1031,7 @@ class _StartPageState extends State<StartPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(tr('Cancel')),
             ),
             FilledButton(
               onPressed: () async {
@@ -1058,7 +1070,7 @@ class _StartPageState extends State<StartPage> {
                 }
                 navigator.pop();
               },
-              child: const Text('Create'),
+              child: Text(tr('Create')),
             ),
           ],
         );
@@ -1122,7 +1134,7 @@ class _StartPageState extends State<StartPage> {
             Row(
               children: [
                 Text(
-                  'Tasks',
+                  tr('Tasks'),
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -1132,21 +1144,21 @@ class _StartPageState extends State<StartPage> {
                   FilledButton.tonalIcon(
                     onPressed: _syncingProjects ? null : _showProjectEditor,
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('Create'),
+                    label: Text(tr('Create')),
                   ),
               ],
             ),
             if (_canSwitchTaskListFilter) ...[
               const SizedBox(height: 12),
               SegmentedButton<String>(
-                segments: const [
+                segments: [
                   ButtonSegment<String>(
                     value: _taskListFilterAll,
-                    label: Text('All'),
+                    label: Text(tr('All')),
                   ),
                   ButtonSegment<String>(
                     value: _taskListFilterMine,
-                    label: Text('Mine'),
+                    label: Text(tr('Mine')),
                   ),
                 ],
                 selected: {_effectiveTaskListFilter},
@@ -1163,14 +1175,16 @@ class _StartPageState extends State<StartPage> {
                 Expanded(
                   child: Text(
                     _activeProject == null
-                        ? 'Active task is turned off.'
-                        : 'Active task: ${_activeProject!.name}',
+                        ? tr('Active task is turned off.')
+                        : tr('Active task: {name}', {
+                            'name': _activeProject!.name,
+                          }),
                   ),
                 ),
                 if (_activeProject != null)
                   TextButton(
                     onPressed: _clearActiveProject,
-                    child: const Text('Turn off'),
+                    child: Text(tr('Turn off')),
                   ),
               ],
             ),
@@ -1180,15 +1194,15 @@ class _StartPageState extends State<StartPage> {
             else if (projects.isEmpty)
               Text(
                 _effectiveTaskListFilter == _taskListFilterMine
-                    ? 'You do not have assigned tasks yet.'
-                    : 'There are no tasks yet.',
+                    ? tr('You do not have assigned tasks yet.')
+                    : tr('There are no tasks yet.'),
               )
             else
               Column(
                 children: [
                   for (final project in projects) ...[
                     _ProjectRow(
-                      title: projectNameOf(project) ?? 'Untitled',
+                      title: projectNameOf(project) ?? tr('Untitled'),
                       description:
                           (project['description'] as String?)?.trim() ?? '',
                       assignees: _assignedEmployeesOf(project)
@@ -1325,9 +1339,10 @@ class _StartPageState extends State<StartPage> {
                       final cards = [
                         _ActionCard(
                           icon: Icons.map_outlined,
-                          title: 'Infrastructure map',
-                          description:
-                              'Quick access to the map of closures, PON boxes, cable routes, and connection points.',
+                          title: tr('Infrastructure map'),
+                          description: tr(
+                            'Quick access to the map of closures, PON boxes, cable routes, and connection points.',
+                          ),
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1343,9 +1358,10 @@ class _StartPageState extends State<StartPage> {
                         ),
                         _ActionCard(
                           icon: Icons.notes_rounded,
-                          title: 'Closure notebook',
-                          description:
-                              'Operational work with installation nodes, notes, and maintenance.',
+                          title: tr('Closure notebook'),
+                          description: tr(
+                            'Operational work with installation nodes, notes, and maintenance.',
+                          ),
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1360,9 +1376,10 @@ class _StartPageState extends State<StartPage> {
                         ),
                         _ActionCard(
                           icon: Icons.timeline_rounded,
-                          title: 'Cable lines',
-                          description:
-                              'Cable routes are now built and edited directly on the infrastructure map.',
+                          title: tr('Cable lines'),
+                          description: tr(
+                            'Cable routes are now built and edited directly on the infrastructure map.',
+                          ),
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1378,9 +1395,10 @@ class _StartPageState extends State<StartPage> {
                         ),
                         _ActionCard(
                           icon: Icons.dns_rounded,
-                          title: 'Network cabinets',
-                          description:
-                              'View cabinets, equipment, and placement point status.',
+                          title: tr('Network cabinets'),
+                          description: tr(
+                            'View cabinets, equipment, and placement point status.',
+                          ),
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -1486,14 +1504,16 @@ class _StartPageState extends State<StartPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Invite employee',
+                tr('Invite employee'),
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'The invite is created by work email. After registering with this email, the employee will automatically join the company.',
+              Text(
+                tr(
+                  'The invite is created by work email. After registering with this email, the employee will automatically join the company.',
+                ),
               ),
               const SizedBox(height: 14),
               if (canAssignPosition)
@@ -1518,24 +1538,26 @@ class _StartPageState extends State<StartPage> {
                             _selectedPosition = value;
                           });
                         },
-                  decoration: const InputDecoration(labelText: 'Position'),
+                  decoration: InputDecoration(labelText: tr('Position')),
                 )
               else
-                const Text(
-                  'Only the company owner can assign a position. Employees will use the default position by default.',
+                Text(
+                  tr(
+                    'Only the company owner can assign a position. Employees will use the default position by default.',
+                  ),
                 ),
               const SizedBox(height: 18),
               TextFormField(
                 controller: _inviteEmailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Employee email'),
+                decoration: InputDecoration(labelText: tr('Employee email')),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Enter an email address.';
+                    return tr('Enter an email address.');
                   }
 
                   if (!value.contains('@')) {
-                    return 'Enter a valid email address.';
+                    return tr('Enter a valid email address.');
                   }
 
                   return null;
@@ -1544,10 +1566,16 @@ class _StartPageState extends State<StartPage> {
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: _selectedRole,
-                decoration: const InputDecoration(labelText: 'Company role'),
-                items: const [
-                  DropdownMenuItem(value: 'member', child: Text('member')),
-                  DropdownMenuItem(value: 'admin', child: Text('admin')),
+                decoration: InputDecoration(labelText: tr('Company role')),
+                items: [
+                  DropdownMenuItem(
+                    value: 'member',
+                    child: Text(tr('Employee')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'admin',
+                    child: Text(tr('Administrator')),
+                  ),
                 ],
                 onChanged: controller.isBusy
                     ? null
@@ -1570,7 +1598,7 @@ class _StartPageState extends State<StartPage> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Create invite'),
+                    : Text(tr('Create invite')),
               ),
             ],
           ),
@@ -1589,20 +1617,22 @@ class _StartPageState extends State<StartPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Pending invites',
+              tr('Pending invites'),
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             if (invites.isEmpty)
-              const Text('There are no active invites.')
+              Text(tr('There are no active invites.'))
             else
               for (final invite in invites) ...[
                 _InfoRow(
                   title: invite.email,
-                  subtitle:
-                      'Code: ${invite.token} • ${_formatDate(invite.createdAt)}',
+                  subtitle: tr('Code: {token} • {date}', {
+                    'token': invite.token,
+                    'date': _formatDate(invite.createdAt),
+                  }),
                   role: invite.role,
                   position: invite.position,
                 ),
@@ -1624,14 +1654,14 @@ class _StartPageState extends State<StartPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Company team',
+              tr('Company team'),
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             if (team.isEmpty)
-              const Text('There are no employees yet.')
+              Text(tr('There are no employees yet.'))
             else
               for (final member in team) ...[
                 _InfoRow(
@@ -1686,7 +1716,7 @@ class _StartPageState extends State<StartPage> {
       }
 
       final message =
-          widget.controller.errorMessage ?? 'Failed to create the invite.';
+          widget.controller.errorMessage ?? tr('Failed to create the invite.');
       logUserFacingError(message, source: 'start.invite');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -1704,7 +1734,7 @@ class _StartPageState extends State<StartPage> {
       }
 
       final message =
-          widget.controller.errorMessage ?? 'Failed to refresh the data.';
+          widget.controller.errorMessage ?? tr('Failed to refresh the data.');
       logUserFacingError(message, source: 'start.refresh');
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -1713,12 +1743,7 @@ class _StartPageState extends State<StartPage> {
   }
 
   String _formatDate(DateTime value) {
-    final day = value.day.toString().padLeft(2, '0');
-    final month = value.month.toString().padLeft(2, '0');
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-
-    return '$day.$month.${value.year} $hour:$minute';
+    return AppI18n.instance.formatDateTime(value);
   }
 
   String _memberTitle(String fullName, String email, String userId) {
@@ -1732,9 +1757,9 @@ class _StartPageState extends State<StartPage> {
       return normalizedEmail;
     }
     if (normalizedUserId.isNotEmpty) {
-      return 'Employee ${normalizedUserId.substring(0, normalizedUserId.length < 8 ? normalizedUserId.length : 8)}';
+      return '${tr('Employee')} ${normalizedUserId.substring(0, normalizedUserId.length < 8 ? normalizedUserId.length : 8)}';
     }
-    return 'Employee';
+    return tr('Employee');
   }
 
   String _memberSubtitle({
@@ -1746,10 +1771,10 @@ class _StartPageState extends State<StartPage> {
       if (email.trim().isNotEmpty) email.trim(),
       if (position.trim().isNotEmpty) employeePositionLabel(position.trim()),
       if (email.trim().isEmpty && userId.trim().isNotEmpty)
-        'ID: ${userId.trim()}',
+        tr('ID: {value}', {'value': userId.trim()}),
     ];
     if (parts.isEmpty) {
-      return 'Employee profile';
+      return tr('Employee profile');
     }
     return parts.join(' • ');
   }
@@ -2254,32 +2279,45 @@ class _HeroCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Employee workspace',
+                    tr('Employee workspace'),
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text('User: $displayName'),
+                  Text(tr('User: {value}', {'value': displayName})),
                   const SizedBox(height: 6),
-                  Text('Company: $companyName'),
+                  Text(tr('Company: {value}', {'value': companyName})),
                   const SizedBox(height: 6),
-                  Text('Role: $role'),
+                  Text(tr('Role: {value}', {'value': _roleLabel(role)})),
                   if (position.trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text('Position: $position'),
+                    Text(tr('Position: {value}', {'value': position})),
                   ],
                   const SizedBox(height: 6),
-                  Text('Slug: $slug'),
+                  Text(tr('Slug: {value}', {'value': slug})),
                 ],
               ),
             ),
-            _MetricBadge(label: 'Employees', value: '$teamSize'),
-            _MetricBadge(label: 'Invites', value: '$inviteCount'),
+            _MetricBadge(label: tr('Employees'), value: '$teamSize'),
+            _MetricBadge(label: tr('Invites'), value: '$inviteCount'),
           ],
         ),
       ),
     );
+  }
+
+  String _roleLabel(String value) {
+    switch (value) {
+      case 'owner':
+        return tr('Owner');
+      case 'admin':
+        return tr('Administrator');
+      case 'member':
+        return tr('Employee');
+      default:
+        return value;
+    }
   }
 }
 
@@ -2439,7 +2477,7 @@ class _ProjectRow extends StatelessWidget {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: onOpenDetails,
-                      child: const Text('Open'),
+                      child: Text(tr('Open')),
                     ),
                   ],
                 ),
@@ -2450,27 +2488,27 @@ class _ProjectRow extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   if (isVerified)
-                    const _TagBadge(
-                      label: 'Verified',
+                    _TagBadge(
+                      label: tr('Verified'),
                       backgroundColor: Color(0xFF122E3A),
                       borderColor: Color(0xFF53B6D9),
                     ),
                   if (isCompleted)
-                    const _TagBadge(
-                      label: 'Completed',
+                    _TagBadge(
+                      label: tr('Completed'),
                       backgroundColor: Color(0xFF3A2812),
                       borderColor: Color(0xFFE0A54A),
                     ),
                   if (isActive)
-                    const _TagBadge(
-                      label: 'Active',
+                    _TagBadge(
+                      label: tr('Active'),
                       backgroundColor: Color(0xFF123524),
                       borderColor: Color(0xFF35C886),
                     )
                   else
                     TextButton(
                       onPressed: onActivate,
-                      child: const Text('Activate'),
+                      child: Text(tr('Activate')),
                     ),
                 ],
               ),
@@ -2479,20 +2517,22 @@ class _ProjectRow extends StatelessWidget {
           if (isCompleted && completedBy != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Marked completed by: $completedBy',
+              tr('Marked completed by: {name}', {'name': completedBy!}),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
           if (isVerified && verifiedBy != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Verified by: $verifiedBy',
+              tr('Verified by: {name}', {'name': verifiedBy!}),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
           const SizedBox(height: 12),
           Text(
-            assignees.isEmpty ? 'No employees assigned' : 'Assigned employees',
+            assignees.isEmpty
+                ? tr('No employees assigned')
+                : tr('Assigned employees'),
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -2516,7 +2556,7 @@ class _ProjectRow extends StatelessWidget {
             const SizedBox(height: 12),
             TextButton(
               onPressed: onManageAssignees,
-              child: const Text('Assign employees'),
+              child: Text(tr('Assign employees')),
             ),
           ],
           if (canMarkCompleted) ...[
@@ -2524,7 +2564,7 @@ class _ProjectRow extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onMarkCompleted,
               icon: const Icon(Icons.task_alt_rounded),
-              label: const Text('Mark completed'),
+              label: Text(tr('Mark completed')),
             ),
           ],
           if (canMarkVerified) ...[
@@ -2532,7 +2572,7 @@ class _ProjectRow extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onMarkVerified,
               icon: const Icon(Icons.verified_rounded),
-              label: const Text('Mark verified'),
+              label: Text(tr('Mark verified')),
             ),
           ],
           if (canMarkArchived) ...[
@@ -2540,7 +2580,7 @@ class _ProjectRow extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onMarkArchived,
               icon: const Icon(Icons.archive_rounded),
-              label: const Text('Send to archive'),
+              label: Text(tr('Send to archive')),
             ),
           ],
         ],
@@ -2615,11 +2655,11 @@ class _InfoRow extends StatelessWidget {
   String _roleLabel(String value) {
     switch (value) {
       case 'owner':
-        return 'Owner';
+        return tr('Owner');
       case 'admin':
-        return 'Administrator';
+        return tr('Administrator');
       case 'member':
-        return 'Employee';
+        return tr('Employee');
       default:
         return value;
     }

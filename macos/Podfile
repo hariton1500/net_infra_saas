@@ -2,6 +2,15 @@ platform :osx, '10.15'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+ENV['LANG'] ||= 'en_US.UTF-8'
+ENV['LC_ALL'] ||= 'en_US.UTF-8'
+
+cert_file = [
+  '/usr/local/etc/ca-certificates/cert.pem',
+  '/opt/homebrew/etc/ca-certificates/cert.pem',
+  '/private/etc/ssl/cert.pem',
+].find { |path| File.exist?(path) }
+ENV['SSL_CERT_FILE'] ||= cert_file if cert_file
 
 project 'Runner', {
   'Debug' => :debug,

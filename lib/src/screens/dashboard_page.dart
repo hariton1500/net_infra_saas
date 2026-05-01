@@ -494,12 +494,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   String _formatDate(DateTime value) {
-    final day = value.day.toString().padLeft(2, '0');
-    final month = value.month.toString().padLeft(2, '0');
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-
-    return '$day.$month ${value.year} $hour:$minute';
+    return AppI18n.instance.formatDateTime(value);
   }
 
   String _roleLabel(String value) {

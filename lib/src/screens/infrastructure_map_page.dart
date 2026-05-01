@@ -277,7 +277,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   String _selectedTileLayerId = 'osm';
   List<Map<String, dynamic>> _muffRecords = const [];
   List<Map<String, dynamic>> _cabinetRecords = const [];
-  List<Map<String, dynamic>> _projectRecords = const [];
+  final List<Map<String, dynamic>> _projectRecords = const [];
   List<_InfrastructureEntity> _entities = const [];
   List<Map<String, dynamic>> _routeRecords = const [];
   List<_CableRoute> _routes = const [];

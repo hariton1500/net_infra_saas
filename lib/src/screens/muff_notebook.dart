@@ -1300,7 +1300,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _endpointKey(endpoint1),
+                    initialValue: _endpointKey(endpoint1),
                     items: endpointItems(),
                     onChanged: (value) {
                       if (value == null) {
@@ -1318,7 +1318,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _endpointKey(endpoint2),
+                    initialValue: _endpointKey(endpoint2),
                     items: endpointItems(),
                     onChanged: (value) {
                       if (value == null) {
@@ -1478,7 +1478,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
-                      value: ratio,
+                      initialValue: ratio,
                       decoration: InputDecoration(
                         labelText: tr('Split ratio'),
                         border: OutlineInputBorder(),
@@ -1499,7 +1499,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
-                      value: side,
+                      initialValue: side,
                       decoration: InputDecoration(
                         labelText: tr('Side'),
                         border: OutlineInputBorder(),
@@ -1516,7 +1516,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: orientation,
+                      initialValue: orientation,
                       decoration: InputDecoration(
                         labelText: tr('Output port layout'),
                         border: OutlineInputBorder(),
@@ -1625,7 +1625,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
-                      value: ratio,
+                      initialValue: ratio,
                       decoration: InputDecoration(
                         labelText: tr('Split ratio'),
                         border: OutlineInputBorder(),
@@ -1646,7 +1646,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
-                      value: side,
+                      initialValue: side,
                       decoration: InputDecoration(
                         labelText: tr('Side'),
                         border: OutlineInputBorder(),
@@ -1663,7 +1663,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: orientation,
+                      initialValue: orientation,
                       decoration: InputDecoration(
                         labelText: tr('Output port layout'),
                         border: OutlineInputBorder(),

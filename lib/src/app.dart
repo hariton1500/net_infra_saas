@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth/auth_controller.dart';
@@ -40,13 +41,30 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppStrings.appTitle,
-      debugShowCheckedModeBanner: false,
-      theme: _buildTheme(),
-      home: widget.config.isConfigured
-          ? AuthShell(controller: _controller!)
-          : const SetupRequiredPage(),
+    return AnimatedBuilder(
+      animation: AppI18n.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: AppStrings.appTitle,
+          debugShowCheckedModeBanner: false,
+          locale: AppI18n.instance.locale,
+          supportedLocales: AppI18n.supportedLocales,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          theme: _buildTheme(),
+          home: _LocalizedAppFrame(
+            child: KeyedSubtree(
+              key: ValueKey(AppI18n.instance.localeName),
+              child: widget.config.isConfigured
+                  ? AuthShell(controller: _controller!)
+                  : const SetupRequiredPage(),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -58,19 +76,20 @@ class _MyAppState extends State<MyApp> {
     const secondary = Color(0xFF35C886);
     const text = Color(0xFFF2F7FA);
 
-    final scheme = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: primary,
-      secondary: secondary,
-      surface: surface,
-      error: const Color(0xFFFF6B6B),
-      onPrimary: background,
-      onSecondary: background,
-      onSurface: text,
-      onError: text,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: primary,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: primary,
+          secondary: secondary,
+          surface: surface,
+          error: const Color(0xFFFF6B6B),
+          onPrimary: background,
+          onSecondary: background,
+          onSurface: text,
+          onError: text,
+        );
 
     return ThemeData(
       useMaterial3: true,
@@ -133,6 +152,52 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+class _LocalizedAppFrame extends StatelessWidget {
+  const _LocalizedAppFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        child,
+        const SafeArea(
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: _LanguageMenuButton(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LanguageMenuButton extends StatelessWidget {
+  const _LanguageMenuButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final currentLocale = AppI18n.instance.locale;
+    return Material(
+      color: Colors.transparent,
+      child: PopupMenuButton<Locale>(
+        tooltip: tr('Language'),
+        icon: const Icon(Icons.language_rounded),
+        initialValue: currentLocale,
+        onSelected: AppI18n.instance.setLocale,
+        itemBuilder: (context) => [
+          PopupMenuItem(value: const Locale('en'), child: Text(tr('English'))),
+          PopupMenuItem(value: const Locale('ru'), child: Text(tr('Russian'))),
+        ],
+      ),
+    );
+  }
+}
+
 class AuthShell extends StatelessWidget {
   const AuthShell({super.key, required this.controller});
 
@@ -155,7 +220,8 @@ class AuthShell extends StatelessWidget {
             return StartPage(controller: controller);
           case AuthView.error:
             return _ErrorScreen(
-              message: controller.errorMessage ?? tr(AppStrings.sessionLoadFailed),
+              message:
+                  controller.errorMessage ?? tr(AppStrings.sessionLoadFailed),
               onRetry: controller.refresh,
               onSignOut: controller.signOut,
             );

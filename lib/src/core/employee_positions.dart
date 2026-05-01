@@ -17,11 +17,11 @@ const List<String> employeePositions = [
 String employeePositionLabel(String position) {
   switch (normalizeEmployeePosition(position)) {
     case employeePositionChiefEngineer:
-      return 'Chief Engineer';
+      return tr('Chief Engineer');
     case employeePositionEngineer:
-      return 'Engineer';
+      return tr('Engineer');
     case employeePositionInstaller:
-      return 'Installer';
+      return tr('Installer');
     default:
       return position;
   }
