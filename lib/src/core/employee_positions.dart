@@ -1,3 +1,5 @@
+import 'package:net_infra_saas/src/core/app_i18n.dart';
+
 const String employeePositionChiefEngineer = 'Chief Engineer';
 const String employeePositionEngineer = 'Engineer';
 const String employeePositionInstaller = 'Installer';
