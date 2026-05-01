@@ -78,15 +78,20 @@ jobs:
         if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_PAGES_PROJECT != '' }}
         run: |
           npm install --global wrangler@3.90.0
-          wrangler pages project list --json > pages-projects.json
-          node -e "
-            const fs = require('fs');
-            const response = JSON.parse(fs.readFileSync('pages-projects.json', 'utf8'));
-            const projects = Array.isArray(response) ? response : response.result || [];
-            const expected = process.env.CLOUDFLARE_PAGES_PROJECT;
-            const exists = projects.some((project) => project.name === expected);
-            process.exit(exists ? 0 : 1);
-          " || wrangler pages project create "${CLOUDFLARE_PAGES_PROJECT}" --production-branch="${GITHUB_REF_NAME}"
+          status_code="$(
+            curl --silent --output cloudflare-pages-project.json --write-out "%{http_code}" \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${CLOUDFLARE_PAGES_PROJECT}"
+          )"
+
+          if [[ "${status_code}" == "404" ]]; then
+            wrangler pages project create "${CLOUDFLARE_PAGES_PROJECT}" --production-branch="${GITHUB_REF_NAME}"
+          elif [[ "${status_code}" =~ ^2 ]]; then
+            echo "Cloudflare Pages project ${CLOUDFLARE_PAGES_PROJECT} already exists."
+          else
+            cat cloudflare-pages-project.json
+            exit 1
+          fi
 
       - name: Deploy
         if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_PAGES_PROJECT != '' }}
