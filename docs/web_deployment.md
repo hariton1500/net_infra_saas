@@ -55,7 +55,14 @@ powershell -ExecutionPolicy Bypass -File scripts/build_web.ps1
 
 `CLOUDFLARE_ACCOUNT_ID` и `CLOUDFLARE_PAGES_PROJECT` можно задать либо как GitHub Secrets, либо как repository Variables. Это не приватные значения, поэтому удобнее хранить их в Variables.
 
-Секреты для REG.RU:
+Секреты для REG.RU при деплое по FTP:
+
+- `REG_RU_HOST`: IP, домен или технологический домен хостинга
+- `REG_RU_USER`: логин хостинга, например `u1234567`
+- `REG_RU_FTP_PASSWORD`: пароль от FTP
+- `REG_RU_REMOTE_PATH`: каталог сайта через FTP, например `/www/example.ru/`
+
+Альтернативные секреты для REG.RU при деплое по SSH:
 
 - `REG_RU_HOST`: IP, домен или технологический домен хостинга
 - `REG_RU_USER`: логин хостинга, например `u1234567`

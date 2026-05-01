@@ -112,13 +112,14 @@ jobs:
       REG_RU_USER: ${{ secrets.REG_RU_USER }}
       REG_RU_REMOTE_PATH: ${{ secrets.REG_RU_REMOTE_PATH }}
       REG_RU_SSH_PRIVATE_KEY: ${{ secrets.REG_RU_SSH_PRIVATE_KEY }}
+      REG_RU_FTP_PASSWORD: ${{ secrets.REG_RU_FTP_PASSWORD || secrets.REG_RU_PASSWORD }}
     steps:
       - name: Skip when REG.RU is not configured
-        if: ${{ env.REG_RU_HOST == '' || env.REG_RU_USER == '' || env.REG_RU_REMOTE_PATH == '' || env.REG_RU_SSH_PRIVATE_KEY == '' }}
-        run: echo "REG.RU SSH secrets are not configured; skipping deploy."
+        if: ${{ env.REG_RU_HOST == '' || env.REG_RU_USER == '' || env.REG_RU_REMOTE_PATH == '' || (env.REG_RU_SSH_PRIVATE_KEY == '' && env.REG_RU_FTP_PASSWORD == '') }}
+        run: echo "REG.RU secrets are not configured; skipping deploy."
 
       - name: Download web artifact
-        if: ${{ env.REG_RU_HOST != '' && env.REG_RU_USER != '' && env.REG_RU_REMOTE_PATH != '' && env.REG_RU_SSH_PRIVATE_KEY != '' }}
+        if: ${{ env.REG_RU_HOST != '' && env.REG_RU_USER != '' && env.REG_RU_REMOTE_PATH != '' && (env.REG_RU_SSH_PRIVATE_KEY != '' || env.REG_RU_FTP_PASSWORD != '') }}
         uses: actions/download-artifact@v4
         with:
           name: web-build
@@ -140,3 +141,14 @@ jobs:
             -e "ssh -p ${REG_RU_PORT} -i ~/.ssh/reg_ru_deploy -o StrictHostKeyChecking=yes" \
             build/web/ \
             "${REG_RU_USER}@${REG_RU_HOST}:${REG_RU_REMOTE_PATH}/"
+
+      - name: Sync files over FTP
+        if: ${{ env.REG_RU_HOST != '' && env.REG_RU_USER != '' && env.REG_RU_REMOTE_PATH != '' && env.REG_RU_SSH_PRIVATE_KEY == '' && env.REG_RU_FTP_PASSWORD != '' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ env.REG_RU_HOST }}
+          username: ${{ env.REG_RU_USER }}
+          password: ${{ env.REG_RU_FTP_PASSWORD }}
+          local-dir: build/web/
+          server-dir: ${{ env.REG_RU_REMOTE_PATH }}
+          dangerous-clean-slate: true
