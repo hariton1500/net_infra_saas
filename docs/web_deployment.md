@@ -47,13 +47,13 @@ powershell -ExecutionPolicy Bypass -File scripts/build_web.ps1
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
-Секреты для Cloudflare Pages:
+Секрет для Cloudflare Pages:
 
-- `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_PAGES_PROJECT`
 
 Токену Cloudflare нужны права `Account -> Cloudflare Pages -> Edit`.
+
+`CLOUDFLARE_ACCOUNT_ID` и `CLOUDFLARE_PAGES_PROJECT` можно задать либо как GitHub Secrets, либо как repository Variables. Это не приватные значения, поэтому удобнее хранить их в Variables.
 
 Секреты для REG.RU:
 
@@ -70,6 +70,8 @@ powershell -ExecutionPolicy Bypass -File scripts/build_web.ps1
 Опционально можно задать repository variable:
 
 - `WEB_BASE_HREF`: базовый путь приложения, по умолчанию `/`
+- `CLOUDFLARE_ACCOUNT_ID`: Account ID из Cloudflare dashboard
+- `CLOUDFLARE_PAGES_PROJECT`: имя Pages-проекта
 
 ## Автопубликация
 
