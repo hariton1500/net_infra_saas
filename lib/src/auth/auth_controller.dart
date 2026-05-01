@@ -573,8 +573,7 @@ class AuthController extends ChangeNotifier {
         text.contains('connection reset') ||
         text.contains('failed host lookup') ||
         text.contains('network is unreachable') ||
-        text.contains('таймаут') ||
-        text.contains('семафора');
+        text.runes.any((codeUnit) => codeUnit >= 0x0400 && codeUnit <= 0x04FF);
   }
 
   String _assertValidPosition(String position) {
