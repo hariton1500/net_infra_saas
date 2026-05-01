@@ -88,3 +88,5 @@ Workflow `.github/workflows/deploy-web.yml` запускается при push �
 
 - в Cloudflare Pages через `cloudflare/wrangler-action`
 - на REG.RU через `rsync` по SSH
+
+Если Cloudflare Pages project с именем из `CLOUDFLARE_PAGES_PROJECT` ещё не создан, workflow создаст его автоматически перед первым деплоем.
