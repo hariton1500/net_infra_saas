@@ -97,6 +97,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   double _connectionLineOpacity = 0.38;
   double _portSize = 26;
   double _fiberSize = 24;
+  bool _routeConnectionLines = true;
   String _selectedTileLayerId = 'osm';
   Timer? _syncTimer;
 
@@ -2438,6 +2439,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
   Widget _buildConnectionLineControls() {
     final theme = Theme.of(context);
+    final lineStyleLabel = _routeConnectionLines
+        ? tr('Маршрут')
+        : tr('Плавные');
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: DecoratedBox(
@@ -2465,6 +2469,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     ),
                   ),
                   Text(
+                    '$lineStyleLabel / '
                     '${_connectionLineWidth.toStringAsFixed(1)} / '
                     '${(_connectionLineOpacity * 100).round()}% / '
                     '${_portSize.round()} / ${_fiberSize.round()}',
@@ -2491,6 +2496,35 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 ],
               ),
               if (_showConnectionLineControls) ...[
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Стиль'))),
+                    Expanded(
+                      child: SegmentedButton<bool>(
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        segments: [
+                          ButtonSegment<bool>(
+                            value: false,
+                            label: Text(tr('Плавные')),
+                          ),
+                          ButtonSegment<bool>(
+                            value: true,
+                            label: Text(tr('Маршрут')),
+                          ),
+                        ],
+                        selected: {_routeConnectionLines},
+                        onSelectionChanged: (selection) {
+                          setState(() {
+                            _routeConnectionLines = selection.first;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
                 Row(
                   children: [
                     SizedBox(width: 100, child: Text(tr('Толщина'))),
@@ -2991,6 +3025,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               colors: _fiberColorByKey,
                               lineWidth: _connectionLineWidth,
                               lineOpacity: _connectionLineOpacity,
+                              routeConnections: _routeConnectionLines,
                             ),
                           ),
                         ),
@@ -3159,7 +3194,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           _buildActiveProjectBanner(),
           ScreenInstruction(
             text: tr(
-              'Create a cabinet, select it, then add switches, cables, ports, and connections from the detail pane.',
+              'Создайте шкаф, выберите его, затем добавьте коммутаторы, кабели, порты и соединения в панели деталей.',
             ),
             margin: const EdgeInsets.all(12),
           ),
@@ -3646,6 +3681,7 @@ class _ConnectionsPainter extends CustomPainter {
     required this.colors,
     required this.lineWidth,
     required this.lineOpacity,
+    required this.routeConnections,
   });
 
   final List<Map<String, dynamic>> connections;
@@ -3653,6 +3689,7 @@ class _ConnectionsPainter extends CustomPainter {
   final Map<String, Color> colors;
   final double lineWidth;
   final double lineOpacity;
+  final bool routeConnections;
 
   String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
 
@@ -3713,12 +3750,106 @@ class _ConnectionsPainter extends CustomPainter {
     return Colors.grey;
   }
 
+  double _direction(double value) {
+    if (value == 0) {
+      return 0;
+    }
+    return value > 0 ? 1 : -1;
+  }
+
+  double _segmentLength(Offset a, Offset b) {
+    return (a.dx - b.dx).abs() + (a.dy - b.dy).abs();
+  }
+
+  double _min3(double a, double b, double c) {
+    var value = a < b ? a : b;
+    value = value < c ? value : c;
+    return value;
+  }
+
+  double _routeY(Offset p1, Offset p2, Size size) {
+    final verticalDistance = (p1.dy - p2.dy).abs();
+    if (verticalDistance >= 18) {
+      return (p1.dy + p2.dy) / 2;
+    }
+
+    final lowerY = p1.dy > p2.dy ? p1.dy : p2.dy;
+    final upperY = p1.dy < p2.dy ? p1.dy : p2.dy;
+    final below = lowerY + 16;
+    if (below <= size.height - 4) {
+      return below;
+    }
+    return upperY - 16;
+  }
+
+  ui.Path _roundedOrthogonalPath(Offset p1, Offset p2, Size size) {
+    final trackY = _routeY(p1, p2, size);
+    final points = [p1, Offset(p1.dx, trackY), Offset(p2.dx, trackY), p2];
+    final path = ui.Path()..moveTo(points.first.dx, points.first.dy);
+    final cornerRadius = (lineWidth * 5).clamp(6.0, 14.0).toDouble();
+
+    for (var index = 1; index < points.length - 1; index += 1) {
+      final previous = points[index - 1];
+      final current = points[index];
+      final next = points[index + 1];
+      final incomingLength = _segmentLength(previous, current);
+      final outgoingLength = _segmentLength(current, next);
+      final radius = _min3(
+        cornerRadius,
+        incomingLength / 2,
+        outgoingLength / 2,
+      );
+
+      if (radius <= 0) {
+        path.lineTo(current.dx, current.dy);
+        continue;
+      }
+
+      final incoming = Offset(
+        _direction(current.dx - previous.dx),
+        _direction(current.dy - previous.dy),
+      );
+      final outgoing = Offset(
+        _direction(next.dx - current.dx),
+        _direction(next.dy - current.dy),
+      );
+      final beforeCorner = Offset(
+        current.dx - incoming.dx * radius,
+        current.dy - incoming.dy * radius,
+      );
+      final afterCorner = Offset(
+        current.dx + outgoing.dx * radius,
+        current.dy + outgoing.dy * radius,
+      );
+
+      path
+        ..lineTo(beforeCorner.dx, beforeCorner.dy)
+        ..quadraticBezierTo(
+          current.dx,
+          current.dy,
+          afterCorner.dx,
+          afterCorner.dy,
+        );
+    }
+
+    path.lineTo(points.last.dx, points.last.dy);
+    return path;
+  }
+
+  ui.Path _curvedPath(Offset p1, Offset p2) {
+    final midX = (p1.dx + p2.dx) / 2;
+    return ui.Path()
+      ..moveTo(p1.dx, p1.dy)
+      ..cubicTo(midX, p1.dy, midX, p2.dy, p2.dx, p2.dy);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = lineWidth
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
     for (final connection in connections) {
       final p1 = _positionFor(connection, true);
@@ -3728,10 +3859,9 @@ class _ConnectionsPainter extends CustomPainter {
       }
 
       paint.color = _colorFor(connection, true).withValues(alpha: lineOpacity);
-      final midX = (p1.dx + p2.dx) / 2;
-      final path = ui.Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..cubicTo(midX, p1.dy, midX, p2.dy, p2.dx, p2.dy);
+      final path = routeConnections
+          ? _roundedOrthogonalPath(p1, p2, size)
+          : _curvedPath(p1, p2);
       canvas.drawPath(path, paint);
 
       final dotPaint = Paint()..color = paint.color;
@@ -3747,6 +3877,7 @@ class _ConnectionsPainter extends CustomPainter {
         oldDelegate.positions != positions ||
         oldDelegate.colors != colors ||
         oldDelegate.lineWidth != lineWidth ||
-        oldDelegate.lineOpacity != lineOpacity;
+        oldDelegate.lineOpacity != lineOpacity ||
+        oldDelegate.routeConnections != routeConnections;
   }
 }
