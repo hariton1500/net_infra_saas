@@ -7,6 +7,7 @@ import '../core/company_module_sync_repository.dart';
 import '../core/employee_positions.dart';
 import '../core/project_scope.dart';
 import '../widgets/screen_instruction.dart';
+import 'company_team_page.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
 import 'network_cabinet.dart';
@@ -27,10 +28,6 @@ class _StartPageState extends State<StartPage> {
   static const String _taskListFilterMine = 'mine';
 
   late final CompanyModuleSyncRepository _syncRepository;
-  final _inviteFormKey = GlobalKey<FormState>();
-  final _inviteEmailController = TextEditingController();
-  String _selectedRole = 'member';
-  String _selectedPosition = employeePositionEngineer;
   bool _loadingProjects = true;
   bool _syncingProjects = false;
   List<Map<String, dynamic>> _projectRecords = const [];
@@ -45,12 +42,6 @@ class _StartPageState extends State<StartPage> {
     );
     _cleanupLegacyCaches();
     _loadProjects();
-  }
-
-  @override
-  void dispose() {
-    _inviteEmailController.dispose();
-    super.dispose();
   }
 
   Future<void> _cleanupLegacyCaches() async {
@@ -73,7 +64,12 @@ class _StartPageState extends State<StartPage> {
   String get _currentUserEmail =>
       widget.controller.currentUser?.email?.trim().toLowerCase() ?? '';
 
-  bool get _canManageProjects => canCreateProjectsForPosition(_userPosition);
+  bool get _canManageProjects {
+    final role = widget.controller.membership?.role;
+    return role == 'owner' ||
+        role == 'admin' ||
+        canCreateProjectsForPosition(_userPosition);
+  }
 
   List<Map<String, dynamic>> get _projects =>
       _normalizeProjectRecords(_projectRecords);
@@ -82,13 +78,6 @@ class _StartPageState extends State<StartPage> {
 
   String get _effectiveTaskListFilter =>
       _canSwitchTaskListFilter ? _taskListFilter : _taskListFilterMine;
-
-  String get _selectedInvitePosition {
-    final normalized = normalizeEmployeePosition(_selectedPosition);
-    return employeePositions.contains(normalized)
-        ? normalized
-        : employeePositionEngineer;
-  }
 
   List<Map<String, dynamic>> get _visibleProjects {
     final projects = _projects;
@@ -558,6 +547,21 @@ class _StartPageState extends State<StartPage> {
       return normalizedEmail;
     }
     return tr('Employee');
+  }
+
+  String _memberSubtitle({required String email, required String position}) {
+    final parts = <String>[
+      if (email.trim().isNotEmpty) email.trim(),
+      if (position.trim().isNotEmpty) employeePositionLabel(position.trim()),
+    ];
+    if (parts.isEmpty) {
+      return tr('Employee profile');
+    }
+    return parts.join(' • ');
+  }
+
+  String _formatDate(DateTime value) {
+    return AppI18n.instance.formatDateTime(value);
   }
 
   Future<void> _showTaskAssigneesEditor(Map<String, dynamic> task) async {
@@ -1273,6 +1277,23 @@ class _StartPageState extends State<StartPage> {
             icon: const Icon(Icons.person_outline_rounded),
           ),
           IconButton(
+            tooltip: tr('Company team'),
+            onPressed: controller.isBusy
+                ? null
+                : () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CompanyTeamPage(controller: controller),
+                      ),
+                    );
+                    if (mounted) {
+                      await _refreshTeam();
+                    }
+                  },
+            icon: const Icon(Icons.groups_2_outlined),
+          ),
+          IconButton(
             tooltip: tr('Refresh data'),
             onPressed: controller.isBusy ? null : _refreshTeam,
             icon: const Icon(Icons.refresh_rounded),
@@ -1422,52 +1443,6 @@ class _StartPageState extends State<StartPage> {
                       );
                     },
                   ),
-                  const SizedBox(height: 24),
-                  if (controller.canManageTeam) ...[
-                    Text(
-                      'Company team',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 14),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final compact = constraints.maxWidth < 920;
-
-                        if (compact) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildInviteCard(context),
-                              const SizedBox(height: 20),
-                              _buildPendingInvitesCard(context),
-                              const SizedBox(height: 20),
-                              _buildTeamCard(context),
-                            ],
-                          );
-                        }
-
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _buildInviteCard(context),
-                                  const SizedBox(height: 20),
-                                  _buildPendingInvitesCard(context),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(child: _buildTeamCard(context)),
-                          ],
-                        );
-                      },
-                    ),
-                  ] else ...[
-                    _buildTeamCard(context),
-                  ],
                 ],
               ),
             ),
@@ -1475,239 +1450,6 @@ class _StartPageState extends State<StartPage> {
         ),
       ),
     );
-  }
-
-  Widget _buildInviteCard(BuildContext context) {
-    final controller = widget.controller;
-    final canAssignPosition = controller.canAssignEmployeePosition;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _inviteFormKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                tr('Invite employee'),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                tr(
-                  'The invite is created by work email. After registering with this email, the employee will automatically join the company.',
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (canAssignPosition)
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedInvitePosition,
-                  items: employeePositions
-                      .map(
-                        (position) => DropdownMenuItem<String>(
-                          value: position,
-                          child: Text(employeePositionLabel(position)),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: controller.isBusy
-                      ? null
-                      : (value) {
-                          if (value == null) {
-                            return;
-                          }
-
-                          setState(() {
-                            _selectedPosition = value;
-                          });
-                        },
-                  decoration: InputDecoration(labelText: tr('Position')),
-                )
-              else
-                Text(
-                  tr(
-                    'Only the company owner can assign a position. Employees will use the default position by default.',
-                  ),
-                ),
-              const SizedBox(height: 18),
-              TextFormField(
-                controller: _inviteEmailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(labelText: tr('Employee email')),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return tr('Enter an email address.');
-                  }
-
-                  if (!value.contains('@')) {
-                    return tr('Enter a valid email address.');
-                  }
-
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedRole,
-                decoration: InputDecoration(labelText: tr('Company role')),
-                items: [
-                  DropdownMenuItem(
-                    value: 'member',
-                    child: Text(tr('Employee')),
-                  ),
-                  DropdownMenuItem(
-                    value: 'admin',
-                    child: Text(tr('Administrator')),
-                  ),
-                ],
-                onChanged: controller.isBusy
-                    ? null
-                    : (value) {
-                        if (value == null) {
-                          return;
-                        }
-
-                        setState(() {
-                          _selectedRole = value;
-                        });
-                      },
-              ),
-              const SizedBox(height: 18),
-              ElevatedButton(
-                onPressed: controller.isBusy ? null : _submitInvite,
-                child: controller.isBusy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(tr('Create invite')),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPendingInvitesCard(BuildContext context) {
-    final invites = widget.controller.pendingInvites;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              tr('Pending invites'),
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            if (invites.isEmpty)
-              Text(tr('There are no active invites.'))
-            else
-              for (final invite in invites) ...[
-                _InfoRow(
-                  title: invite.email,
-                  subtitle: tr('Code: {token} • {date}', {
-                    'token': invite.token,
-                    'date': _formatDate(invite.createdAt),
-                  }),
-                  role: invite.role,
-                  position: invite.position,
-                ),
-                const SizedBox(height: 12),
-              ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTeamCard(BuildContext context) {
-    final team = widget.controller.teamMembers;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              tr('Company team'),
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            if (team.isEmpty)
-              Text(tr('There are no employees yet.'))
-            else
-              for (final member in team) ...[
-                _InfoRow(
-                  title: _memberTitle(
-                    member.fullName,
-                    member.email,
-                    member.userId,
-                  ),
-                  subtitle: _memberSubtitle(
-                    email: member.email,
-                    position: member.position,
-                    userId: member.userId,
-                  ),
-                  role: member.role,
-                  position: member.position,
-                ),
-                const SizedBox(height: 12),
-              ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _submitInvite() async {
-    if (!_inviteFormKey.currentState!.validate()) {
-      return;
-    }
-
-    try {
-      final message = await widget.controller.inviteEmployee(
-        email: _inviteEmailController.text,
-        role: _selectedRole,
-        position: _selectedInvitePosition,
-      );
-
-      _inviteEmailController.clear();
-      setState(() {
-        _selectedPosition = employeePositionEngineer;
-      });
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      final message =
-          widget.controller.errorMessage ?? tr('Failed to create the invite.');
-      logUserFacingError(message, source: 'start.invite');
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
-    }
   }
 
   Future<void> _refreshTeam() async {
@@ -1726,43 +1468,6 @@ class _StartPageState extends State<StartPage> {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
     }
-  }
-
-  String _formatDate(DateTime value) {
-    return AppI18n.instance.formatDateTime(value);
-  }
-
-  String _memberTitle(String fullName, String email, String userId) {
-    final normalizedName = fullName.trim();
-    final normalizedEmail = email.trim();
-    final normalizedUserId = userId.trim();
-    if (normalizedName.isNotEmpty) {
-      return normalizedName;
-    }
-    if (normalizedEmail.isNotEmpty) {
-      return normalizedEmail;
-    }
-    if (normalizedUserId.isNotEmpty) {
-      return '${tr('Employee')} ${normalizedUserId.substring(0, normalizedUserId.length < 8 ? normalizedUserId.length : 8)}';
-    }
-    return tr('Employee');
-  }
-
-  String _memberSubtitle({
-    required String email,
-    required String position,
-    String userId = '',
-  }) {
-    final parts = <String>[
-      if (email.trim().isNotEmpty) email.trim(),
-      if (position.trim().isNotEmpty) employeePositionLabel(position.trim()),
-      if (email.trim().isEmpty && userId.trim().isNotEmpty)
-        tr('ID: {value}', {'value': userId.trim()}),
-    ];
-    if (parts.isEmpty) {
-      return tr('Employee profile');
-    }
-    return parts.join(' • ');
   }
 }
 
@@ -1790,14 +1495,6 @@ class _MainScreenHelpDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _MainHelpSection(
-                icon: Icons.account_circle_outlined,
-                title: tr('Company summary'),
-                body: tr(
-                  'The top card shows the current user, company, role, position, company slug, team size, and number of pending invites.',
-                ),
-                image: const _MainSummaryHelpPicture(),
-              ),
-              _MainHelpSection(
                 icon: Icons.task_alt_rounded,
                 title: tr('Tasks'),
                 body: tr(
@@ -1822,18 +1519,10 @@ class _MainScreenHelpDialog extends StatelessWidget {
                 image: const _MainSectionsHelpPicture(),
               ),
               _MainHelpSection(
-                icon: Icons.group_add_outlined,
-                title: tr('Invite employees'),
-                body: tr(
-                  'Owners and administrators can invite employees by work email, choose their role, and assign a position when allowed. The employee joins automatically after registering with the invited email.',
-                ),
-                image: const _MainInviteHelpPicture(),
-              ),
-              _MainHelpSection(
-                icon: Icons.groups_outlined,
+                icon: Icons.groups_2_outlined,
                 title: tr('Company team'),
                 body: tr(
-                  'The team list shows active members, their email, role, and position. Pending invites show emails waiting for acceptance and their invite codes.',
+                  'Use the team button in the top bar to review employees, pending invites, and invite new employees when your role allows it.',
                 ),
                 image: const _MainTeamHelpPicture(),
               ),
@@ -1952,17 +1641,6 @@ class _MainHelpPictureFrame extends StatelessWidget {
   }
 }
 
-class _MainSummaryHelpPicture extends StatelessWidget {
-  const _MainSummaryHelpPicture();
-
-  @override
-  Widget build(BuildContext context) {
-    return _MainHelpPictureFrame(
-      child: CustomPaint(painter: _MainSummaryHelpPainter()),
-    );
-  }
-}
-
 class _MainTasksHelpPicture extends StatelessWidget {
   const _MainTasksHelpPicture();
 
@@ -1994,23 +1672,6 @@ class _MainSectionsHelpPicture extends StatelessWidget {
   Widget build(BuildContext context) {
     return _MainHelpPictureFrame(
       child: CustomPaint(painter: _MainSectionsHelpPainter()),
-    );
-  }
-}
-
-class _MainInviteHelpPicture extends StatelessWidget {
-  const _MainInviteHelpPicture();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _MainHelpPictureFrame(
-      child: Center(
-        child: Icon(
-          Icons.group_add_outlined,
-          color: Color(0xFFA6F6E8),
-          size: 48,
-        ),
-      ),
     );
   }
 }
@@ -2054,58 +1715,6 @@ class _MainRefreshHelpPicture extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MainSummaryHelpPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cardPaint = Paint()..color = const Color(0xFF143456);
-    final metricPaint = Paint()..color = const Color(0xFF123524);
-    final linePaint = Paint()..color = const Color(0xFF50749A);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.08,
-          size.height * 0.16,
-          size.width * 0.84,
-          size.height * 0.68,
-        ),
-        const Radius.circular(8),
-      ),
-      cardPaint,
-    );
-    for (var i = 0; i < 3; i++) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            size.width * 0.16,
-            size.height * (0.28 + i * 0.13),
-            size.width * 0.34,
-            8,
-          ),
-          const Radius.circular(4),
-        ),
-        linePaint,
-      );
-    }
-    for (var i = 0; i < 2; i++) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            size.width * (0.58 + i * 0.14),
-            size.height * 0.34,
-            size.width * 0.1,
-            size.height * 0.24,
-          ),
-          const Radius.circular(6),
-        ),
-        metricPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _MainTasksHelpPainter extends CustomPainter {
@@ -2461,83 +2070,6 @@ class _ProjectRow extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.title,
-    required this.subtitle,
-    required this.role,
-    required this.position,
-  });
-
-  final String title;
-  final String subtitle;
-  final String role;
-  final String position;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0C1D33),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF1E466A)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(subtitle),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _TagBadge(
-                label: _roleLabel(role),
-                backgroundColor: const Color(0xFF143456),
-                borderColor: const Color(0xFF2A648E),
-              ),
-              if (position.trim().isNotEmpty)
-                _TagBadge(
-                  label: employeePositionLabel(position),
-                  backgroundColor: const Color(0xFF123524),
-                  borderColor: const Color(0xFF35C886),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _roleLabel(String value) {
-    switch (value) {
-      case 'owner':
-        return tr('Owner');
-      case 'admin':
-        return tr('Administrator');
-      case 'member':
-        return tr('Employee');
-      default:
-        return value;
-    }
   }
 }
 

@@ -239,9 +239,26 @@ const Map<String, Map<String, String>> appTranslations = {
 
     'Work sections': 'Рабочие разделы',
     'Infrastructure map': 'Карта инфраструктуры',
+    'Map legend': 'Легенда карты',
+    'Show map legend': 'Показать легенду карты',
+    'Hide map legend': 'Скрыть легенду карты',
+    'Hide hint': 'Скрыть подсказку',
+    'Closures': 'Муфты',
+    'PON boxes': 'PON боксы',
     'Closure notebook': 'Блокнот муфт',
     'Cable lines': 'Кабельные линии',
+    'Cable routes': 'Кабельные маршруты',
     'Network cabinets': 'Сетевые шкафы',
+    'Select the route start from a closure or cabinet.':
+        'Выберите начало маршрута от муфты или шкафа.',
+    'Now choose the route end.': 'Теперь выберите конец маршрута.',
+    'Tap the selected route where the closure must be installed.':
+        'Нажмите на выбранный маршрут в месте установки муфты.',
+    'Tap near the line to insert a point. Intermediate points can be dragged.':
+        'Нажмите рядом с линией, чтобы вставить точку. Промежуточные точки можно перетаскивать.',
+    'Route length: {value}': 'Длина маршрута: {value}',
+    'Points: {points} • Routes: {routes}':
+        'Точек: {points} • Маршрутов: {routes}',
     'Quick access to the map of closures, PON boxes, cable routes, and connection points.':
         'Быстрый переход к карте муфт, PON боксов, кабельных маршрутов и точек подключения.',
     'Operational work with installation nodes, notes, and maintenance.':

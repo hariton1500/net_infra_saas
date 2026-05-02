@@ -449,8 +449,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? 'Active task: ${activeProject.name}'
-                  : 'No active task selected',
+                  ? tr('Active task: {name}', {'name': activeProject.name})
+                  : tr('No active task selected'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(

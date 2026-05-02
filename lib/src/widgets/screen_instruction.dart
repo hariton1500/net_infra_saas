@@ -6,11 +6,15 @@ class ScreenInstruction extends StatelessWidget {
     required this.text,
     this.icon = Icons.info_outline_rounded,
     this.margin = EdgeInsets.zero,
+    this.onDismiss,
+    this.dismissTooltip,
   });
 
   final String text;
   final IconData icon;
   final EdgeInsetsGeometry margin;
+  final VoidCallback? onDismiss;
+  final String? dismissTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +44,19 @@ class ScreenInstruction extends StatelessWidget {
               ),
             ),
           ),
+          if (onDismiss != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              tooltip: dismissTooltip,
+              onPressed: onDismiss,
+              icon: Icon(
+                Icons.close_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );

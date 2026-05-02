@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/auth_controller.dart';
 import '../core/app_i18n.dart';
@@ -233,6 +234,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   static const _muffsModuleKey = 'muff_notebook';
   static const _cabinetsModuleKey = 'network_cabinet';
   static const _routesModuleKey = 'cable_lines';
+  static const _instructionDismissedKey =
+      'infrastructure_map.instruction_dismissed.v1';
   static const Distance _geoDistance = Distance();
   static const Map<String, List<Color>> _fiberSchemes = {
     'default': [
@@ -272,6 +275,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   bool _routeEditMode = false;
   bool _routeCreateMode = false;
   bool _routeSplitMode = false;
+  bool _legendExpanded = false;
+  bool _showInstructionBanner = true;
   String? _errorMessage;
   double _mapZoom = 13;
   String _selectedTileLayerId = 'osm';
@@ -301,12 +306,32 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     _syncRepository = CompanyModuleSyncRepository(
       client: widget.controller.client,
     );
+    unawaited(_loadInstructionBannerPreference());
     _loadMapData();
   }
 
   String get _actorEmail => widget.controller.currentUser?.email?.trim() ?? '';
 
   String get _actorUserId => widget.controller.currentUser?.id ?? '';
+
+  Future<void> _loadInstructionBannerPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _showInstructionBanner =
+          !(prefs.getBool(_instructionDismissedKey) ?? false);
+    });
+  }
+
+  Future<void> _dismissInstructionBanner() async {
+    setState(() {
+      _showInstructionBanner = false;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_instructionDismissedKey, true);
+  }
 
   String? _projectNameFor(Map<String, dynamic> record) {
     final projectId = projectIdOf(record);
@@ -3115,99 +3140,162 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       alignment: Alignment.topRight,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 300),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Infrastructure map',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _LegendRow(
-                    color: _entityColor(_InfrastructureEntityType.muff),
-                    icon: _entityIcon(_InfrastructureEntityType.muff),
-                    label: 'Closures',
-                  ),
-                  const SizedBox(height: 8),
-                  _LegendRow(
-                    color: _entityColor(_InfrastructureEntityType.ponBox),
-                    icon: _entityIcon(_InfrastructureEntityType.ponBox),
-                    label: 'PON boxes',
-                  ),
-                  const SizedBox(height: 8),
-                  _LegendRow(
-                    color: _entityColor(_InfrastructureEntityType.cabinet),
-                    icon: _entityIcon(_InfrastructureEntityType.cabinet),
-                    label: 'Network cabinets',
-                  ),
-                  const SizedBox(height: 8),
-                  const _LegendRow(
-                    color: Color(0xFF1EDDC5),
-                    icon: Icons.timeline_rounded,
-                    label: 'Cable routes',
-                  ),
-                  const SizedBox(height: 12),
-                  if (_routeCreateMode)
-                    Text(
-                      _pendingStartEntityKey == null
-                          ? 'Select the route start from a closure or cabinet.'
-                          : 'Now choose the route end.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    )
-                  else if (_routeSplitMode && _selectedRoute != null)
-                    Text(
-                      'Tap the selected route where the closure must be installed.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    )
-                  else if (_routeEditMode && _selectedRoute != null)
-                    Text(
-                      'Tap near the line to insert a point. Intermediate points can be dragged.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  if (_routeEditMode && selectedRoute != null)
-                    Text(
-                      'Route length: ${_formatRouteLength(selectedRoute.lengthMeters)}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  if (_routeEditMode && selectedRoute != null)
-                    const SizedBox(height: 10),
-                  if (_routeCreateMode || _routeEditMode || _routeSplitMode)
-                    const SizedBox(height: 10),
-                  if (_traceSummary != null)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFB347).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(
-                            0xFFFFB347,
-                          ).withValues(alpha: 0.45),
-                        ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: _legendExpanded
+              ? ConstrainedBox(
+                  key: const ValueKey('expanded-map-legend'),
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.layers_outlined,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  tr('Map legend'),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: tr('Hide map legend'),
+                                onPressed: () {
+                                  setState(() {
+                                    _legendExpanded = false;
+                                  });
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          _LegendRow(
+                            color: _entityColor(_InfrastructureEntityType.muff),
+                            icon: _entityIcon(_InfrastructureEntityType.muff),
+                            label: tr('Closures'),
+                          ),
+                          const SizedBox(height: 8),
+                          _LegendRow(
+                            color: _entityColor(
+                              _InfrastructureEntityType.ponBox,
+                            ),
+                            icon: _entityIcon(_InfrastructureEntityType.ponBox),
+                            label: tr('PON boxes'),
+                          ),
+                          const SizedBox(height: 8),
+                          _LegendRow(
+                            color: _entityColor(
+                              _InfrastructureEntityType.cabinet,
+                            ),
+                            icon: _entityIcon(
+                              _InfrastructureEntityType.cabinet,
+                            ),
+                            label: tr('Network cabinets'),
+                          ),
+                          const SizedBox(height: 8),
+                          _LegendRow(
+                            color: const Color(0xFF1EDDC5),
+                            icon: Icons.timeline_rounded,
+                            label: tr('Cable routes'),
+                          ),
+                          if (_routeCreateMode ||
+                              _routeEditMode ||
+                              _routeSplitMode ||
+                              _traceSummary != null ||
+                              (_routeEditMode && selectedRoute != null))
+                            const SizedBox(height: 12),
+                          if (_routeCreateMode)
+                            Text(
+                              _pendingStartEntityKey == null
+                                  ? tr(
+                                      'Select the route start from a closure or cabinet.',
+                                    )
+                                  : tr('Now choose the route end.'),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else if (_routeSplitMode && _selectedRoute != null)
+                            Text(
+                              tr(
+                                'Tap the selected route where the closure must be installed.',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else if (_routeEditMode && _selectedRoute != null)
+                            Text(
+                              tr(
+                                'Tap near the line to insert a point. Intermediate points can be dragged.',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          if (_routeEditMode && selectedRoute != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                tr('Route length: {value}', {
+                                  'value': _formatRouteLength(
+                                    selectedRoute.lengthMeters,
+                                  ),
+                                }),
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                          if (_traceSummary != null)
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(top: 10),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFFFB347,
+                                ).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFFFFB347,
+                                  ).withValues(alpha: 0.45),
+                                ),
+                              ),
+                              child: Text(
+                                _traceSummary!,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          Text(
+                            tr('Points: {points} • Routes: {routes}', {
+                              'points': '${_entities.length}',
+                              'routes': '${_routes.length}',
+                            }),
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        _traceSummary!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
                     ),
-                  Text(
-                    'Points: ${_entities.length} • Routes: ${_routes.length}',
-                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                ],
-              ),
-            ),
-          ),
+                )
+              : FloatingActionButton.small(
+                  key: const ValueKey('collapsed-map-legend'),
+                  heroTag: 'infrastructure-map-legend',
+                  tooltip: tr('Show map legend'),
+                  onPressed: () {
+                    setState(() {
+                      _legendExpanded = true;
+                    });
+                  },
+                  child: const Icon(Icons.layers_outlined),
+                ),
         ),
       ),
     );
@@ -3759,8 +3847,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? 'Active task: ${activeProject.name}'
-                  : 'No active task selected',
+                  ? tr('Active task: {name}', {'name': activeProject.name})
+                  : tr('No active task selected'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -3898,11 +3986,23 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       body: Column(
         children: [
           _buildActiveProjectBanner(),
-          ScreenInstruction(
-            text: tr(
-              'Use the road button to draw a cable route, select routes or map objects to inspect them, and use edit tools for route changes.',
-            ),
-            margin: const EdgeInsets.all(12),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: _showInstructionBanner
+                ? ScreenInstruction(
+                    key: const ValueKey('infrastructure-map-instruction'),
+                    text: tr(
+                      'Use the road button to draw a cable route, select routes or map objects to inspect them, and use edit tools for route changes.',
+                    ),
+                    margin: const EdgeInsets.all(12),
+                    dismissTooltip: tr('Hide hint'),
+                    onDismiss: () {
+                      unawaited(_dismissInstructionBanner());
+                    },
+                  )
+                : const SizedBox.shrink(
+                    key: ValueKey('infrastructure-map-instruction-hidden'),
+                  ),
           ),
           Expanded(child: _buildBody()),
         ],
