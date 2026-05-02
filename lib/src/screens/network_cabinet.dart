@@ -87,11 +87,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   bool _loading = true;
   bool _syncing = false;
   bool _mapView = false;
+  bool _showConnectionLineControls = false;
   Map<String, dynamic>? _selectedCabinet;
   int? _selectedCableId;
   int? _projectFilterId;
   ProjectSelection? _activeProject;
   double _mapZoom = 14;
+  double _connectionLineWidth = 1.25;
+  double _connectionLineOpacity = 0.38;
   String _selectedTileLayerId = 'osm';
   Timer? _syncTimer;
 
@@ -492,9 +495,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           continue;
         }
 
-        final globalPoint = box.localToGlobal(
-          Offset(box.size.width / 2, box.size.height / 2),
-        );
+        final localAnchor = entry.key.startsWith('s')
+            ? Offset(box.size.width / 2, box.size.height)
+            : Offset(box.size.width / 2, box.size.height / 2);
+        final globalPoint = box.localToGlobal(localAnchor);
         nextOffsets[entry.key] = areaBox.globalToLocal(globalPoint);
       }
 
@@ -2387,6 +2391,104 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
+  Widget _buildConnectionLineControls() {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.45,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.linear_scale_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tr('Линии соединений'),
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${_connectionLineWidth.toStringAsFixed(1)} / '
+                    '${(_connectionLineOpacity * 100).round()}%',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: _showConnectionLineControls
+                        ? tr('Скрыть настройки')
+                        : tr('Показать настройки'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      setState(() {
+                        _showConnectionLineControls =
+                            !_showConnectionLineControls;
+                      });
+                    },
+                    icon: Icon(
+                      _showConnectionLineControls
+                          ? Icons.expand_less
+                          : Icons.tune,
+                    ),
+                  ),
+                ],
+              ),
+              if (_showConnectionLineControls) ...[
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Толщина'))),
+                    Expanded(
+                      child: Slider(
+                        min: 0.75,
+                        max: 4,
+                        divisions: 13,
+                        value: _connectionLineWidth,
+                        onChanged: (value) {
+                          setState(() {
+                            _connectionLineWidth = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Прозрачность'))),
+                    Expanded(
+                      child: Slider(
+                        min: 0.15,
+                        max: 1,
+                        divisions: 17,
+                        value: _connectionLineOpacity,
+                        onChanged: (value) {
+                          setState(() {
+                            _connectionLineOpacity = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCableCard(Map<String, dynamic> cable) {
     final scheme = cable['color_scheme'] ?? 'default';
     final colors = _fiberSchemes[scheme] ?? _fiberSchemes.values.first;
@@ -2737,6 +2839,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               ],
             ),
           ),
+          if (connections.isNotEmpty) _buildConnectionLineControls(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: LayoutBuilder(
@@ -2783,6 +2886,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               connections: connections,
                               positions: _fiberOffsets,
                               colors: _fiberColorByKey,
+                              lineWidth: _connectionLineWidth,
+                              lineOpacity: _connectionLineOpacity,
                             ),
                           ),
                         ),
@@ -3436,11 +3541,15 @@ class _ConnectionsPainter extends CustomPainter {
     required this.connections,
     required this.positions,
     required this.colors,
+    required this.lineWidth,
+    required this.lineOpacity,
   });
 
   final List<Map<String, dynamic>> connections;
   final Map<String, Offset> positions;
   final Map<String, Color> colors;
+  final double lineWidth;
+  final double lineOpacity;
 
   String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
 
@@ -3505,7 +3614,7 @@ class _ConnectionsPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
+      ..strokeWidth = lineWidth
       ..strokeCap = StrokeCap.round;
 
     for (final connection in connections) {
@@ -3515,7 +3624,7 @@ class _ConnectionsPainter extends CustomPainter {
         continue;
       }
 
-      paint.color = _colorFor(connection, true).withValues(alpha: 0.75);
+      paint.color = _colorFor(connection, true).withValues(alpha: lineOpacity);
       final midX = (p1.dx + p2.dx) / 2;
       final path = ui.Path()
         ..moveTo(p1.dx, p1.dy)
@@ -3523,8 +3632,9 @@ class _ConnectionsPainter extends CustomPainter {
       canvas.drawPath(path, paint);
 
       final dotPaint = Paint()..color = paint.color;
-      canvas.drawCircle(p1, 3, dotPaint);
-      canvas.drawCircle(p2, 3, dotPaint);
+      final dotRadius = (lineWidth * 1.6).clamp(2.25, 5.0).toDouble();
+      canvas.drawCircle(p1, dotRadius, dotPaint);
+      canvas.drawCircle(p2, dotRadius, dotPaint);
     }
   }
 
@@ -3532,6 +3642,8 @@ class _ConnectionsPainter extends CustomPainter {
   bool shouldRepaint(covariant _ConnectionsPainter oldDelegate) {
     return oldDelegate.connections != connections ||
         oldDelegate.positions != positions ||
-        oldDelegate.colors != colors;
+        oldDelegate.colors != colors ||
+        oldDelegate.lineWidth != lineWidth ||
+        oldDelegate.lineOpacity != lineOpacity;
   }
 }

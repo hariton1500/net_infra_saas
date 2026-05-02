@@ -292,6 +292,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   bool _legendExpanded = false;
   bool _showInstructionBanner = true;
   bool _showCableRoutes = true;
+  bool _mapReady = false;
   Set<_InfrastructureEntityType> _visibleEntityTypes = {
     _InfrastructureEntityType.muff,
     _InfrastructureEntityType.ponBox,
@@ -317,6 +318,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   Set<int> _highlightedRouteIds = const {};
   Map<int, Color> _highlightedRouteColors = const {};
   String? _traceSummary;
+  Set<int> _inspectedEntityRouteIds = const {};
 
   @override
   void initState() {
@@ -1485,20 +1487,27 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
 
   void _showEntitySheet(_InfrastructureEntity entity) {
     final relatedRoutes = _routesForEntity(entity);
+    final metaSummary = entity.meta.entries
+        .map((entry) => '${_metaLabel(entry.key)}: ${entry.value}')
+        .join(' • ');
+    setState(() {
+      _inspectedEntityRouteIds = relatedRoutes.map((route) => route.id).toSet();
+    });
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
       builder: (context) {
-        final initialSize = relatedRoutes.isEmpty ? 0.34 : 0.5;
+        final initialSize = relatedRoutes.isEmpty ? 0.28 : 0.4;
         return SafeArea(
           child: DraggableScrollableSheet(
             expand: false,
             initialChildSize: initialSize,
-            minChildSize: 0.28,
-            maxChildSize: 0.8,
+            minChildSize: 0.24,
+            maxChildSize: 0.72,
             builder: (context, scrollController) {
               return Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
                 child: CustomScrollView(
                   controller: scrollController,
                   slivers: [
@@ -1514,60 +1523,70 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                         ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
                     SliverToBoxAdapter(
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _entityChip(entity),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              entity.name,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
+                          const SizedBox(height: 10),
+                          Text(
+                            entity.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            [
+                              if (entity.location.isNotEmpty) entity.location,
+                              '${entity.point.latitude.toStringAsFixed(6)}, ${entity.point.longitude.toStringAsFixed(6)}',
+                            ].join(' • '),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                          if (metaSummary.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              metaSummary,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                    if (entity.location.isNotEmpty)
-                      SliverToBoxAdapter(child: Text(entity.location)),
-                    const SliverToBoxAdapter(child: SizedBox(height: 6)),
-                    SliverToBoxAdapter(
-                      child: Text(
-                        '${entity.point.latitude.toStringAsFixed(6)}, ${entity.point.longitude.toStringAsFixed(6)}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
                     const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final entry = entity.meta.entries.elementAt(index);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _MapMetaRow(
-                            label: entry.key,
-                            value: entry.value,
-                          ),
-                        );
-                      }, childCount: entity.meta.length),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 10)),
                     SliverToBoxAdapter(
                       child: Text(
                         relatedRoutes.isEmpty
-                            ? 'This object has no linked routes yet.'
-                            : 'Routes from this object',
+                            ? tr('This object has no linked routes yet.')
+                            : tr('Routes from this object'),
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 10)),
                     if (relatedRoutes.isEmpty)
-                      const SliverToBoxAdapter(
+                      SliverToBoxAdapter(
                         child: Text(
-                          'The list is empty. When a route starts or ends at this object, it will appear here.',
+                          tr(
+                            'The list is empty. When a route starts or ends at this object, it will appear here.',
+                          ),
                         ),
                       )
                     else
@@ -1582,10 +1601,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                             route.raw['end_anchor'],
                           );
                           final role = _anchorMatchesEntity(startAnchor, entity)
-                              ? 'Start'
+                              ? tr('Start')
                               : _anchorMatchesEntity(endAnchor, entity)
-                              ? 'End'
-                              : 'Route';
+                              ? tr('End')
+                              : tr('Route');
 
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
@@ -1609,7 +1628,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             subtitle: Text(
-                              '$role • ${_formatRouteLength(route.lengthMeters)} • Points: ${route.points.length}',
+                              '$role • ${_formatRouteLength(route.lengthMeters)} • ${tr('Points: {count}', {'count': '${route.points.length}'})}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1634,7 +1653,14 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           ),
         );
       },
-    );
+    ).whenComplete(() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _inspectedEntityRouteIds = const {};
+      });
+    });
   }
 
   Color _entityColor(_InfrastructureEntityType type) {
@@ -1668,6 +1694,18 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       case _InfrastructureEntityType.muff:
         return tr('Closures');
     }
+  }
+
+  String _entitySubtitleLabel(_InfrastructureEntity entity) {
+    return switch (entity.type) {
+      _InfrastructureEntityType.ponBox => tr('PON box'),
+      _InfrastructureEntityType.cabinet => tr('Network cabinet'),
+      _InfrastructureEntityType.muff => tr('Closure'),
+    };
+  }
+
+  String _metaLabel(String label) {
+    return tr(label);
   }
 
   void _toggleEntityType(_InfrastructureEntityType type) {
@@ -1735,7 +1773,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   }
 
   List<_EntityCluster> _entityClusters(List<_InfrastructureEntity> entities) {
-    if (!_shouldClusterEntities || entities.length < 2) {
+    if (!_mapReady || !_shouldClusterEntities || entities.length < 2) {
       return entities
           .map(
             (entity) => _EntityCluster(
@@ -1808,13 +1846,13 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         children: [
           Icon(_entityIcon(entity.type), size: 16, color: color),
           const SizedBox(width: 6),
-          Text(entity.subtitle, style: TextStyle(color: color)),
+          Text(_entitySubtitleLabel(entity), style: TextStyle(color: color)),
         ],
       ),
     );
   }
 
-  void _selectRoute(_CableRoute route) {
+  void _selectRoute(_CableRoute route, {bool focus = true}) {
     setState(() {
       _selectedRouteId = route.id;
       _routeCreateMode = false;
@@ -1823,7 +1861,20 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
     });
-    _mapController.move(route.points.first, _mapZoom < 15 ? 15 : _mapZoom);
+    if (focus) {
+      _mapController.move(route.points.first, _mapZoom < 15 ? 15 : _mapZoom);
+    }
+  }
+
+  void _clearSelectedRoute() {
+    setState(() {
+      _selectedRouteId = null;
+      _routeEditMode = false;
+      _routeSplitMode = false;
+      _pendingStartEntityKey = null;
+      _pendingStartCableId = null;
+      _pendingRequiredFibers = null;
+    });
   }
 
   void _toggleRouteCreateMode() {
@@ -3222,6 +3273,47 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     return _RouteSplitTarget(insertIndex: bestIndex, point: bestPoint);
   }
 
+  double _routeDistanceToTap(_CableRoute route, Offset tapOffset) {
+    var bestDistance = double.infinity;
+    for (var i = 0; i < route.points.length - 1; i++) {
+      final start = _mapController.camera.latLngToScreenPoint(route.points[i]);
+      final end = _mapController.camera.latLngToScreenPoint(
+        route.points[i + 1],
+      );
+      final distance = _distanceToSegment(
+        tapOffset,
+        Offset(start.x, start.y),
+        Offset(end.x, end.y),
+      );
+      if (distance < bestDistance) {
+        bestDistance = distance;
+      }
+    }
+    return bestDistance;
+  }
+
+  _CableRoute? _routeForTap(Offset tapOffset) {
+    const tapTolerance = 18.0;
+    _CableRoute? bestRoute;
+    var bestDistance = double.infinity;
+
+    for (final route in _filteredRoutesByProject) {
+      if (route.points.length < 2) {
+        continue;
+      }
+      final distance = _routeDistanceToTap(route, tapOffset);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestRoute = route;
+      }
+    }
+
+    if (bestDistance > tapTolerance) {
+      return null;
+    }
+    return bestRoute;
+  }
+
   double _distanceToSegment(Offset p, Offset a, Offset b) {
     return (p - _projectPointToSegment(p, a, b)).distance;
   }
@@ -3240,16 +3332,16 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   }
 
   void _handleMapTap(TapPosition tapPosition, LatLng point) {
-    final route = _selectedRoute;
-    if (route == null) {
-      return;
-    }
     final relative = tapPosition.relative;
     if (relative == null) {
       return;
     }
 
+    final route = _selectedRoute;
     if (_routeSplitMode) {
+      if (route == null) {
+        return;
+      }
       final target = _routeSplitTargetForTap(route, relative);
       if (target == null) {
         _showSnackBar(tr('Tap closer to the selected route line.'));
@@ -3260,9 +3352,20 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     }
 
     if (!_routeEditMode) {
+      final tappedRoute = _routeForTap(relative);
+      if (tappedRoute != null) {
+        if (tappedRoute.id == _selectedRouteId) {
+          _clearSelectedRoute();
+        } else {
+          _selectRoute(tappedRoute, focus: false);
+        }
+      }
       return;
     }
 
+    if (route == null) {
+      return;
+    }
     final insertIndex = _segmentInsertIndexForTap(route, relative);
     if (insertIndex == null) {
       return;
@@ -3994,6 +4097,14 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
               initialCenter: center,
               initialZoom: _mapZoom,
               maxZoom: 19,
+              onMapReady: () {
+                if (!mounted) {
+                  return;
+                }
+                setState(() {
+                  _mapReady = true;
+                });
+              },
               onTap: _handleMapTap,
               onPositionChanged: (position, _) =>
                   _handleMapPositionChanged(position),
@@ -4015,22 +4126,34 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                         final isTraced = _highlightedRouteIds.contains(
                           route.id,
                         );
+                        final isRelatedToInspectedEntity =
+                            _inspectedEntityRouteIds.contains(route.id);
+                        final hasInspectedEntityRoutes =
+                            _inspectedEntityRouteIds.isNotEmpty;
                         final traceColor = _highlightedRouteColors[route.id];
                         final color = isTraced
                             ? (traceColor ?? const Color(0xFFFFB347))
                             : isSelected
                             ? const Color(0xFF1EDDC5)
+                            : isRelatedToInspectedEntity
+                            ? const Color(0xFFFFB347)
                             : const Color(0xFF60A5FA);
                         return Polyline(
                           points: route.points,
                           strokeWidth: isTraced
                               ? 6
-                              : (isSelected ? 5 : (_mapZoom < 14 ? 2.5 : 3)),
+                              : (isSelected || isRelatedToInspectedEntity
+                                    ? 5
+                                    : (_mapZoom < 14 ? 2.5 : 3)),
                           color: color.withValues(
                             alpha: isTraced
                                 ? 0.98
                                 : (isSelected
                                       ? 0.95
+                                      : isRelatedToInspectedEntity
+                                      ? 0.9
+                                      : hasInspectedEntityRoutes
+                                      ? 0.22
                                       : (_mapZoom < 14 ? 0.48 : 0.68)),
                           ),
                         );
@@ -4702,27 +4825,3 @@ class _RoutePanelShell extends StatelessWidget {
 }
 
 */
-class _MapMetaRow extends StatelessWidget {
-  const _MapMetaRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 120,
-          child: Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-          ),
-        ),
-        Expanded(child: Text(value)),
-      ],
-    );
-  }
-}

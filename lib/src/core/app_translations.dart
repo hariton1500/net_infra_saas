@@ -246,10 +246,19 @@ const Map<String, Map<String, String>> appTranslations = {
     'Show on map': 'Показывать на карте',
     'Closures': 'Муфты',
     'PON boxes': 'PON боксы',
+    'Network cabinet': 'Сетевой шкаф',
     'Closure notebook': 'Блокнот муфт',
     'Cable lines': 'Кабельные линии',
     'Cable routes': 'Кабельные маршруты',
+    'Cables': 'Кабели',
     'Routes': 'Маршруты',
+    'Start': 'Начало',
+    'End': 'Конец',
+    'Routes from this object': 'Маршруты объекта',
+    'This object has no linked routes yet.':
+        'У этого объекта пока нет связанных маршрутов.',
+    'The list is empty. When a route starts or ends at this object, it will appear here.':
+        'Список пуст. Когда маршрут начнётся или закончится в этом объекте, он появится здесь.',
     'Network cabinets': 'Сетевые шкафы',
     'Select the route start from a closure or cabinet.':
         'Выберите начало маршрута от муфты или шкафа.',
