@@ -95,6 +95,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   double _mapZoom = 14;
   double _connectionLineWidth = 1.25;
   double _connectionLineOpacity = 0.38;
+  double _portSize = 26;
+  double _fiberSize = 24;
   String _selectedTileLayerId = 'osm';
   Timer? _syncTimer;
 
@@ -2185,27 +2187,58 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget _buildSwitchCard(Map<String, dynamic> sw) {
     final portsCount = (sw['ports'] as int?) ?? 24;
     final portTypes = _portTypesForSwitch(sw);
+    final switchName = (sw['name'] ?? tr('Switch')).toString().trim();
+    final switchModel = (sw['model'] ?? '').toString().trim();
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    '${sw['name'] ?? 'Switch'} ${sw['model'] ?? ''}'.trim(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        switchName.isEmpty ? tr('Switch') : switchName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+                      if (switchModel.isNotEmpty)
+                        Text(
+                          switchModel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.1),
+                        ),
+                    ],
                   ),
                 ),
                 IconButton(
                   tooltip: tr('Port types'),
                   onPressed: () => _editSwitchPortTypes(sw['id'] as int),
                   icon: const Icon(Icons.tune),
+                  iconSize: 20,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 36,
+                    height: 36,
+                  ),
+                  padding: EdgeInsets.zero,
                 ),
                 PopupMenuButton<String>(
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
                   onSelected: (value) {
                     if (value == 'edit') {
                       _editSwitch(sw['id'] as int);
@@ -2221,35 +2254,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: _portTypeLabels.entries
-                  .map(
-                    (entry) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: _portTypeColor(entry.key),
-                            borderRadius: BorderRadius.circular(2),
-                            border: Border.all(color: Colors.black26),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          entry.value,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  )
-                  .toList(growable: false),
-            ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Wrap(
               spacing: 4,
               runSpacing: 4,
@@ -2292,8 +2297,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       feedback: Material(
                         color: Colors.transparent,
                         child: Container(
-                          width: 26,
-                          height: 26,
+                          width: _portSize,
+                          height: _portSize,
                           decoration: BoxDecoration(
                             color: portColor,
                             borderRadius: BorderRadius.circular(4),
@@ -2302,7 +2307,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           child: Center(
                             child: Text(
                               '${index + 1}',
-                              style: const TextStyle(fontSize: 10),
+                              style: TextStyle(
+                                fontSize: (_portSize * 0.38).clamp(8, 12),
+                              ),
                             ),
                           ),
                         ),
@@ -2341,6 +2348,41 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
+  Widget _buildPortTypeLegend() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 4,
+        children: _portTypeLabels.entries
+            .map(
+              (entry) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: _portTypeColor(entry.key),
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: Colors.black26),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    entry.value,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.0),
+                  ),
+                ],
+              ),
+            )
+            .toList(growable: false),
+      ),
+    );
+  }
+
   Widget _portSquare(
     int label,
     bool highlight,
@@ -2350,8 +2392,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   }) {
     return Container(
       key: key,
-      width: 26,
-      height: 26,
+      width: _portSize,
+      height: _portSize,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(4),
@@ -2372,7 +2414,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         message:
             'Port $label: ${_portTypeLabels[portType] ?? _portTypeLabels[_portTypeOptical]}',
         child: Center(
-          child: Text('$label', style: const TextStyle(fontSize: 10)),
+          child: Text(
+            '$label',
+            style: TextStyle(fontSize: (_portSize * 0.38).clamp(8, 12)),
+          ),
         ),
       ),
     );
@@ -2421,7 +2466,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   ),
                   Text(
                     '${_connectionLineWidth.toStringAsFixed(1)} / '
-                    '${(_connectionLineOpacity * 100).round()}%',
+                    '${(_connectionLineOpacity * 100).round()}% / '
+                    '${_portSize.round()} / ${_fiberSize.round()}',
                     style: theme.textTheme.bodySmall,
                   ),
                   const SizedBox(width: 4),
@@ -2481,6 +2527,42 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     ),
                   ],
                 ),
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Порты'))),
+                    Expanded(
+                      child: Slider(
+                        min: 20,
+                        max: 34,
+                        divisions: 14,
+                        value: _portSize,
+                        onChanged: (value) {
+                          setState(() {
+                            _portSize = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Волокна'))),
+                    Expanded(
+                      child: Slider(
+                        min: 18,
+                        max: 32,
+                        divisions: 14,
+                        value: _fiberSize,
+                        onChanged: (value) {
+                          setState(() {
+                            _fiberSize = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),
@@ -2494,10 +2576,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     final colors = _fiberSchemes[scheme] ?? _fiberSchemes.values.first;
     final spliters = List<int>.from(cable['spliters'] ?? const []);
     final selected = _selectedCableId == cable['id'];
+    final cableName = (cable['name'] ?? tr('Cable')).toString().trim();
+    final fibersCount = (cable['fibers'] as int?) ?? 1;
 
     return Card(
       color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       child: InkWell(
         onTap: () {
           setState(() {
@@ -2505,19 +2589,39 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           });
         },
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      cable['name'] ?? 'Cable',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cableName.isEmpty ? tr('Cable') : cableName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            height: 1.1,
+                          ),
+                        ),
+                        Text(
+                          tr('Волокон: {value}', {'value': '$fibersCount'}),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.1),
+                        ),
+                      ],
                     ),
                   ),
                   PopupMenuButton<String>(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
                     onSelected: (value) {
                       if (value == 'rename') {
                         _editCableName(cable['id'] as int);
@@ -2533,13 +2637,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: List.generate((cable['fibers'] as int?) ?? 1, (
-                  index,
-                ) {
+                spacing: 4,
+                runSpacing: 4,
+                children: List.generate(fibersCount, (index) {
                   final color = colors[index % colors.length];
                   final spliter = index < spliters.length ? spliters[index] : 0;
                   final keyId = _fiberKey(cable['id'] as int, index);
@@ -2576,8 +2678,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         feedback: Material(
                           color: Colors.transparent,
                           child: Container(
-                            width: 28,
-                            height: 28,
+                            width: _fiberSize,
+                            height: _fiberSize,
                             decoration: BoxDecoration(
                               color: color,
                               shape: BoxShape.circle,
@@ -2587,7 +2689,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               child: Text(
                                 '${index + 1}',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: (_fiberSize * 0.42).clamp(8, 12),
                                   color: color == Colors.black
                                       ? Colors.white
                                       : Colors.black,
@@ -2616,7 +2718,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       fiberWidget,
-                      if (spliter > 0) const SizedBox(width: 6),
+                      if (spliter > 0) const SizedBox(width: 4),
                       if (spliter > 0) _spliterBadge(spliter, key: anchorKey),
                     ],
                   );
@@ -2632,8 +2734,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget _fiberCircle(Color color, int label, bool highlight, {Key? key}) {
     return Container(
       key: key,
-      width: 28,
-      height: 28,
+      width: _fiberSize,
+      height: _fiberSize,
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
@@ -2645,7 +2747,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             ? [
                 BoxShadow(
                   color: Colors.deepOrange.withValues(alpha: 0.5),
-                  blurRadius: 6,
+                  blurRadius: 4,
                 ),
               ]
             : null,
@@ -2654,7 +2756,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         child: Text(
           '$label',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: (_fiberSize * 0.42).clamp(8, 12),
             color: color == Colors.black ? Colors.white : Colors.black,
           ),
         ),
@@ -2665,14 +2767,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget _spliterBadge(int spliter, {Key? key}) {
     return Container(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
         color: Colors.black87,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         '1:$spliter',
-        style: const TextStyle(color: Colors.white, fontSize: 10),
+        style: const TextStyle(color: Colors.white, fontSize: 9),
       ),
     );
   }
@@ -2839,6 +2941,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               ],
             ),
           ),
+          if (switches.isNotEmpty) _buildPortTypeLegend(),
           if (connections.isNotEmpty) _buildConnectionLineControls(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
