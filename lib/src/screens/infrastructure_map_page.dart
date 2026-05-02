@@ -45,6 +45,20 @@ class InfrastructureMapPage extends StatefulWidget {
 
 enum _InfrastructureEntityType { muff, ponBox, cabinet }
 
+class _EntityCluster {
+  const _EntityCluster({
+    required this.entities,
+    required this.center,
+    required this.dominantType,
+  });
+
+  final List<_InfrastructureEntity> entities;
+  final LatLng center;
+  final _InfrastructureEntityType dominantType;
+
+  bool get isSingle => entities.length == 1;
+}
+
 class _InfrastructureEntity {
   const _InfrastructureEntity({
     required this.type,
@@ -277,6 +291,12 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   bool _routeSplitMode = false;
   bool _legendExpanded = false;
   bool _showInstructionBanner = true;
+  bool _showCableRoutes = true;
+  Set<_InfrastructureEntityType> _visibleEntityTypes = {
+    _InfrastructureEntityType.muff,
+    _InfrastructureEntityType.ponBox,
+    _InfrastructureEntityType.cabinet,
+  };
   String? _errorMessage;
   double _mapZoom = 13;
   String _selectedTileLayerId = 'osm';
@@ -1165,7 +1185,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         .where((entity) {
           final record = _entityRecord(entity);
           return record != null &&
-              matchesProjectFilter(record, _projectFilterId);
+              matchesProjectFilter(record, _projectFilterId) &&
+              _visibleEntityTypes.contains(entity.type);
         })
         .toList(growable: false);
     if (!_routeCreateMode) {
@@ -1173,15 +1194,19 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     }
 
     if (_pendingStartEntityKey == null) {
-      return _routeCandidateEntities;
+      return _routeCandidateEntities
+          .where((entity) => _visibleEntityTypes.contains(entity.type))
+          .toList(growable: false);
     }
 
     return visible;
   }
 
-  List<_CableRoute> get _filteredRoutesByProject => _routes
-      .where((route) => matchesProjectFilter(route.raw, _projectFilterId))
-      .toList(growable: false);
+  List<_CableRoute> get _filteredRoutesByProject => _showCableRoutes
+      ? _routes
+            .where((route) => matchesProjectFilter(route.raw, _projectFilterId))
+            .toList(growable: false)
+      : const [];
 
   Map<int, String> get _projectOptions {
     final options = <int, String>{};
@@ -1632,6 +1657,141 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       case _InfrastructureEntityType.muff:
         return Icons.scatter_plot_outlined;
     }
+  }
+
+  String _entityTypeLabel(_InfrastructureEntityType type) {
+    switch (type) {
+      case _InfrastructureEntityType.ponBox:
+        return tr('PON boxes');
+      case _InfrastructureEntityType.cabinet:
+        return tr('Network cabinets');
+      case _InfrastructureEntityType.muff:
+        return tr('Closures');
+    }
+  }
+
+  void _toggleEntityType(_InfrastructureEntityType type) {
+    setState(() {
+      final next = Set<_InfrastructureEntityType>.from(_visibleEntityTypes);
+      if (next.contains(type)) {
+        if (next.length == 1) {
+          return;
+        }
+        next.remove(type);
+      } else {
+        next.add(type);
+      }
+      _visibleEntityTypes = next;
+    });
+  }
+
+  bool get _shouldClusterEntities =>
+      !_routeCreateMode && !_routeEditMode && !_routeSplitMode && _mapZoom < 16;
+
+  bool get _useCompactEntityMarkers =>
+      _mapZoom < 15 && !_routeCreateMode && !_routeEditMode && !_routeSplitMode;
+
+  double get _clusterCellSize {
+    if (_mapZoom < 13.5) {
+      return 94;
+    }
+    if (_mapZoom < 15) {
+      return 72;
+    }
+    return 58;
+  }
+
+  int _zoomDensityBand(double zoom) {
+    if (zoom < 13.5) {
+      return 0;
+    }
+    if (zoom < 15) {
+      return 1;
+    }
+    if (zoom < 16) {
+      return 2;
+    }
+    return 3;
+  }
+
+  void _handleMapPositionChanged(MapCamera position) {
+    final previousBand = _zoomDensityBand(_mapZoom);
+    final nextBand = _zoomDensityBand(position.zoom);
+    if (previousBand == nextBand && (_mapZoom - position.zoom).abs() < 0.35) {
+      _mapZoom = position.zoom;
+      return;
+    }
+    setState(() {
+      _mapZoom = position.zoom;
+    });
+  }
+
+  _InfrastructureEntityType _dominantType(List<_InfrastructureEntity> items) {
+    final counts = <_InfrastructureEntityType, int>{};
+    for (final entity in items) {
+      counts[entity.type] = (counts[entity.type] ?? 0) + 1;
+    }
+    return counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+  }
+
+  List<_EntityCluster> _entityClusters(List<_InfrastructureEntity> entities) {
+    if (!_shouldClusterEntities || entities.length < 2) {
+      return entities
+          .map(
+            (entity) => _EntityCluster(
+              entities: [entity],
+              center: entity.point,
+              dominantType: entity.type,
+            ),
+          )
+          .toList(growable: false);
+    }
+
+    final camera = _mapController.camera;
+    final cellSize = _clusterCellSize;
+    final buckets = <String, List<_InfrastructureEntity>>{};
+    for (final entity in entities) {
+      final screenPoint = camera.latLngToScreenPoint(entity.point);
+      final x = (screenPoint.x / cellSize).floor();
+      final y = (screenPoint.y / cellSize).floor();
+      (buckets['$x:$y'] ??= []).add(entity);
+    }
+
+    return buckets.values
+        .map((items) {
+          final latitude =
+              items.fold<double>(
+                0,
+                (sum, entity) => sum + entity.point.latitude,
+              ) /
+              items.length;
+          final longitude =
+              items.fold<double>(
+                0,
+                (sum, entity) => sum + entity.point.longitude,
+              ) /
+              items.length;
+          return _EntityCluster(
+            entities: List<_InfrastructureEntity>.unmodifiable(items),
+            center: LatLng(latitude, longitude),
+            dominantType: _dominantType(items),
+          );
+        })
+        .toList(growable: false);
+  }
+
+  void _focusCluster(_EntityCluster cluster) {
+    if (cluster.isSingle) {
+      _handleEntityTapV2(cluster.entities.first);
+      return;
+    }
+
+    final bounds = LatLngBounds.fromPoints(
+      cluster.entities.map((entity) => entity.point).toList(growable: false),
+    );
+    _mapController.fitCamera(
+      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(72)),
+    );
   }
 
   Widget _entityChip(_InfrastructureEntity entity) {
@@ -3210,6 +3370,44 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                             icon: Icons.timeline_rounded,
                             label: tr('Cable routes'),
                           ),
+                          const SizedBox(height: 12),
+                          Text(
+                            tr('Show on map'),
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final type
+                                  in _InfrastructureEntityType.values)
+                                FilterChip(
+                                  selected: _visibleEntityTypes.contains(type),
+                                  avatar: Icon(
+                                    _entityIcon(type),
+                                    size: 16,
+                                    color: _entityColor(type),
+                                  ),
+                                  label: Text(_entityTypeLabel(type)),
+                                  onSelected: (_) => _toggleEntityType(type),
+                                ),
+                              FilterChip(
+                                selected: _showCableRoutes,
+                                avatar: const Icon(
+                                  Icons.timeline_rounded,
+                                  size: 16,
+                                  color: Color(0xFF1EDDC5),
+                                ),
+                                label: Text(tr('Routes')),
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _showCableRoutes = selected;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
                           if (_routeCreateMode ||
                               _routeEditMode ||
                               _routeSplitMode ||
@@ -3602,6 +3800,113 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   }
 
   */
+  Marker _buildEntityMarker(_InfrastructureEntity entity) {
+    final color = _entityColor(entity.type);
+    final isPending = entity.key == _pendingStartEntityKey;
+    final isCandidate = _isEntityCandidateForCurrentStep(entity);
+    final isTraced = _highlightedEntityKeys.contains(entity.key);
+    final isDimmed =
+        _routeCreateMode && _pendingStartEntityKey != null && !isCandidate;
+    final compact = _useCompactEntityMarkers && !isPending && !isTraced;
+    final size = compact ? 30.0 : 46.0;
+    final borderColor = isPending
+        ? const Color(0xFFFFA629)
+        : isTraced
+        ? const Color(0xFFFFB347)
+        : isCandidate
+        ? color.withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: compact ? 0.72 : 0.45);
+    final fillColor = isTraced
+        ? const Color(0xFFFFB347).withValues(alpha: 0.34)
+        : isDimmed
+        ? const Color(0xFF6B7280).withValues(alpha: 0.2)
+        : color.withValues(alpha: compact ? 0.72 : (isCandidate ? 0.28 : 0.2));
+
+    return Marker(
+      point: entity.point,
+      width: size,
+      height: size,
+      child: GestureDetector(
+        onTap: () => _handleEntityTapV2(entity),
+        child: Container(
+          decoration: BoxDecoration(
+            color: fillColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: borderColor,
+              width: isPending || isTraced ? 3 : (compact ? 1.5 : 2),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color:
+                    (isPending
+                            ? const Color(0xFFFFA629)
+                            : isTraced
+                            ? const Color(0xFFFFB347)
+                            : color)
+                        .withValues(alpha: compact ? 0.22 : 0.32),
+                blurRadius: compact ? 8 : 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(
+            _entityIcon(entity.type),
+            size: compact ? 15 : 24,
+            color: isPending
+                ? const Color(0xFFFFA629)
+                : isTraced
+                ? const Color(0xFFFFB347)
+                : isDimmed
+                ? Colors.white38
+                : (_routeCreateMode && isCandidate ? color : Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Marker _buildClusterMarker(_EntityCluster cluster) {
+    if (cluster.isSingle) {
+      return _buildEntityMarker(cluster.entities.first);
+    }
+
+    final color = _entityColor(cluster.dominantType);
+    final count = cluster.entities.length;
+    final size = math.min(64.0, 42.0 + count.toString().length * 7);
+
+    return Marker(
+      point: cluster.center,
+      width: size,
+      height: size,
+      child: GestureDetector(
+        onTap: () => _focusCluster(cluster),
+        child: Container(
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '$count',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -3617,7 +3922,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     }
 
     final visibleRoutes = _filteredRoutesByProject;
-    if (_visibleEntities.isEmpty && visibleRoutes.isEmpty) {
+    final visibleEntities = _visibleEntities;
+    if (visibleEntities.isEmpty && visibleRoutes.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -3630,10 +3936,18 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       );
     }
 
-    final center = _visibleEntities.isNotEmpty
-        ? _visibleEntities.first.point
+    final center = visibleEntities.isNotEmpty
+        ? visibleEntities.first.point
         : visibleRoutes.first.points.first;
-    final visibleEntities = _visibleEntities;
+    final entityClusters = _entityClusters(visibleEntities);
+    final displayRoutes = visibleRoutes
+        .where(
+          (route) =>
+              _mapZoom >= 12.5 ||
+              route.id == _selectedRouteId ||
+              _highlightedRouteIds.contains(route.id),
+        )
+        .toList(growable: false);
     final selectedRoute = _selectedRoute;
     final dragMarkers =
         _routeEditMode &&
@@ -3681,15 +3995,21 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
               initialZoom: _mapZoom,
               maxZoom: 19,
               onTap: _handleMapTap,
-              onPositionChanged: (position, _) {
-                _mapZoom = position.zoom;
-              },
+              onPositionChanged: (position, _) =>
+                  _handleMapPositionChanged(position),
             ),
             children: [
               tileLayerById(_selectedTileLayerId),
-              if (visibleRoutes.isNotEmpty)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ColoredBox(
+                    color: const Color(0xFF071526).withValues(alpha: 0.12),
+                  ),
+                ),
+              ),
+              if (displayRoutes.isNotEmpty)
                 PolylineLayer(
-                  polylines: visibleRoutes
+                  polylines: displayRoutes
                       .map((route) {
                         final isSelected = route.id == _selectedRouteId;
                         final isTraced = _highlightedRouteIds.contains(
@@ -3703,9 +4023,15 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                             : const Color(0xFF60A5FA);
                         return Polyline(
                           points: route.points,
-                          strokeWidth: isTraced ? 6 : (isSelected ? 5 : 3),
+                          strokeWidth: isTraced
+                              ? 6
+                              : (isSelected ? 5 : (_mapZoom < 14 ? 2.5 : 3)),
                           color: color.withValues(
-                            alpha: isTraced ? 0.98 : (isSelected ? 0.95 : 0.72),
+                            alpha: isTraced
+                                ? 0.98
+                                : (isSelected
+                                      ? 0.95
+                                      : (_mapZoom < 14 ? 0.48 : 0.68)),
                           ),
                         );
                       })
@@ -3713,87 +4039,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                 ),
               MarkerLayer(
                 markers: [
-                  ...visibleEntities.map((entity) {
-                    final color = _entityColor(entity.type);
-                    final isPending = entity.key == _pendingStartEntityKey;
-                    final isCandidate = _isEntityCandidateForCurrentStep(
-                      entity,
-                    );
-                    final isTraced = _highlightedEntityKeys.contains(
-                      entity.key,
-                    );
-                    final isDimmed =
-                        _routeCreateMode &&
-                        _pendingStartEntityKey != null &&
-                        !isCandidate;
-                    final borderColor = isPending
-                        ? const Color(0xFFFFA629)
-                        : isTraced
-                        ? const Color(0xFFFFB347)
-                        : isCandidate
-                        ? color.withValues(alpha: 0.8)
-                        : Colors.white24;
-                    return Marker(
-                      point: entity.point,
-                      width: 46,
-                      height: 46,
-                      child: GestureDetector(
-                        onTap: () => _handleEntityTapV2(entity),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: isTraced
-                                ? const Color(
-                                    0xFFFFB347,
-                                  ).withValues(alpha: 0.22)
-                                : isDimmed
-                                ? const Color(
-                                    0xFF6B7280,
-                                  ).withValues(alpha: 0.18)
-                                : color.withValues(
-                                    alpha: isCandidate ? 0.22 : 0.12,
-                                  ),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: borderColor,
-                              width: isPending ? 3 : 2,
-                            ),
-                            boxShadow:
-                                isPending ||
-                                    isTraced ||
-                                    (_routeCreateMode &&
-                                        isCandidate &&
-                                        !isDimmed)
-                                ? [
-                                    BoxShadow(
-                                      color:
-                                          (isPending
-                                                  ? const Color(0xFFFFA629)
-                                                  : isTraced
-                                                  ? const Color(0xFFFFB347)
-                                                  : color)
-                                              .withValues(alpha: 0.35),
-                                      blurRadius: 18,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ]
-                                : const [],
-                          ),
-                          child: Icon(
-                            _entityIcon(entity.type),
-                            color: isPending
-                                ? const Color(0xFFFFA629)
-                                : isTraced
-                                ? const Color(0xFFFFB347)
-                                : isDimmed
-                                ? Colors.white38
-                                : (_routeCreateMode && isCandidate
-                                      ? color.withValues(alpha: 0.95)
-                                      : color),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
+                  ...entityClusters.map(_buildClusterMarker),
                   ...dragMarkers,
                 ],
               ),

@@ -243,11 +243,13 @@ const Map<String, Map<String, String>> appTranslations = {
     'Show map legend': 'Показать легенду карты',
     'Hide map legend': 'Скрыть легенду карты',
     'Hide hint': 'Скрыть подсказку',
+    'Show on map': 'Показывать на карте',
     'Closures': 'Муфты',
     'PON boxes': 'PON боксы',
     'Closure notebook': 'Блокнот муфт',
     'Cable lines': 'Кабельные линии',
     'Cable routes': 'Кабельные маршруты',
+    'Routes': 'Маршруты',
     'Network cabinets': 'Сетевые шкафы',
     'Select the route start from a closure or cabinet.':
         'Выберите начало маршрута от муфты или шкафа.',
