@@ -1252,11 +1252,7 @@ class _StartPageState extends State<StartPage> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
-    final profile = controller.profile;
     final membership = controller.membership;
-    final displayName = profile?.fullName.isNotEmpty == true
-        ? profile!.fullName
-        : profile?.email ?? controller.currentUser?.email ?? tr('Employee');
 
     return Scaffold(
       appBar: AppBar(
@@ -1312,16 +1308,6 @@ class _StartPageState extends State<StartPage> {
                     text: tr(
                       'Choose or create an active task, then open a work section to add map objects, closures, cabinets, and routes to it.',
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  _HeroCard(
-                    displayName: displayName,
-                    position: employeePositionLabel(profile?.position ?? ''),
-                    companyName: membership?.companyName ?? tr('Company'),
-                    role: membership?.role ?? 'member',
-                    slug: membership?.slug ?? '-',
-                    teamSize: controller.teamMembers.length,
-                    inviteCount: controller.pendingInvites.length,
                   ),
                   const SizedBox(height: 20),
                   _buildProjectsCard(context),
@@ -2241,117 +2227,6 @@ class _MainTeamHelpPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({
-    required this.displayName,
-    required this.position,
-    required this.companyName,
-    required this.role,
-    required this.slug,
-    required this.teamSize,
-    required this.inviteCount,
-  });
-
-  final String displayName;
-  final String position;
-  final String companyName;
-  final String role;
-  final String slug;
-  final int teamSize;
-  final int inviteCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Wrap(
-          spacing: 18,
-          runSpacing: 18,
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SizedBox(
-              width: 540,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tr('Employee workspace'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(tr('User: {value}', {'value': displayName})),
-                  const SizedBox(height: 6),
-                  Text(tr('Company: {value}', {'value': companyName})),
-                  const SizedBox(height: 6),
-                  Text(tr('Role: {value}', {'value': _roleLabel(role)})),
-                  if (position.trim().isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(tr('Position: {value}', {'value': position})),
-                  ],
-                  const SizedBox(height: 6),
-                  Text(tr('Slug: {value}', {'value': slug})),
-                ],
-              ),
-            ),
-            _MetricBadge(label: tr('Employees'), value: '$teamSize'),
-            _MetricBadge(label: tr('Invites'), value: '$inviteCount'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _roleLabel(String value) {
-    switch (value) {
-      case 'owner':
-        return tr('Owner');
-      case 'admin':
-        return tr('Administrator');
-      case 'member':
-        return tr('Employee');
-      default:
-        return value;
-    }
-  }
-}
-
-class _MetricBadge extends StatelessWidget {
-  const _MetricBadge({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0C1D33),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF1E466A)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ActionCard extends StatelessWidget {
