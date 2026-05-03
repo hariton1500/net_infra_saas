@@ -1426,25 +1426,6 @@ class _StartPageState extends State<StartPage> {
                           },
                         ),
                         _ActionCard(
-                          icon: Icons.timeline_rounded,
-                          title: tr('Cable lines'),
-                          description: tr(
-                            'Cable routes are now built and edited directly on the infrastructure map.',
-                          ),
-                          onTap: () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => InfrastructureMapPage(
-                                  controller: controller,
-                                ),
-                              ),
-                            );
-                            if (mounted) {
-                              await _loadProjects();
-                            }
-                          },
-                        ),
-                        _ActionCard(
                           icon: Icons.dns_rounded,
                           title: tr('Network cabinets'),
                           description: tr(
@@ -1569,7 +1550,7 @@ class _MainScreenHelpDialog extends StatelessWidget {
                 icon: Icons.apps_rounded,
                 title: tr('Work sections'),
                 body: tr(
-                  'Open Infrastructure map for routes and map objects, Closure notebook for mufts and fibers, Cable lines for route entry, and Network cabinets for cabinets, switches, ports, and connections.',
+                  'Open Infrastructure map for routes and map objects, Closure notebook for mufts and fibers, and Network cabinets for cabinets, switches, ports, and connections.',
                 ),
                 image: const _MainSectionsHelpPicture(),
               ),

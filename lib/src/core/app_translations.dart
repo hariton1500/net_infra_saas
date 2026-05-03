@@ -275,8 +275,6 @@ const Map<String, Map<String, String>> appTranslations = {
         'Быстрый переход к карте муфт, PON боксов, кабельных маршрутов и точек подключения.',
     'Operational work with installation nodes, notes, and maintenance.':
         'Оперативная работа с монтажными узлами, заметками и обслуживанием.',
-    'Cable routes are now built and edited directly on the infrastructure map.':
-        'Кабельные маршруты теперь строятся и редактируются прямо на карте инфраструктуры.',
     'View cabinets, equipment, and placement point status.':
         'Просмотр шкафов, оборудования и состояния точек размещения.',
     'Main screen guide': 'Справка главного экрана',
@@ -293,8 +291,8 @@ const Map<String, Map<String, String>> appTranslations = {
         'Задачи группируют полевые работы. Создайте задачу, назначьте сотрудников, откройте детали, затем отметьте выполнение, проверку и архивирование.',
     'Activate a task before opening work sections. New closures, cabinets, routes, and map changes are linked to the active task. Use Turn off when you need to work without a task.':
         'Активируйте задачу перед открытием рабочих разделов. Новые муфты, шкафы, маршруты и изменения карты будут привязаны к активной задаче.',
-    'Open Infrastructure map for routes and map objects, Closure notebook for mufts and fibers, Cable lines for route entry, and Network cabinets for cabinets, switches, ports, and connections.':
-        'Откройте карту инфраструктуры для маршрутов и объектов, блокнот муфт для муфт и волокон, кабельные линии для маршрутов и сетевые шкафы для шкафов, коммутаторов, портов и соединений.',
+    'Open Infrastructure map for routes and map objects, Closure notebook for mufts and fibers, and Network cabinets for cabinets, switches, ports, and connections.':
+        'Откройте карту инфраструктуры для маршрутов и объектов, блокнот муфт для муфт и волокон и сетевые шкафы для шкафов, коммутаторов, портов и соединений.',
     'Owners and administrators can invite employees by work email, choose their role, and assign a position when allowed. The employee joins automatically after registering with the invited email.':
         'Владельцы и администраторы могут приглашать сотрудников по рабочему email, выбирать роль и назначать должность, когда это разрешено.',
     'The team list shows active members, their email, role, and position. Pending invites show emails waiting for acceptance and their invite codes.':
