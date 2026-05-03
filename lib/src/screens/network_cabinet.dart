@@ -88,11 +88,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   bool _loading = true;
   bool _syncing = false;
   bool _mapView = false;
+  bool _showConnectionLineControls = false;
   Map<String, dynamic>? _selectedCabinet;
   int? _selectedCableId;
   int? _projectFilterId;
   ProjectSelection? _activeProject;
   double _mapZoom = 14;
+  double _connectionLineWidth = 1.25;
+  double _connectionLineOpacity = 0.38;
+  double _portSize = 26;
+  double _fiberSize = 24;
+  bool _routeConnectionLines = true;
   String _selectedTileLayerId = 'osm';
   Timer? _syncTimer;
 
@@ -450,8 +456,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           Expanded(
             child: Text(
               hasActiveProject
-                  ? 'Active task: ${activeProject.name}'
-                  : 'No active task selected',
+                  ? tr('Active task: {name}', {'name': activeProject.name})
+                  : tr('No active task selected'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -493,9 +499,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           continue;
         }
 
-        final globalPoint = box.localToGlobal(
-          Offset(box.size.width / 2, box.size.height / 2),
-        );
+        final localAnchor = entry.key.startsWith('s')
+            ? Offset(box.size.width / 2, box.size.height)
+            : Offset(box.size.width / 2, box.size.height / 2);
+        final globalPoint = box.localToGlobal(localAnchor);
         nextOffsets[entry.key] = areaBox.globalToLocal(globalPoint);
       }
 
@@ -2182,27 +2189,58 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget _buildSwitchCard(Map<String, dynamic> sw) {
     final portsCount = (sw['ports'] as int?) ?? 24;
     final portTypes = _portTypesForSwitch(sw);
+    final switchName = (sw['name'] ?? tr('Switch')).toString().trim();
+    final switchModel = (sw['model'] ?? '').toString().trim();
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    '${sw['name'] ?? 'Switch'} ${sw['model'] ?? ''}'.trim(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        switchName.isEmpty ? tr('Switch') : switchName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+                      if (switchModel.isNotEmpty)
+                        Text(
+                          switchModel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.1),
+                        ),
+                    ],
                   ),
                 ),
                 IconButton(
                   tooltip: tr('Port types'),
                   onPressed: () => _editSwitchPortTypes(sw['id'] as int),
                   icon: const Icon(Icons.tune),
+                  iconSize: 20,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 36,
+                    height: 36,
+                  ),
+                  padding: EdgeInsets.zero,
                 ),
                 PopupMenuButton<String>(
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
                   onSelected: (value) {
                     if (value == 'edit') {
                       _editSwitch(sw['id'] as int);
@@ -2218,35 +2256,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: _portTypeLabels.entries
-                  .map(
-                    (entry) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: _portTypeColor(entry.key),
-                            borderRadius: BorderRadius.circular(2),
-                            border: Border.all(color: Colors.black26),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          entry.value,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  )
-                  .toList(growable: false),
-            ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Wrap(
               spacing: 4,
               runSpacing: 4,
@@ -2289,8 +2299,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       feedback: Material(
                         color: Colors.transparent,
                         child: Container(
-                          width: 26,
-                          height: 26,
+                          width: _portSize,
+                          height: _portSize,
                           decoration: BoxDecoration(
                             color: portColor,
                             borderRadius: BorderRadius.circular(4),
@@ -2299,7 +2309,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           child: Center(
                             child: Text(
                               '${index + 1}',
-                              style: const TextStyle(fontSize: 10),
+                              style: TextStyle(
+                                fontSize: (_portSize * 0.38).clamp(8, 12),
+                              ),
                             ),
                           ),
                         ),
@@ -2338,6 +2350,41 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
+  Widget _buildPortTypeLegend() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 4,
+        children: _portTypeLabels.entries
+            .map(
+              (entry) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: _portTypeColor(entry.key),
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: Colors.black26),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    entry.value,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.0),
+                  ),
+                ],
+              ),
+            )
+            .toList(growable: false),
+      ),
+    );
+  }
+
   Widget _portSquare(
     int label,
     bool highlight,
@@ -2347,8 +2394,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   }) {
     return Container(
       key: key,
-      width: 26,
-      height: 26,
+      width: _portSize,
+      height: _portSize,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(4),
@@ -2369,7 +2416,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         message:
             'Port $label: ${_portTypeLabels[portType] ?? _portTypeLabels[_portTypeOptical]}',
         child: Center(
-          child: Text('$label', style: const TextStyle(fontSize: 10)),
+          child: Text(
+            '$label',
+            style: TextStyle(fontSize: (_portSize * 0.38).clamp(8, 12)),
+          ),
         ),
       ),
     );
@@ -2388,15 +2438,185 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
+  Widget _buildConnectionLineControls() {
+    final theme = Theme.of(context);
+    final lineStyleLabel = _routeConnectionLines
+        ? tr('Маршрут')
+        : tr('Плавные');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.45,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.linear_scale_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tr('Линии соединений'),
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$lineStyleLabel / '
+                    '${_connectionLineWidth.toStringAsFixed(1)} / '
+                    '${(_connectionLineOpacity * 100).round()}% / '
+                    '${_portSize.round()} / ${_fiberSize.round()}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: _showConnectionLineControls
+                        ? tr('Скрыть настройки')
+                        : tr('Показать настройки'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      setState(() {
+                        _showConnectionLineControls =
+                            !_showConnectionLineControls;
+                      });
+                    },
+                    icon: Icon(
+                      _showConnectionLineControls
+                          ? Icons.expand_less
+                          : Icons.tune,
+                    ),
+                  ),
+                ],
+              ),
+              if (_showConnectionLineControls) ...[
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Стиль'))),
+                    Expanded(
+                      child: SegmentedButton<bool>(
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        segments: [
+                          ButtonSegment<bool>(
+                            value: false,
+                            label: Text(tr('Плавные')),
+                          ),
+                          ButtonSegment<bool>(
+                            value: true,
+                            label: Text(tr('Маршрут')),
+                          ),
+                        ],
+                        selected: {_routeConnectionLines},
+                        onSelectionChanged: (selection) {
+                          setState(() {
+                            _routeConnectionLines = selection.first;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Толщина'))),
+                    Expanded(
+                      child: Slider(
+                        min: 0.75,
+                        max: 4,
+                        divisions: 13,
+                        value: _connectionLineWidth,
+                        onChanged: (value) {
+                          setState(() {
+                            _connectionLineWidth = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Прозрачность'))),
+                    Expanded(
+                      child: Slider(
+                        min: 0.15,
+                        max: 1,
+                        divisions: 17,
+                        value: _connectionLineOpacity,
+                        onChanged: (value) {
+                          setState(() {
+                            _connectionLineOpacity = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Порты'))),
+                    Expanded(
+                      child: Slider(
+                        min: 20,
+                        max: 34,
+                        divisions: 14,
+                        value: _portSize,
+                        onChanged: (value) {
+                          setState(() {
+                            _portSize = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    SizedBox(width: 100, child: Text(tr('Волокна'))),
+                    Expanded(
+                      child: Slider(
+                        min: 18,
+                        max: 32,
+                        divisions: 14,
+                        value: _fiberSize,
+                        onChanged: (value) {
+                          setState(() {
+                            _fiberSize = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCableCard(Map<String, dynamic> cable) {
     final scheme = cable['color_scheme'] ?? 'default';
     final colors = _fiberSchemes[scheme] ?? _fiberSchemes.values.first;
     final spliters = List<int>.from(cable['spliters'] ?? const []);
     final selected = _selectedCableId == cable['id'];
+    final cableName = (cable['name'] ?? tr('Cable')).toString().trim();
+    final fibersCount = (cable['fibers'] as int?) ?? 1;
 
     return Card(
       color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       child: InkWell(
         onTap: () {
           setState(() {
@@ -2404,19 +2624,39 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           });
         },
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      cable['name'] ?? 'Cable',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cableName.isEmpty ? tr('Cable') : cableName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            height: 1.1,
+                          ),
+                        ),
+                        Text(
+                          tr('Волокон: {value}', {'value': '$fibersCount'}),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.1),
+                        ),
+                      ],
                     ),
                   ),
                   PopupMenuButton<String>(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
                     onSelected: (value) {
                       if (value == 'rename') {
                         _editCableName(cable['id'] as int);
@@ -2432,13 +2672,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: List.generate((cable['fibers'] as int?) ?? 1, (
-                  index,
-                ) {
+                spacing: 4,
+                runSpacing: 4,
+                children: List.generate(fibersCount, (index) {
                   final color = colors[index % colors.length];
                   final spliter = index < spliters.length ? spliters[index] : 0;
                   final keyId = _fiberKey(cable['id'] as int, index);
@@ -2475,8 +2713,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         feedback: Material(
                           color: Colors.transparent,
                           child: Container(
-                            width: 28,
-                            height: 28,
+                            width: _fiberSize,
+                            height: _fiberSize,
                             decoration: BoxDecoration(
                               color: color,
                               shape: BoxShape.circle,
@@ -2486,7 +2724,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               child: Text(
                                 '${index + 1}',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: (_fiberSize * 0.42).clamp(8, 12),
                                   color: color == Colors.black
                                       ? Colors.white
                                       : Colors.black,
@@ -2515,7 +2753,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       fiberWidget,
-                      if (spliter > 0) const SizedBox(width: 6),
+                      if (spliter > 0) const SizedBox(width: 4),
                       if (spliter > 0) _spliterBadge(spliter, key: anchorKey),
                     ],
                   );
@@ -2531,8 +2769,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget _fiberCircle(Color color, int label, bool highlight, {Key? key}) {
     return Container(
       key: key,
-      width: 28,
-      height: 28,
+      width: _fiberSize,
+      height: _fiberSize,
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
@@ -2544,7 +2782,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             ? [
                 BoxShadow(
                   color: Colors.deepOrange.withValues(alpha: 0.5),
-                  blurRadius: 6,
+                  blurRadius: 4,
                 ),
               ]
             : null,
@@ -2553,7 +2791,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         child: Text(
           '$label',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: (_fiberSize * 0.42).clamp(8, 12),
             color: color == Colors.black ? Colors.white : Colors.black,
           ),
         ),
@@ -2564,14 +2802,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget _spliterBadge(int spliter, {Key? key}) {
     return Container(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
         color: Colors.black87,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         '1:$spliter',
-        style: const TextStyle(color: Colors.white, fontSize: 10),
+        style: const TextStyle(color: Colors.white, fontSize: 9),
       ),
     );
   }
@@ -2845,6 +3083,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
               ],
             ),
           ),
+          if (switches.isNotEmpty) _buildPortTypeLegend(),
+          if (connections.isNotEmpty) _buildConnectionLineControls(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: LayoutBuilder(
@@ -2891,6 +3131,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               connections: connections,
                               positions: _fiberOffsets,
                               colors: _fiberColorByKey,
+                              lineWidth: _connectionLineWidth,
+                              lineOpacity: _connectionLineOpacity,
+                              routeConnections: _routeConnectionLines,
                             ),
                           ),
                         ),
@@ -3039,7 +3282,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           _buildActiveProjectBanner(),
           ScreenInstruction(
             text: tr(
-              'Create a cabinet, select it, then add switches, cables, ports, and connections from the detail pane.',
+              'Создайте шкаф, выберите его, затем добавьте коммутаторы, кабели, порты и соединения в панели деталей.',
             ),
             margin: const EdgeInsets.all(12),
           ),
@@ -3524,11 +3767,17 @@ class _ConnectionsPainter extends CustomPainter {
     required this.connections,
     required this.positions,
     required this.colors,
+    required this.lineWidth,
+    required this.lineOpacity,
+    required this.routeConnections,
   });
 
   final List<Map<String, dynamic>> connections;
   final Map<String, Offset> positions;
   final Map<String, Color> colors;
+  final double lineWidth;
+  final double lineOpacity;
+  final bool routeConnections;
 
   String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
 
@@ -3589,12 +3838,106 @@ class _ConnectionsPainter extends CustomPainter {
     return Colors.grey;
   }
 
+  double _direction(double value) {
+    if (value == 0) {
+      return 0;
+    }
+    return value > 0 ? 1 : -1;
+  }
+
+  double _segmentLength(Offset a, Offset b) {
+    return (a.dx - b.dx).abs() + (a.dy - b.dy).abs();
+  }
+
+  double _min3(double a, double b, double c) {
+    var value = a < b ? a : b;
+    value = value < c ? value : c;
+    return value;
+  }
+
+  double _routeY(Offset p1, Offset p2, Size size) {
+    final verticalDistance = (p1.dy - p2.dy).abs();
+    if (verticalDistance >= 18) {
+      return (p1.dy + p2.dy) / 2;
+    }
+
+    final lowerY = p1.dy > p2.dy ? p1.dy : p2.dy;
+    final upperY = p1.dy < p2.dy ? p1.dy : p2.dy;
+    final below = lowerY + 16;
+    if (below <= size.height - 4) {
+      return below;
+    }
+    return upperY - 16;
+  }
+
+  ui.Path _roundedOrthogonalPath(Offset p1, Offset p2, Size size) {
+    final trackY = _routeY(p1, p2, size);
+    final points = [p1, Offset(p1.dx, trackY), Offset(p2.dx, trackY), p2];
+    final path = ui.Path()..moveTo(points.first.dx, points.first.dy);
+    final cornerRadius = (lineWidth * 5).clamp(6.0, 14.0).toDouble();
+
+    for (var index = 1; index < points.length - 1; index += 1) {
+      final previous = points[index - 1];
+      final current = points[index];
+      final next = points[index + 1];
+      final incomingLength = _segmentLength(previous, current);
+      final outgoingLength = _segmentLength(current, next);
+      final radius = _min3(
+        cornerRadius,
+        incomingLength / 2,
+        outgoingLength / 2,
+      );
+
+      if (radius <= 0) {
+        path.lineTo(current.dx, current.dy);
+        continue;
+      }
+
+      final incoming = Offset(
+        _direction(current.dx - previous.dx),
+        _direction(current.dy - previous.dy),
+      );
+      final outgoing = Offset(
+        _direction(next.dx - current.dx),
+        _direction(next.dy - current.dy),
+      );
+      final beforeCorner = Offset(
+        current.dx - incoming.dx * radius,
+        current.dy - incoming.dy * radius,
+      );
+      final afterCorner = Offset(
+        current.dx + outgoing.dx * radius,
+        current.dy + outgoing.dy * radius,
+      );
+
+      path
+        ..lineTo(beforeCorner.dx, beforeCorner.dy)
+        ..quadraticBezierTo(
+          current.dx,
+          current.dy,
+          afterCorner.dx,
+          afterCorner.dy,
+        );
+    }
+
+    path.lineTo(points.last.dx, points.last.dy);
+    return path;
+  }
+
+  ui.Path _curvedPath(Offset p1, Offset p2) {
+    final midX = (p1.dx + p2.dx) / 2;
+    return ui.Path()
+      ..moveTo(p1.dx, p1.dy)
+      ..cubicTo(midX, p1.dy, midX, p2.dy, p2.dx, p2.dy);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = lineWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
     for (final connection in connections) {
       final p1 = _positionFor(connection, true);
@@ -3603,16 +3946,16 @@ class _ConnectionsPainter extends CustomPainter {
         continue;
       }
 
-      paint.color = _colorFor(connection, true).withValues(alpha: 0.75);
-      final midX = (p1.dx + p2.dx) / 2;
-      final path = ui.Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..cubicTo(midX, p1.dy, midX, p2.dy, p2.dx, p2.dy);
+      paint.color = _colorFor(connection, true).withValues(alpha: lineOpacity);
+      final path = routeConnections
+          ? _roundedOrthogonalPath(p1, p2, size)
+          : _curvedPath(p1, p2);
       canvas.drawPath(path, paint);
 
       final dotPaint = Paint()..color = paint.color;
-      canvas.drawCircle(p1, 3, dotPaint);
-      canvas.drawCircle(p2, 3, dotPaint);
+      final dotRadius = (lineWidth * 1.6).clamp(2.25, 5.0).toDouble();
+      canvas.drawCircle(p1, dotRadius, dotPaint);
+      canvas.drawCircle(p2, dotRadius, dotPaint);
     }
   }
 
@@ -3620,6 +3963,9 @@ class _ConnectionsPainter extends CustomPainter {
   bool shouldRepaint(covariant _ConnectionsPainter oldDelegate) {
     return oldDelegate.connections != connections ||
         oldDelegate.positions != positions ||
-        oldDelegate.colors != colors;
+        oldDelegate.colors != colors ||
+        oldDelegate.lineWidth != lineWidth ||
+        oldDelegate.lineOpacity != lineOpacity ||
+        oldDelegate.routeConnections != routeConnections;
   }
 }
