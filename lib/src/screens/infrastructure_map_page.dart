@@ -854,9 +854,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       for (final transition in _traceNeighbors(current)) {
         if (transition.routeId != null) {
           routeIds.add(transition.routeId!);
-          routeColors.putIfAbsent(transition.routeId!, () {
-            return currentColor ?? const Color(0xFFFFB347);
-          });
+          routeColors[transition.routeId!] =
+              _traceColorForEndpoint(current) ??
+              currentColor ??
+              const Color(0xFFFFB347);
         }
         if (!visited.contains(transition.endpoint.visitKey)) {
           queue.add(

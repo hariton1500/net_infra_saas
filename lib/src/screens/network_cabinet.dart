@@ -812,6 +812,17 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     });
   }
 
+  List<String> _portCommentsForSwitch(Map<String, dynamic> sw) {
+    final portsCount = (sw['ports'] as int?) ?? 24;
+    final raw = List<dynamic>.from(sw['port_comments'] ?? const []);
+    return List<String>.generate(portsCount, (index) {
+      if (index >= raw.length) {
+        return '';
+      }
+      return raw[index]?.toString() ?? '';
+    });
+  }
+
   Color _portTypeColor(String type) {
     switch (type) {
       case _portTypeCopper:
@@ -902,6 +913,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         ports,
                         _portTypeOptical,
                       ),
+                      'port_comments': List<String>.filled(ports, ''),
                     });
                     cabinet['switches'] = switches;
                     _touchCabinet(cabinet);
@@ -1141,6 +1153,230 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   label: Text(tr('Save')),
                 ),
               ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Map<String, dynamic>? _connectionForPort(int switchId, int portIndex) {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return null;
+    }
+
+    for (final connection in List<Map<String, dynamic>>.from(
+      cabinet['connections'] ?? const [],
+    )) {
+      final isLeftPort =
+          connection['switch1'] == switchId && connection['port1'] == portIndex;
+      final isRightPort =
+          connection['switch2'] == switchId && connection['port2'] == portIndex;
+      if (isLeftPort || isRightPort) {
+        return connection;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _removeConnectionForPort(int switchId, int portIndex) async {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return;
+    }
+
+    final connections =
+        List<Map<String, dynamic>>.from(cabinet['connections'] ?? const [])
+          ..removeWhere((connection) {
+            return (connection['switch1'] == switchId &&
+                    connection['port1'] == portIndex) ||
+                (connection['switch2'] == switchId &&
+                    connection['port2'] == portIndex);
+          });
+    cabinet['connections'] = connections;
+    _touchCabinet(cabinet);
+    await _persist();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _showSwitchPortSheet({
+    required int switchId,
+    required int portIndex,
+  }) async {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return;
+    }
+
+    final switches = List<Map<String, dynamic>>.from(
+      cabinet['switches'] ?? const [],
+    );
+    final switchIndex = switches.indexWhere((sw) => sw['id'] == switchId);
+    if (switchIndex == -1) {
+      return;
+    }
+
+    final sw = Map<String, dynamic>.from(switches[switchIndex]);
+    final portTypes = List<String>.from(_portTypesForSwitch(sw));
+    final portComments = List<String>.from(_portCommentsForSwitch(sw));
+    if (portIndex < 0 || portIndex >= portTypes.length) {
+      return;
+    }
+
+    String portType = portTypes[portIndex];
+    final commentController = TextEditingController(
+      text: portComments[portIndex],
+    );
+    final connection = _connectionForPort(switchId, portIndex);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateSheet) {
+            final portTypeLabel =
+                _portTypeLabels[portType] ?? _portTypeLabels[_portTypeOptical]!;
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tr('Port {value}', {'value': '${portIndex + 1}'}),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${sw['name'] ?? tr('Switch')}'
+                    '${(sw['model'] ?? '').toString().trim().isEmpty ? '' : ' | ${sw['model']}'}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: portType,
+                    decoration: InputDecoration(labelText: tr('Port type')),
+                    items: _portTypeLabels.entries
+                        .map(
+                          (entry) => DropdownMenuItem<String>(
+                            value: entry.key,
+                            child: Text(tr(entry.value)),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setStateSheet(() {
+                        portType = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: commentController,
+                    decoration: InputDecoration(labelText: tr('Comment')),
+                    minLines: 1,
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        connection == null
+                            ? Icons.link_off
+                            : Icons.link_outlined,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          connection == null
+                              ? tr('Port is not connected')
+                              : tr('Connected: {value}', {
+                                  'value':
+                                      '${_connectionLabelPart(connection, true)} <--> ${_connectionLabelPart(connection, false)}',
+                                }),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _openPortTraceOnMap(
+                            switchId: switchId,
+                            portIndex: portIndex,
+                          );
+                        },
+                        icon: const Icon(Icons.route_outlined),
+                        label: Text(tr('Trace')),
+                      ),
+                      if (connection != null)
+                        TextButton.icon(
+                          onPressed: () async {
+                            final navigator = Navigator.of(context);
+                            await _removeConnectionForPort(switchId, portIndex);
+                            if (mounted) {
+                              navigator.pop();
+                            }
+                          },
+                          icon: const Icon(Icons.link_off),
+                          label: Text(tr('Disconnect')),
+                        ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text(tr('Cancel')),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: () async {
+                          final navigator = Navigator.of(context);
+                          portTypes[portIndex] = portType;
+                          portComments[portIndex] = commentController.text
+                              .trim();
+                          switches[switchIndex] = {
+                            ...sw,
+                            'port_types': portTypes,
+                            'port_comments': portComments,
+                          };
+                          cabinet['switches'] = switches;
+                          _touchCabinet(cabinet);
+                          await _persist();
+                          if (!mounted) {
+                            return;
+                          }
+                          setState(() {});
+                          navigator.pop();
+                        },
+                        icon: const Icon(Icons.save),
+                        label: Text(tr('Save')),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    tr('Type: {value}', {'value': tr(portTypeLabel)}),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -2327,7 +2563,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       ),
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => _openPortTraceOnMap(
+                        onTap: () => _showSwitchPortSheet(
                           switchId: sw['id'] as int,
                           portIndex: index,
                         ),
