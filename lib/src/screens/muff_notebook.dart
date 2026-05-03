@@ -42,6 +42,25 @@ class _EndpointChoice {
   final Map<String, dynamic> endpoint;
 }
 
+class _MuffCommentSummary {
+  const _MuffCommentSummary({
+    required this.fullText,
+    this.intro,
+    this.sourceRoute,
+    this.newRoute,
+    this.operationDate,
+  });
+
+  final String fullText;
+  final String? intro;
+  final String? sourceRoute;
+  final String? newRoute;
+  final DateTime? operationDate;
+
+  bool get hasStructuredDetails =>
+      sourceRoute != null || newRoute != null || operationDate != null;
+}
+
 class _MuffNotebookPageState extends State<MuffNotebookPage> {
   static const String _allDistrictsValue = '__all_districts__';
   static const String _moduleKey = 'muff_notebook';
@@ -2563,7 +2582,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     if (visibleMuffs.isEmpty) {
       return Center(
         child: Text(
-          'There are no closures in the selected area yet.',
+          tr('There are no closures in the selected area yet.'),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -2582,14 +2601,15 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               : null,
           child: ListTile(
             leading: _statusDot(muff['dirty'] == true),
-            title: Text(muff['name'] ?? 'Untitled'),
+            title: Text(muff['name'] ?? tr('Untitled')),
             subtitle: Text(
               [
-                if (_isPonBox(muff)) 'Type: PON box',
+                if (_isPonBox(muff))
+                  tr('Type: {value}', {'value': tr('PON box')}),
                 if (_projectNameFor(muff) != null)
-                  'Task: ${_projectNameFor(muff)}',
+                  tr('Task: {name}', {'name': _projectNameFor(muff)!}),
                 if (((muff['district'] as String?)?.trim() ?? '').isNotEmpty)
-                  'Area: ${muff['district']}',
+                  tr('Area: {value}', {'value': '${muff['district']}'}),
                 if ((muff['location'] ?? '').toString().trim().isNotEmpty)
                   (muff['location'] ?? '').toString().trim(),
               ].join('\n'),
@@ -2626,7 +2646,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     if (_selectedMuff == null) {
       return Center(
         child: Text(
-          'Select a closure on the left',
+          tr('Select a closure on the left'),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -2634,6 +2654,10 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
 
     final muff = _selectedMuff!;
     final connections = _normalizedConnections(muff);
+    final hasCables =
+        _getCablesBySide(0).isNotEmpty || _getCablesBySide(1).isNotEmpty;
+    final hasSplitters =
+        _getSplittersBySide(0).isNotEmpty || _getSplittersBySide(1).isNotEmpty;
     _currentFiberKeys.clear();
     _fiberColorByKey.clear();
     _fiberSideByKey.clear();
@@ -2657,117 +2681,56 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             ),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _statusDot(muff['dirty'] == true),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            muff['name'] ?? 'Untitled',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: tr('Location'),
-                          onPressed: () => _openMuffLocation(muff),
-                          icon: const Icon(Icons.map),
-                        ),
-                      ],
-                    ),
-                    if (_isPonBox(muff)) ...[
-                      const SizedBox(height: 8),
-                      _ponBadge(context),
-                    ],
-                    const SizedBox(height: 4),
-                    if (((muff['district'] as String?)?.trim() ?? '')
-                        .isNotEmpty)
-                      Text(
-                        tr('Area: {value}', {'value': '${muff['district']}'}),
-                      ),
-                    if (((muff['district'] as String?)?.trim() ?? '')
-                        .isNotEmpty)
-                      const SizedBox(height: 4),
-                    Text(muff['location'] ?? ''),
-                    if (muff['location_lat'] != null &&
-                        muff['location_lng'] != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.place, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${(muff['location_lat'] as double).toStringAsFixed(6)}, '
-                              '${(muff['location_lng'] as double).toStringAsFixed(6)}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const Spacer(),
-                            TextButton.icon(
-                              onPressed: () => _openMuffLocation(muff),
-                              icon: const Icon(Icons.map),
-                              label: Text(tr('Change')),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if ((muff['comment'] ?? '').toString().isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(muff['comment']),
-                    ],
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: FilledButton.tonalIcon(
-                        onPressed: _showSignalPathWizard,
-                        icon: const Icon(Icons.online_prediction_outlined),
-                        label: Text(tr('Get signal from port')),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            child: _buildMuffSummaryCard(muff),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Text(
-                  'Cables',
+                Text(
+                  tr('Cables'),
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: _addCable,
-                  icon: const Icon(Icons.add),
-                  label: Text(tr('Add cable')),
-                ),
+                if (hasCables)
+                  FilledButton.tonalIcon(
+                    onPressed: _addCable,
+                    icon: const Icon(Icons.add),
+                    label: Text(tr('Add cable')),
+                  ),
               ],
             ),
           ),
+          if (!hasCables)
+            _buildEmptySectionState(
+              message: tr('No cables added'),
+              buttonLabel: tr('Add cable'),
+              onPressed: _addCable,
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
             child: Row(
               children: [
-                const Text(
-                  'Splitters',
+                Text(
+                  tr('Splitters'),
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: _addSplitter,
-                  icon: const Icon(Icons.add),
-                  label: Text(tr('Add splitter')),
-                ),
+                if (hasSplitters)
+                  FilledButton.tonalIcon(
+                    onPressed: _addSplitter,
+                    icon: const Icon(Icons.add),
+                    label: Text(tr('Add splitter')),
+                  ),
               ],
             ),
           ),
+          if (!hasSplitters)
+            _buildEmptySectionState(
+              message: tr('No splitters added'),
+              buttonLabel: tr('Add splitter'),
+              onPressed: _addSplitter,
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Stack(
@@ -2860,6 +2823,287 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             ),
           const SizedBox(height: 20),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMuffSummaryCard(Map<String, dynamic> muff) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final commentSummary = _parseMuffComment(
+      (muff['comment'] ?? '').toString(),
+    );
+    final location = (muff['location'] ?? '').toString().trim();
+    final district = (muff['district'] ?? '').toString().trim();
+    final hasCoordinates =
+        muff['location_lat'] != null && muff['location_lng'] != null;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: _statusDot(muff['dirty'] == true),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        muff['name'] ?? tr('Untitled'),
+                        style: textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (district.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          tr('Area: {value}', {'value': district}),
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (_isPonBox(muff)) ...[
+              const SizedBox(height: 8),
+              _ponBadge(context),
+            ],
+            if (location.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(location),
+            ],
+            if (hasCoordinates) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.place, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${(muff['location_lat'] as double).toStringAsFixed(6)}, '
+                      '${(muff['location_lng'] as double).toStringAsFixed(6)}',
+                      style: textTheme.bodyMedium,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _openMuffLocation(muff),
+                    icon: const Icon(Icons.map),
+                    label: Text(tr('Change')),
+                  ),
+                ],
+              ),
+            ],
+            if (commentSummary.intro != null ||
+                commentSummary.hasStructuredDetails) ...[
+              const SizedBox(height: 12),
+              _buildMuffRouteSummary(commentSummary),
+            ],
+            if (commentSummary.fullText.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Theme(
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(tr('Details')),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SelectableText(
+                        commentSummary.fullText,
+                        style: textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.tonalIcon(
+                onPressed: _showSignalPathWizard,
+                icon: const Icon(Icons.online_prediction_outlined),
+                label: Text(tr('Get signal from port')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMuffRouteSummary(_MuffCommentSummary summary) {
+    final rows = <Widget>[
+      if (summary.intro != null)
+        Text(summary.intro!, style: Theme.of(context).textTheme.bodyMedium),
+      if (summary.sourceRoute != null)
+        _buildSummaryRow(
+          Icons.route_outlined,
+          tr('Source route'),
+          summary.sourceRoute!,
+        ),
+      if (summary.newRoute != null)
+        _buildSummaryRow(Icons.alt_route, tr('New route'), summary.newRoute!),
+      if (summary.operationDate != null)
+        _buildSummaryRow(
+          Icons.event_outlined,
+          tr('Operation date'),
+          _formatDateTime(summary.operationDate!),
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          rows[i],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSummaryRow(IconData icon, String label, String value) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 128,
+          child: Text(
+            label,
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+
+  _MuffCommentSummary _parseMuffComment(String rawComment) {
+    final fullText = rawComment.trim();
+    if (fullText.isEmpty) {
+      return const _MuffCommentSummary(fullText: '');
+    }
+
+    final lines = fullText
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    String? intro;
+    String? sourceRoute;
+    String? newRoute;
+    DateTime? operationDate;
+
+    for (final line in lines) {
+      if (line.startsWith('Исходный маршрут:')) {
+        sourceRoute = _trimSentenceEnd(
+          line.replaceFirst('Исходный маршрут:', '').trim(),
+        );
+      } else if (line.startsWith('Дата операции:')) {
+        final rawDate = _trimSentenceEnd(
+          line.replaceFirst('Дата операции:', '').trim(),
+        );
+        operationDate = DateTime.tryParse(rawDate);
+      } else {
+        final newRouteMatch = RegExp(
+          r'создан новый маршрут\s+(.+?)\.',
+          caseSensitive: false,
+        ).firstMatch(line);
+        if (newRouteMatch != null) {
+          newRoute = newRouteMatch.group(1)?.trim();
+        }
+        intro ??= _trimSentenceEnd(line);
+      }
+    }
+
+    return _MuffCommentSummary(
+      fullText: fullText,
+      intro: intro,
+      sourceRoute: sourceRoute,
+      newRoute: newRoute,
+      operationDate: operationDate,
+    );
+  }
+
+  String _trimSentenceEnd(String value) =>
+      value.replaceFirst(RegExp(r'\.+$'), '').trim();
+
+  String _formatDateTime(DateTime value) {
+    final local = value.toLocal();
+    String twoDigits(int number) => number.toString().padLeft(2, '0');
+    return '${twoDigits(local.day)}.${twoDigits(local.month)}.${local.year}, '
+        '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
+  }
+
+  Widget _buildEmptySectionState({
+    required String message,
+    required String buttonLabel,
+    required VoidCallback onPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 18,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.tonalIcon(
+                onPressed: onPressed,
+                icon: const Icon(Icons.add),
+                label: Text(buttonLabel),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
