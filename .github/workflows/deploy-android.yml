@@ -39,6 +39,16 @@ on:
           - alpha
           - beta
           - production
+      google_play_status:
+        description: Google Play release status
+        required: true
+        default: draft
+        type: choice
+        options:
+          - draft
+          - completed
+          - inProgress
+          - halted
 
 concurrency:
   group: android-deploy-${{ github.ref }}
@@ -172,6 +182,7 @@ jobs:
     env:
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
       GOOGLE_PLAY_TRACK: ${{ inputs.google_play_track || 'internal' }}
+      GOOGLE_PLAY_STATUS: ${{ inputs.google_play_status || 'draft' }}
     steps:
       - name: Skip when Google Play is not configured
         if: ${{ env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON == '' }}
@@ -192,4 +203,4 @@ jobs:
           packageName: io.netinfra.saas
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: ${{ env.GOOGLE_PLAY_TRACK }}
-          status: completed
+          status: ${{ env.GOOGLE_PLAY_STATUS }}
