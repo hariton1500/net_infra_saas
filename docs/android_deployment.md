@@ -76,6 +76,8 @@ The workflow publishes package `io.netinfra.saas`. Manual runs can choose the ta
 - `beta`
 - `production`
 
+CI passes `github.run_number` as the Android build number, so each GitHub Actions run gets a new `versionCode`. Update [pubspec.yaml](../pubspec.yaml) when the visible `versionName` should change.
+
 ## Local Release Build
 
 PowerShell:

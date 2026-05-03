@@ -22,7 +22,7 @@ on:
       deploy_target:
         description: Deployment destination
         required: true
-        default: artifact
+        default: google-play
         type: choice
         options:
           - artifact
