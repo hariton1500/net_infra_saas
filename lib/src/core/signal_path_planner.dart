@@ -1,3 +1,5 @@
+import 'app_i18n.dart';
+
 class SignalPortRef {
   const SignalPortRef({
     required this.cabinetId,
@@ -122,9 +124,7 @@ class SignalPathPlanner {
         targetLabel: targetLabel,
         steps: const [],
         actions: const [],
-        blockers: const [
-          'Медный порт нельзя использовать для подачи оптического сигнала.',
-        ],
+        blockers: [tr('Copper ports cannot feed optical cable fibers.')],
       );
     }
 
@@ -135,14 +135,14 @@ class SignalPathPlanner {
         targetLabel: targetLabel,
         steps: const [],
         actions: const [],
-        blockers: const [
-          'До этой муфты не найдена цепочка кабельных маршрутов.',
-        ],
+        blockers: [tr('No cable route chain reaches this closure.')],
       );
     }
 
     final actions = <String>[];
-    final steps = <String>['Источник: $sourceLabel'];
+    final steps = <String>[
+      tr('Source: {value}', {'value': sourceLabel}),
+    ];
     var previousCableId = 0;
     var previousFiberIndex = 0;
     var previousCableName = '';
@@ -158,7 +158,7 @@ class SignalPathPlanner {
         targetLabel: targetLabel,
         steps: steps,
         actions: const [],
-        blockers: const ['Выбранная муфта совпадает с исходным объектом.'],
+        blockers: [tr('The selected closure is the source cabinet object.')],
       );
     }
 
@@ -168,7 +168,7 @@ class SignalPathPlanner {
       final toRecord = _records[edge.to.key];
       if (fromRecord == null || toRecord == null) {
         return _blocked(sourceLabel, targetLabel, steps, actions, [
-          'Не найдена запись одного из объектов маршрута.',
+          tr('A route endpoint record is missing.'),
         ]);
       }
 
@@ -177,7 +177,10 @@ class SignalPathPlanner {
           : _firstAvailableRouteFiber(edge, allowedPort: source);
       if (fiberIndex == null) {
         return _blocked(sourceLabel, targetLabel, steps, actions, [
-          'Нет пригодного волокна без сигнала другого порта: ${edge.fromCableName} -> ${edge.toCableName}.',
+          tr('No usable fiber without another port signal on {from} -> {to}.', {
+            'from': edge.fromCableName,
+            'to': edge.toCableName,
+          }),
         ]);
       }
 
@@ -191,21 +194,34 @@ class SignalPathPlanner {
             allowedPort: source,
           )) {
             return _blocked(sourceLabel, targetLabel, steps, actions, [
-              '${edge.fromCableName}, волокно ${fiberIndex + 1}: уже есть сигнал от другого порта.',
+              tr(
+                '{cable}, fiber {fiber}: already carries another port signal.',
+                {'cable': edge.fromCableName, 'fiber': '${fiberIndex + 1}'},
+              ),
             ]);
           }
           actions.add(
-            '${_entityName(fromRecord)}: соединить $sourceLabel с '
-            '${edge.fromCableName}, волокно ${fiberIndex + 1}.',
+            tr('{object}: connect {source} to {cable}, fiber {fiber}.', {
+              'object': _entityName(fromRecord),
+              'source': sourceLabel,
+              'cable': edge.fromCableName,
+              'fiber': '${fiberIndex + 1}',
+            }),
           );
         } else if (connectedSource.cableId != edge.fromCableId) {
           return _blocked(sourceLabel, targetLabel, steps, actions, [
-            'Выбранный порт уже соединен с другим кабелем.',
+            tr('The selected port is already connected to another cable.'),
           ]);
         } else {
           steps.add(
-            '${_entityName(fromRecord)}: порт уже соединен с '
-            '${edge.fromCableName}, волокно ${fiberIndex + 1}.',
+            tr(
+              '{object}: port is already connected to {cable}, fiber {fiber}.',
+              {
+                'object': _entityName(fromRecord),
+                'cable': edge.fromCableName,
+                'fiber': '${fiberIndex + 1}',
+              },
+            ),
           );
         }
       } else {
@@ -218,9 +234,16 @@ class SignalPathPlanner {
         );
         if (alreadyConnected) {
           steps.add(
-            '${_entityName(fromRecord)}: уже проварено: '
-            '$previousCableName, волокно ${previousFiberIndex + 1} -> '
-            '${edge.fromCableName}, волокно ${fiberIndex + 1}.',
+            tr(
+              '{object}: already spliced: {leftCable}, fiber {leftFiber} -> {rightCable}, fiber {rightFiber}.',
+              {
+                'object': _entityName(fromRecord),
+                'leftCable': previousCableName,
+                'leftFiber': '${previousFiberIndex + 1}',
+                'rightCable': edge.fromCableName,
+                'rightFiber': '${fiberIndex + 1}',
+              },
+            ),
           );
         } else {
           if (!_canUseCableFiberForSignal(
@@ -231,21 +254,42 @@ class SignalPathPlanner {
             allowedPort: source,
           )) {
             return _blocked(sourceLabel, targetLabel, steps, actions, [
-              '${edge.fromCableName}, волокно ${fiberIndex + 1}: уже есть сигнал от другого порта в '
-                  '${_entityName(fromRecord)}.',
+              tr(
+                '{cable}, fiber {fiber}: already carries another port signal in {object}.',
+                {
+                  'cable': edge.fromCableName,
+                  'fiber': '${fiberIndex + 1}',
+                  'object': _entityName(fromRecord),
+                },
+              ),
             ]);
           }
           actions.add(
-            '${_entityName(fromRecord)}: соединить $previousCableName, '
-            'волокно ${previousFiberIndex + 1} с ${edge.fromCableName}, '
-            'волокно ${fiberIndex + 1}.',
+            tr(
+              '{object}: connect {leftCable}, fiber {leftFiber} to {rightCable}, fiber {rightFiber}.',
+              {
+                'object': _entityName(fromRecord),
+                'leftCable': previousCableName,
+                'leftFiber': '${previousFiberIndex + 1}',
+                'rightCable': edge.fromCableName,
+                'rightFiber': '${fiberIndex + 1}',
+              },
+            ),
           );
         }
       }
 
       steps.add(
-        'Маршрут ${edge.routeId}: ${edge.fromCableName}, волокно '
-        '${fiberIndex + 1} -> ${edge.toCableName}, волокно ${fiberIndex + 1}.',
+        tr(
+          'Route {route}: {fromCable}, fiber {fromFiber} -> {toCable}, fiber {toFiber}.',
+          {
+            'route': '${edge.routeId}',
+            'fromCable': edge.fromCableName,
+            'fromFiber': '${fiberIndex + 1}',
+            'toCable': edge.toCableName,
+            'toFiber': '${fiberIndex + 1}',
+          },
+        ),
       );
       previousCableId = edge.toCableId;
       previousCableName = edge.toCableName;
@@ -253,8 +297,11 @@ class SignalPathPlanner {
 
       if (index == path.edges.length - 1) {
         steps.add(
-          '${_entityName(toRecord)}: сигнал приходит по ${edge.toCableName}, '
-          'волокно ${fiberIndex + 1}.',
+          tr('{object}: signal arrives on {cable}, fiber {fiber}.', {
+            'object': _entityName(toRecord),
+            'cable': edge.toCableName,
+            'fiber': '${fiberIndex + 1}',
+          }),
         );
       }
     }
@@ -604,7 +651,7 @@ class SignalPathPlanner {
     final sw = cabinet == null ? null : _switchById(cabinet, source.switchId);
     final cabinetName = _entityName(cabinet, fallback: 'Cabinet');
     final switchName = _nameOf(sw, fallback: 'Switch');
-    return '$cabinetName / $switchName / порт ${source.portIndex + 1}';
+    return '$cabinetName / $switchName / ${tr('port {value}', {'value': '${source.portIndex + 1}'})}';
   }
 
   static Map<String, Map<String, dynamic>> _buildRecords({

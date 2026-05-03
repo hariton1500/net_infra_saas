@@ -392,14 +392,13 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
 
     final now = DateTime.now();
     final details = [
-      'Источник: ${plan.sourceLabel}',
-      'Цель: ${plan.targetLabel}',
+      tr('Target: {value}', {'value': plan.targetLabel}),
       ...plan.steps,
-      ...plan.actions.map((action) => 'Работа: $action'),
+      ...plan.actions.map((action) => tr('Work: {value}', {'value': action})),
     ];
     final record = <String, dynamic>{
       'id': _nextProjectId(),
-      'name': 'Сигнал до ${plan.targetLabel}',
+      'name': tr('Signal to {value}', {'value': plan.targetLabel}),
       'description': details.join('\n'),
       'created_by_user_id': _actorUserId,
       'created_by_email': _actorEmail,
@@ -415,7 +414,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
       'work_log': [
         {
           'at': now,
-          'kind': 'План подачи сигнала',
+          'kind': tr('Signal path planned'),
           'summary': details.join(' • '),
           'target_screen': 'muff_notebook',
           'target_record_id': targetMuff['id'],

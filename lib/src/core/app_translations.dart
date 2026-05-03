@@ -388,12 +388,47 @@ const Map<String, Map<String, String>> appTranslations = {
     'Switch': 'Коммутатор',
     'Cabinet': 'Шкаф',
     'Signal path plan': 'План подачи сигнала',
+    'Signal path planned': 'План подачи сигнала',
+    'Signal to {value}': 'Сигнал до {value}',
     'Get signal from port': 'Получить сигнал от порта',
     'Build plan': 'Построить план',
     'From: {value}': 'От: {value}',
     'To: {value}': 'До: {value}',
+    'Source: {value}': 'Источник: {value}',
+    'Target: {value}': 'Цель: {value}',
+    'Work: {value}': 'Работа: {value}',
+    'Works: {count}': 'Работ: {count}',
     'Blockers': 'Что мешает',
     'Required work': 'Необходимые работы',
+    'Copper ports cannot feed optical cable fibers.':
+        'Медный порт нельзя использовать для подачи оптического сигнала.',
+    'No cable route chain reaches this closure.':
+        'До этой муфты не найдена цепочка кабельных маршрутов.',
+    'The selected closure is the source cabinet object.':
+        'Выбранная муфта совпадает с исходным объектом.',
+    'A route endpoint record is missing.':
+        'Не найдена запись одного из объектов маршрута.',
+    'No usable fiber without another port signal on {from} -> {to}.':
+        'Нет пригодного волокна без сигнала другого порта: {from} -> {to}.',
+    '{cable}, fiber {fiber}: already carries another port signal.':
+        '{cable}, волокно {fiber}: уже есть сигнал от другого порта.',
+    '{object}: connect {source} to {cable}, fiber {fiber}.':
+        '{object}: соединить {source} с {cable}, волокно {fiber}.',
+    'The selected port is already connected to another cable.':
+        'Выбранный порт уже соединен с другим кабелем.',
+    '{object}: port is already connected to {cable}, fiber {fiber}.':
+        '{object}: порт уже соединен с {cable}, волокно {fiber}.',
+    '{object}: already spliced: {leftCable}, fiber {leftFiber} -> {rightCable}, fiber {rightFiber}.':
+        '{object}: уже проварено: {leftCable}, волокно {leftFiber} -> {rightCable}, волокно {rightFiber}.',
+    '{cable}, fiber {fiber}: already carries another port signal in {object}.':
+        '{cable}, волокно {fiber}: уже есть сигнал от другого порта в {object}.',
+    '{object}: connect {leftCable}, fiber {leftFiber} to {rightCable}, fiber {rightFiber}.':
+        '{object}: соединить {leftCable}, волокно {leftFiber} с {rightCable}, волокно {rightFiber}.',
+    'Route {route}: {fromCable}, fiber {fromFiber} -> {toCable}, fiber {toFiber}.':
+        'Маршрут {route}: {fromCable}, волокно {fromFiber} -> {toCable}, волокно {toFiber}.',
+    '{object}: signal arrives on {cable}, fiber {fiber}.':
+        '{object}: сигнал приходит по {cable}, волокно {fiber}.',
+    'port {value}': 'порт {value}',
     'model: {value}': 'модель: {value}',
     'ports: {value}': 'портов: {value}',
     'Edit switch': 'Редактировать коммутатор',

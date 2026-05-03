@@ -2011,7 +2011,7 @@ class _ProjectRow extends StatelessWidget {
                     ),
                     if (description.trim().isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      _TaskDescription(description: description),
+                      _TaskDescription(description: description, compact: true),
                     ],
                     const SizedBox(height: 8),
                     TextButton(
@@ -2129,9 +2129,10 @@ class _ProjectRow extends StatelessWidget {
 }
 
 class _TaskDescription extends StatelessWidget {
-  const _TaskDescription({required this.description});
+  const _TaskDescription({required this.description, this.compact = false});
 
   final String description;
+  final bool compact;
 
   List<String> get _lines => description
       .split('\n')
@@ -2139,9 +2140,59 @@ class _TaskDescription extends StatelessWidget {
       .where((line) => line.isNotEmpty)
       .toList(growable: false);
 
+  List<String> get _compactLines {
+    final lines = _lines;
+    final sourcePrefix = tr('Source: {value}', {'value': ''}).trim();
+    final legacySourcePrefix = 'Источник:';
+    final targetPrefix = tr('Target: {value}', {'value': ''}).trim();
+    final legacyTargetPrefix = 'Цель:';
+    final workPrefix = tr('Work: {value}', {'value': ''}).trim();
+    final legacyWorkPrefix = 'Работа:';
+    final source = lines.cast<String?>().firstWhere(
+      (line) =>
+          line?.startsWith(sourcePrefix) == true ||
+          line?.startsWith(legacySourcePrefix) == true,
+      orElse: () => null,
+    );
+    final target = lines.cast<String?>().firstWhere(
+      (line) =>
+          line?.startsWith(targetPrefix) == true ||
+          line?.startsWith(legacyTargetPrefix) == true,
+      orElse: () => null,
+    );
+    final workCount = lines
+        .where(
+          (line) =>
+              line.startsWith(workPrefix) || line.startsWith(legacyWorkPrefix),
+        )
+        .length;
+    if (source != null || target != null || workCount > 0) {
+      return [
+        ?target,
+        ?source,
+        if (workCount > 0) tr('Works: {count}', {'count': '$workCount'}),
+      ];
+    }
+    return lines.take(3).toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final lines = _lines;
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _compactLines
+            .map(
+              (line) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(growable: false),
+      );
+    }
+
     if (lines.length <= 1) {
       return Text(description.trim());
     }
