@@ -57,7 +57,7 @@ Examples:
 Current Flutter format:
 
 ```yaml
-version: 1.0.0+1
+version: 1.0.0+5
 ```
 
 ## Signing Configuration
@@ -66,6 +66,7 @@ The Android project now supports a dedicated release keystore through:
 
 - [android/key.properties.example](../android/key.properties.example)
 - [android/app/build.gradle.kts](../android/app/build.gradle.kts)
+- [.github/workflows/deploy-android.yml](../.github/workflows/deploy-android.yml)
 
 ## How to enable release signing
 
@@ -120,6 +121,16 @@ flutter build apk --debug
 flutter build appbundle --release
 ```
 
+The repository also includes release helper scripts:
+
+```bash
+bash scripts/build_android.sh
+```
+
+```powershell
+.\scripts\build_android.ps1
+```
+
 ### Expected output
 
 ```text
@@ -138,3 +149,6 @@ build/app/outputs/bundle/release/app-release.aab
 - privacy policy added
 - test release verified
 
+## Automated Deployment
+
+See [android_deployment.md](android_deployment.md) for GitHub Actions setup, signing secrets, Firebase App Distribution, and Google Play deployment.

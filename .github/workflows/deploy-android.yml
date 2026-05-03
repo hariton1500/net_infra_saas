@@ -1,0 +1,195 @@
+name: Build and deploy Android
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'android-v*'
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      build_target:
+        description: Android output to build
+        required: true
+        default: both
+        type: choice
+        options:
+          - apk
+          - appbundle
+          - both
+      deploy_target:
+        description: Deployment destination
+        required: true
+        default: artifact
+        type: choice
+        options:
+          - artifact
+          - firebase
+          - google-play
+          - all
+      google_play_track:
+        description: Google Play track
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+
+concurrency:
+  group: android-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build signed Android release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      ANDROID_BUILD_TARGET: ${{ (inputs.deploy_target == 'firebase' && 'apk') || (inputs.deploy_target == 'google-play' && 'appbundle') || (inputs.deploy_target == 'all' && 'both') || inputs.build_target || 'both' }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Validate required secrets
+        run: |
+          required=(
+            SUPABASE_URL
+            SUPABASE_ANON_KEY
+            KEYSTORE_BASE64
+            KEYSTORE_PASSWORD
+            KEY_ALIAS
+            KEY_PASSWORD
+          )
+
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "${name} is required" >&2
+              exit 1
+            fi
+          done
+
+      - name: Restore Android signing key
+        run: |
+          printf '%s' "${KEYSTORE_BASE64}" | base64 --decode > android/app/upload-keystore.jks
+          {
+            printf 'storeFile=upload-keystore.jks\n'
+            printf 'storePassword=%s\n' "${KEYSTORE_PASSWORD}"
+            printf 'keyAlias=%s\n' "${KEY_ALIAS}"
+            printf 'keyPassword=%s\n' "${KEY_PASSWORD}"
+          } > android/key.properties
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        timeout-minutes: 10
+        run: flutter test
+
+      - name: Build Android
+        run: bash scripts/build_android.sh
+
+      - name: Upload APK artifact
+        if: ${{ env.ANDROID_BUILD_TARGET == 'apk' || env.ANDROID_BUILD_TARGET == 'both' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload app bundle artifact
+        if: ${{ env.ANDROID_BUILD_TARGET == 'appbundle' || env.ANDROID_BUILD_TARGET == 'both' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy-firebase:
+    name: Deploy APK to Firebase App Distribution
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ inputs.deploy_target == 'firebase' || inputs.deploy_target == 'all' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
+    env:
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      FIREBASE_GROUPS: ${{ vars.FIREBASE_ANDROID_GROUPS || 'testers' }}
+    steps:
+      - name: Skip when Firebase is not configured
+        if: ${{ env.FIREBASE_APP_ID == '' || env.FIREBASE_TOKEN == '' }}
+        run: echo "Firebase App Distribution secrets are not configured; skipping deploy."
+
+      - name: Download APK artifact
+        if: ${{ env.FIREBASE_APP_ID != '' && env.FIREBASE_TOKEN != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-apk
+          path: build/app/outputs/flutter-apk
+
+      - name: Deploy to Firebase App Distribution
+        if: ${{ env.FIREBASE_APP_ID != '' && env.FIREBASE_TOKEN != '' }}
+        uses: wzieba/Firebase-Distribution-Github-Action@v1.7.1
+        with:
+          appId: ${{ env.FIREBASE_APP_ID }}
+          token: ${{ env.FIREBASE_TOKEN }}
+          groups: ${{ env.FIREBASE_GROUPS }}
+          file: build/app/outputs/flutter-apk/app-release.apk
+
+  deploy-google-play:
+    name: Deploy AAB to Google Play
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ inputs.deploy_target == 'google-play' || inputs.deploy_target == 'all' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
+    env:
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      GOOGLE_PLAY_TRACK: ${{ inputs.google_play_track || 'internal' }}
+    steps:
+      - name: Skip when Google Play is not configured
+        if: ${{ env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON == '' }}
+        run: echo "Google Play service account secret is not configured; skipping deploy."
+
+      - name: Download app bundle artifact
+        if: ${{ env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-aab
+          path: build/app/outputs/bundle/release
+
+      - name: Deploy to Google Play
+        if: ${{ env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: io.netinfra.saas
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: ${{ env.GOOGLE_PLAY_TRACK }}
+          status: completed

@@ -6,35 +6,20 @@ This document prepares the project for Android publication and explains what is 
 
 - Android platform scaffold exists in [android](../android)
 - App label is set to `Net Infra SaaS`
-- Default Android package id is still `com.example.net_infra_saas`
-- Release build is still signed with the debug key and must be replaced before publication
+- Android package id is set to `io.netinfra.saas`
+- Release signing is configured through `android/key.properties`
+- Automated signed builds are configured in [.github/workflows/deploy-android.yml](../.github/workflows/deploy-android.yml)
 - Google Play text and media preparation files are available under [distribution/android/google_play](../distribution/android/google_play)
 
 ## Must Change Before Publishing
 
-### 1. Set final application ID
+### 1. Confirm final application ID
 
-Update these fields in [android/app/build.gradle.kts](../android/app/build.gradle.kts):
+The current `namespace` and `applicationId` are `io.netinfra.saas`. Keep this value for Google Play once the first release is uploaded.
 
-- `namespace`
-- `applicationId`
+### 2. Add release secrets to CI
 
-Recommended format:
-
-```text
-com.yourcompany.netinfra
-```
-
-### 2. Configure release signing
-
-Create a dedicated keystore and connect it to Gradle before uploading an `.aab` to Google Play.
-
-What is still missing:
-
-- release keystore file
-- keystore alias
-- keystore passwords
-- secure local configuration for signing
+Set the required GitHub Secrets from [android_deployment.md](android_deployment.md) before running the Android deployment workflow.
 
 ### 3. Replace the launcher icon if needed
 
@@ -104,9 +89,9 @@ Recommended format:
 
 ## Important Note
 
-This repository now contains the full release preparation structure, but the actual publication still requires:
+This repository now contains the Android release automation structure, but the actual publication still requires:
 
-- your final signing key
-- your final package name
+- GitHub Secrets for signing and Supabase dart-defines
+- Firebase or Google Play credentials if automatic deployment is enabled
 - final real screenshots
 - final exported promo video
