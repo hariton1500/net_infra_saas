@@ -6,6 +6,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/employee_positions.dart';
 import '../core/project_scope.dart';
+import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_notebook.dart';
@@ -1262,35 +1263,80 @@ class _StartPageState extends State<StartPage> {
       appBar: AppBar(
         title: Text(membership?.companyName ?? 'Net Infra SaaS'),
         actions: [
-          IconButton(
-            tooltip: tr('Profile'),
-            onPressed: controller.isBusy
-                ? null
-                : () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProfilePage(controller: controller),
-                      ),
-                    );
-                  },
-            icon: const Icon(Icons.person_outline_rounded),
+          ResponsiveAppBarActions(
+            actions: [
+              IconButton(
+                tooltip: tr('Profile'),
+                onPressed: controller.isBusy
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProfilePage(controller: controller),
+                          ),
+                        );
+                      },
+                icon: const Icon(Icons.person_outline_rounded),
+              ),
+              IconButton(
+                tooltip: tr('Refresh data'),
+                onPressed: controller.isBusy ? null : _refreshTeam,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+              IconButton(
+                tooltip: tr('Screen guide'),
+                onPressed: _showMainScreenHelp,
+                icon: const Icon(Icons.info_outline_rounded),
+              ),
+              TextButton(
+                onPressed: controller.isBusy ? null : controller.signOut,
+                child: Text(tr('Sign out')),
+              ),
+              const SizedBox(width: 12),
+            ],
+            compactActions: [
+              IconButton(
+                tooltip: tr('Profile'),
+                onPressed: controller.isBusy
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProfilePage(controller: controller),
+                          ),
+                        );
+                      },
+                icon: const Icon(Icons.person_outline_rounded),
+              ),
+              PopupMenuButton<String>(
+                tooltip: tr('Actions'),
+                onSelected: (value) {
+                  if (value == 'refresh') {
+                    _refreshTeam();
+                  } else if (value == 'help') {
+                    _showMainScreenHelp();
+                  } else if (value == 'sign_out') {
+                    controller.signOut();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'refresh',
+                    enabled: !controller.isBusy,
+                    child: Text(tr('Refresh data')),
+                  ),
+                  PopupMenuItem(value: 'help', child: Text(tr('Screen guide'))),
+                  PopupMenuItem(
+                    value: 'sign_out',
+                    enabled: !controller.isBusy,
+                    child: Text(tr('Sign out')),
+                  ),
+                ],
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: tr('Refresh data'),
-            onPressed: controller.isBusy ? null : _refreshTeam,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          IconButton(
-            tooltip: tr('Screen guide'),
-            onPressed: _showMainScreenHelp,
-            icon: const Icon(Icons.info_outline_rounded),
-          ),
-          TextButton(
-            onPressed: controller.isBusy ? null : controller.signOut,
-            child: Text(tr('Sign out')),
-          ),
-          const SizedBox(width: 12),
         ],
       ),
       body: Container(

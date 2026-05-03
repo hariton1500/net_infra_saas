@@ -11,6 +11,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
 import 'muff_location_picker.dart';
 
@@ -1833,108 +1834,212 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     );
   }
 
+  void _toggleMapView() {
+    setState(() {
+      _mapView = !_mapView;
+    });
+  }
+
+  Widget _buildMapLayerMenu() {
+    return PopupMenuButton<String>(
+      tooltip: tr('Map layer'),
+      initialValue: _selectedTileLayerId,
+      onSelected: (value) {
+        setState(() {
+          _selectedTileLayerId = value;
+        });
+      },
+      icon: const Icon(Icons.layers_outlined),
+      itemBuilder: (context) => mapTileOptions
+          .map(
+            (option) => CheckedPopupMenuItem<String>(
+              value: option.id,
+              checked: option.id == _selectedTileLayerId,
+              child: Text(option.label),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  Widget _buildDistrictFilterMenu() {
+    return PopupMenuButton<String>(
+      tooltip: tr('Area filter'),
+      icon: Icon(
+        _districtFilter == null ? Icons.filter_list : Icons.filter_list_alt,
+      ),
+      onSelected: _applyDistrictFilter,
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem<String>(
+          value: _allDistrictsValue,
+          checked: _districtFilter == null,
+          child: Text(tr('All areas')),
+        ),
+        ..._districtOptions.map(
+          (district) => CheckedPopupMenuItem<String>(
+            value: district,
+            checked: _districtFilter == district,
+            child: Text(district),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProjectFilterMenu() {
+    return PopupMenuButton<String>(
+      tooltip: tr('Task filter'),
+      icon: Icon(
+        _projectFilterId == null
+            ? Icons.workspaces_outline
+            : Icons.workspaces_rounded,
+      ),
+      onSelected: _applyProjectFilter,
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem<String>(
+          value: '__all_projects__',
+          checked: _projectFilterId == null,
+          child: Text(tr('All tasks')),
+        ),
+        ..._projectOptions.entries.map(
+          (entry) => CheckedPopupMenuItem<String>(
+            value: '${entry.key}',
+            checked: _projectFilterId == entry.key,
+            child: Text(entry.value),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handleCompactMenuAction(String value) {
+    if (value == 'sync') {
+      _syncAll();
+    } else if (value == 'refresh') {
+      _loadFromStorage();
+    } else if (value == 'help') {
+      _showClosureNotebookHelp();
+    } else if (value.startsWith('layer:')) {
+      setState(() {
+        _selectedTileLayerId = value.substring(6);
+      });
+    } else if (value.startsWith('district:')) {
+      _applyDistrictFilter(value.substring(9));
+    } else if (value.startsWith('project:')) {
+      _applyProjectFilter(value.substring(8));
+    }
+  }
+
+  List<PopupMenuEntry<String>> _buildCompactMenuItems() {
+    return [
+      PopupMenuItem<String>(
+        value: 'sync',
+        enabled: !_syncing,
+        child: Text(tr('Sync')),
+      ),
+      PopupMenuItem<String>(
+        value: 'refresh',
+        enabled: !_syncing,
+        child: Text(tr('Refresh')),
+      ),
+      PopupMenuItem<String>(value: 'help', child: Text(tr('Screen guide'))),
+      const PopupMenuDivider(),
+      ...mapTileOptions.map(
+        (option) => CheckedPopupMenuItem<String>(
+          value: 'layer:${option.id}',
+          checked: option.id == _selectedTileLayerId,
+          child: Text(option.label),
+        ),
+      ),
+      const PopupMenuDivider(),
+      CheckedPopupMenuItem<String>(
+        value: 'district:$_allDistrictsValue',
+        checked: _districtFilter == null,
+        child: Text(tr('All areas')),
+      ),
+      ..._districtOptions.map(
+        (district) => CheckedPopupMenuItem<String>(
+          value: 'district:$district',
+          checked: _districtFilter == district,
+          child: Text(district),
+        ),
+      ),
+      const PopupMenuDivider(),
+      CheckedPopupMenuItem<String>(
+        value: 'project:__all_projects__',
+        checked: _projectFilterId == null,
+        child: Text(tr('All tasks')),
+      ),
+      ..._projectOptions.entries.map(
+        (entry) => CheckedPopupMenuItem<String>(
+          value: 'project:${entry.key}',
+          checked: _projectFilterId == entry.key,
+          child: Text(entry.value),
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(tr('Closure notebook')),
         actions: [
-          PopupMenuButton<String>(
-            tooltip: tr('Map layer'),
-            initialValue: _selectedTileLayerId,
-            onSelected: (value) {
-              setState(() {
-                _selectedTileLayerId = value;
-              });
-            },
-            icon: const Icon(Icons.layers_outlined),
-            itemBuilder: (context) => mapTileOptions
-                .map(
-                  (option) => CheckedPopupMenuItem<String>(
-                    value: option.id,
-                    checked: option.id == _selectedTileLayerId,
-                    child: Text(option.label),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          IconButton(
-            onPressed: _syncing ? null : _syncAll,
-            icon: Icon(
-              Icons.cloud_upload_outlined,
-              color: _hasDirtyRecords ? Colors.redAccent : Colors.greenAccent,
-            ),
-            tooltip: tr('Sync'),
-          ),
-          PopupMenuButton<String>(
-            tooltip: tr('Area filter'),
-            icon: Icon(
-              _districtFilter == null
-                  ? Icons.filter_list
-                  : Icons.filter_list_alt,
-            ),
-            onSelected: _applyDistrictFilter,
-            itemBuilder: (context) => [
-              CheckedPopupMenuItem<String>(
-                value: _allDistrictsValue,
-                checked: _districtFilter == null,
-                child: Text(tr('All areas')),
-              ),
-              ..._districtOptions.map(
-                (district) => CheckedPopupMenuItem<String>(
-                  value: district,
-                  checked: _districtFilter == district,
-                  child: Text(district),
+          ResponsiveAppBarActions(
+            breakpoint: 640,
+            actions: [
+              _buildMapLayerMenu(),
+              IconButton(
+                onPressed: _syncing ? null : _syncAll,
+                icon: Icon(
+                  Icons.cloud_upload_outlined,
+                  color: _hasDirtyRecords
+                      ? Colors.redAccent
+                      : Colors.greenAccent,
                 ),
+                tooltip: tr('Sync'),
+              ),
+              _buildDistrictFilterMenu(),
+              _buildProjectFilterMenu(),
+              IconButton(
+                onPressed: _toggleMapView,
+                icon: Icon(_mapView ? Icons.list : Icons.map),
+                tooltip: _mapView ? tr('List') : tr('Map'),
+              ),
+              IconButton(
+                onPressed: _syncing ? null : _loadFromStorage,
+                icon: const Icon(Icons.refresh),
+                tooltip: tr('Refresh'),
+              ),
+              IconButton(
+                onPressed: _showClosureNotebookHelp,
+                icon: const Icon(Icons.info_outline_rounded),
+                tooltip: tr('Screen guide'),
+              ),
+              IconButton(
+                onPressed: () => _showMuffEditor(),
+                icon: const Icon(Icons.add),
+                tooltip: tr('New closure'),
               ),
             ],
-          ),
-          PopupMenuButton<String>(
-            tooltip: tr('Task filter'),
-            icon: Icon(
-              _projectFilterId == null
-                  ? Icons.workspaces_outline
-                  : Icons.workspaces_rounded,
-            ),
-            onSelected: _applyProjectFilter,
-            itemBuilder: (context) => [
-              CheckedPopupMenuItem<String>(
-                value: '__all_projects__',
-                checked: _projectFilterId == null,
-                child: Text(tr('All tasks')),
+            compactActions: [
+              IconButton(
+                onPressed: () => _showMuffEditor(),
+                icon: const Icon(Icons.add),
+                tooltip: tr('New closure'),
               ),
-              ..._projectOptions.entries.map(
-                (entry) => CheckedPopupMenuItem<String>(
-                  value: '${entry.key}',
-                  checked: _projectFilterId == entry.key,
-                  child: Text(entry.value),
-                ),
+              IconButton(
+                onPressed: _toggleMapView,
+                icon: Icon(_mapView ? Icons.list : Icons.map),
+                tooltip: _mapView ? tr('List') : tr('Map'),
+              ),
+              PopupMenuButton<String>(
+                tooltip: tr('Actions'),
+                onSelected: _handleCompactMenuAction,
+                itemBuilder: (context) => _buildCompactMenuItems(),
               ),
             ],
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _mapView = !_mapView;
-              });
-            },
-            icon: Icon(_mapView ? Icons.list : Icons.map),
-            tooltip: _mapView ? tr('List') : tr('Map'),
-          ),
-          IconButton(
-            onPressed: _syncing ? null : _loadFromStorage,
-            icon: const Icon(Icons.refresh),
-            tooltip: tr('Refresh'),
-          ),
-          IconButton(
-            onPressed: _showClosureNotebookHelp,
-            icon: const Icon(Icons.info_outline_rounded),
-            tooltip: tr('Screen guide'),
-          ),
-          IconButton(
-            onPressed: () => _showMuffEditor(),
-            icon: const Icon(Icons.add),
-            tooltip: tr('New closure'),
           ),
         ],
       ),

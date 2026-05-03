@@ -12,6 +12,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
 
 class InfrastructureSignalTraceRequest {
@@ -3783,115 +3784,230 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     );
   }
 
+  Widget _buildMapLayerMenu() {
+    return PopupMenuButton<String>(
+      tooltip: tr('Map layer'),
+      initialValue: _selectedTileLayerId,
+      onSelected: (value) {
+        setState(() {
+          _selectedTileLayerId = value;
+        });
+      },
+      icon: const Icon(Icons.layers_outlined),
+      itemBuilder: (context) => mapTileOptions
+          .map(
+            (option) => CheckedPopupMenuItem<String>(
+              value: option.id,
+              checked: option.id == _selectedTileLayerId,
+              child: Text(option.label),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  Widget _buildProjectFilterMenu() {
+    return PopupMenuButton<String>(
+      tooltip: tr('Task filter'),
+      icon: Icon(
+        _projectFilterId == null
+            ? Icons.workspaces_outline
+            : Icons.workspaces_rounded,
+      ),
+      onSelected: _applyProjectFilter,
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem<String>(
+          value: '__all_projects__',
+          checked: _projectFilterId == null,
+          child: Text(tr('All tasks')),
+        ),
+        ..._projectOptions.entries.map(
+          (entry) => CheckedPopupMenuItem<String>(
+            value: '${entry.key}',
+            checked: _projectFilterId == entry.key,
+            child: Text(entry.value),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(tr('Infrastructure map')),
         actions: [
-          if (_activeTraceRequest != null)
-            IconButton(
-              tooltip: tr('Clear route highlight'),
-              onPressed: _clearTraceHighlight,
-              icon: const Icon(Icons.alt_route_rounded),
-            ),
-          IconButton(
-            tooltip: _routeCreateMode
-                ? tr('Cancel route creation')
-                : tr('New route'),
-            onPressed: _loading || _syncingRoutes
-                ? null
-                : _toggleRouteCreateMode,
-            icon: Icon(
-              _routeCreateMode ? Icons.close_rounded : Icons.add_road_rounded,
-            ),
-          ),
-          IconButton(
-            tooltip: _routeEditMode
-                ? tr('Finish route editing')
-                : tr('Edit selected route'),
-            onPressed: _loading || _syncingRoutes || _selectedRoute == null
-                ? null
-                : _toggleRouteEditMode,
-            icon: Icon(
-              _routeEditMode ? Icons.check_rounded : Icons.edit_rounded,
-            ),
-          ),
-          IconButton(
-            tooltip: _routeSplitMode
-                ? tr('Cancel closure installation')
-                : tr('Mark break / install closure'),
-            onPressed: _loading || _syncingRoutes || _selectedRoute == null
-                ? null
-                : _toggleRouteSplitMode,
-            icon: Icon(
-              _routeSplitMode ? Icons.close_rounded : Icons.call_split_rounded,
-            ),
-          ),
-          IconButton(
-            tooltip: tr('Delete selected route'),
-            onPressed: _loading || _syncingRoutes || _selectedRoute == null
-                ? null
-                : _deleteSelectedRoute,
-            icon: const Icon(Icons.delete_outline_rounded),
-          ),
-          PopupMenuButton<String>(
-            tooltip: tr('Map layer'),
-            initialValue: _selectedTileLayerId,
-            onSelected: (value) {
-              setState(() {
-                _selectedTileLayerId = value;
-              });
-            },
-            icon: const Icon(Icons.layers_outlined),
-            itemBuilder: (context) => mapTileOptions
-                .map(
-                  (option) => CheckedPopupMenuItem<String>(
-                    value: option.id,
-                    checked: option.id == _selectedTileLayerId,
-                    child: Text(option.label),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          PopupMenuButton<String>(
-            tooltip: tr('Task filter'),
-            icon: Icon(
-              _projectFilterId == null
-                  ? Icons.workspaces_outline
-                  : Icons.workspaces_rounded,
-            ),
-            onSelected: _applyProjectFilter,
-            itemBuilder: (context) => [
-              CheckedPopupMenuItem<String>(
-                value: '__all_projects__',
-                checked: _projectFilterId == null,
-                child: Text(tr('All tasks')),
-              ),
-              ..._projectOptions.entries.map(
-                (entry) => CheckedPopupMenuItem<String>(
-                  value: '${entry.key}',
-                  checked: _projectFilterId == entry.key,
-                  child: Text(entry.value),
+          ResponsiveAppBarActions(
+            actions: [
+              if (_activeTraceRequest != null)
+                IconButton(
+                  tooltip: tr('Clear route highlight'),
+                  onPressed: _clearTraceHighlight,
+                  icon: const Icon(Icons.alt_route_rounded),
+                ),
+              IconButton(
+                tooltip: _routeCreateMode
+                    ? tr('Cancel route creation')
+                    : tr('New route'),
+                onPressed: _loading || _syncingRoutes
+                    ? null
+                    : _toggleRouteCreateMode,
+                icon: Icon(
+                  _routeCreateMode
+                      ? Icons.close_rounded
+                      : Icons.add_road_rounded,
                 ),
               ),
+              IconButton(
+                tooltip: _routeEditMode
+                    ? tr('Finish route editing')
+                    : tr('Edit selected route'),
+                onPressed: _loading || _syncingRoutes || _selectedRoute == null
+                    ? null
+                    : _toggleRouteEditMode,
+                icon: Icon(
+                  _routeEditMode ? Icons.check_rounded : Icons.edit_rounded,
+                ),
+              ),
+              IconButton(
+                tooltip: _routeSplitMode
+                    ? tr('Cancel closure installation')
+                    : tr('Mark break / install closure'),
+                onPressed: _loading || _syncingRoutes || _selectedRoute == null
+                    ? null
+                    : _toggleRouteSplitMode,
+                icon: Icon(
+                  _routeSplitMode
+                      ? Icons.close_rounded
+                      : Icons.call_split_rounded,
+                ),
+              ),
+              IconButton(
+                tooltip: tr('Delete selected route'),
+                onPressed: _loading || _syncingRoutes || _selectedRoute == null
+                    ? null
+                    : _deleteSelectedRoute,
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
+              _buildMapLayerMenu(),
+              _buildProjectFilterMenu(),
+              IconButton(
+                tooltip: tr('Refresh'),
+                onPressed: _loading || _syncingRoutes ? null : _loadMapData,
+                icon: _syncingRoutes
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
+              ),
+              IconButton(
+                tooltip: tr('Screen guide'),
+                onPressed: _showInfrastructureHelp,
+                icon: const Icon(Icons.info_outline_rounded),
+              ),
             ],
-          ),
-          IconButton(
-            tooltip: tr('Refresh'),
-            onPressed: _loading || _syncingRoutes ? null : _loadMapData,
-            icon: _syncingRoutes
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh_rounded),
-          ),
-          IconButton(
-            tooltip: tr('Screen guide'),
-            onPressed: _showInfrastructureHelp,
-            icon: const Icon(Icons.info_outline_rounded),
+            compactActions: [
+              IconButton(
+                tooltip: _routeCreateMode
+                    ? tr('Cancel route creation')
+                    : tr('New route'),
+                onPressed: _loading || _syncingRoutes
+                    ? null
+                    : _toggleRouteCreateMode,
+                icon: Icon(
+                  _routeCreateMode
+                      ? Icons.close_rounded
+                      : Icons.add_road_rounded,
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: tr('Actions'),
+                onSelected: (value) {
+                  if (value == 'clear_trace') {
+                    _clearTraceHighlight();
+                  } else if (value == 'edit_route') {
+                    _toggleRouteEditMode();
+                  } else if (value == 'split_route') {
+                    _toggleRouteSplitMode();
+                  } else if (value == 'delete_route') {
+                    _deleteSelectedRoute();
+                  } else if (value == 'refresh') {
+                    _loadMapData();
+                  } else if (value == 'help') {
+                    _showInfrastructureHelp();
+                  } else if (value.startsWith('layer:')) {
+                    setState(() {
+                      _selectedTileLayerId = value.substring(6);
+                    });
+                  } else if (value.startsWith('project:')) {
+                    _applyProjectFilter(value.substring(8));
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (_activeTraceRequest != null)
+                    PopupMenuItem(
+                      value: 'clear_trace',
+                      child: Text(tr('Clear route highlight')),
+                    ),
+                  PopupMenuItem(
+                    value: 'edit_route',
+                    enabled:
+                        !_loading && !_syncingRoutes && _selectedRoute != null,
+                    child: Text(
+                      _routeEditMode
+                          ? tr('Finish route editing')
+                          : tr('Edit selected route'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'split_route',
+                    enabled:
+                        !_loading && !_syncingRoutes && _selectedRoute != null,
+                    child: Text(
+                      _routeSplitMode
+                          ? tr('Cancel closure installation')
+                          : tr('Mark break / install closure'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete_route',
+                    enabled:
+                        !_loading && !_syncingRoutes && _selectedRoute != null,
+                    child: Text(tr('Delete selected route')),
+                  ),
+                  PopupMenuItem(
+                    value: 'refresh',
+                    enabled: !_loading && !_syncingRoutes,
+                    child: Text(tr('Refresh')),
+                  ),
+                  PopupMenuItem(value: 'help', child: Text(tr('Screen guide'))),
+                  const PopupMenuDivider(),
+                  ...mapTileOptions.map(
+                    (option) => CheckedPopupMenuItem<String>(
+                      value: 'layer:${option.id}',
+                      checked: option.id == _selectedTileLayerId,
+                      child: Text(option.label),
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  CheckedPopupMenuItem<String>(
+                    value: 'project:__all_projects__',
+                    checked: _projectFilterId == null,
+                    child: Text(tr('All tasks')),
+                  ),
+                  ..._projectOptions.entries.map(
+                    (entry) => CheckedPopupMenuItem<String>(
+                      value: 'project:${entry.key}',
+                      checked: _projectFilterId == entry.key,
+                      child: Text(entry.value),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

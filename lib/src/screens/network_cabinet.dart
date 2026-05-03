@@ -11,6 +11,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
 import 'infrastructure_map_page.dart';
 import 'muff_location_picker.dart';
@@ -2645,6 +2646,113 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
+  void _toggleMapView() {
+    setState(() {
+      _mapView = !_mapView;
+    });
+  }
+
+  Widget _buildMapLayerMenu() {
+    return PopupMenuButton<String>(
+      tooltip: tr('Map layer'),
+      initialValue: _selectedTileLayerId,
+      onSelected: (value) {
+        setState(() {
+          _selectedTileLayerId = value;
+        });
+      },
+      icon: const Icon(Icons.layers_outlined),
+      itemBuilder: (context) => mapTileOptions
+          .map(
+            (option) => CheckedPopupMenuItem<String>(
+              value: option.id,
+              checked: option.id == _selectedTileLayerId,
+              child: Text(option.label),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  Widget _buildProjectFilterMenu() {
+    return PopupMenuButton<String>(
+      tooltip: tr('Task filter'),
+      icon: Icon(
+        _projectFilterId == null
+            ? Icons.workspaces_outline
+            : Icons.workspaces_rounded,
+      ),
+      onSelected: _applyProjectFilter,
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem<String>(
+          value: '__all_projects__',
+          checked: _projectFilterId == null,
+          child: Text(tr('All tasks')),
+        ),
+        ..._projectOptions.entries.map(
+          (entry) => CheckedPopupMenuItem<String>(
+            value: '${entry.key}',
+            checked: _projectFilterId == entry.key,
+            child: Text(entry.value),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handleCompactMenuAction(String value) {
+    if (value == 'sync') {
+      _syncAll();
+    } else if (value == 'refresh') {
+      _loadFromStorage();
+    } else if (value == 'help') {
+      _showCabinetHelp();
+    } else if (value.startsWith('layer:')) {
+      setState(() {
+        _selectedTileLayerId = value.substring(6);
+      });
+    } else if (value.startsWith('project:')) {
+      _applyProjectFilter(value.substring(8));
+    }
+  }
+
+  List<PopupMenuEntry<String>> _buildCompactMenuItems() {
+    return [
+      PopupMenuItem<String>(
+        value: 'sync',
+        enabled: !_syncing,
+        child: Text(tr('Sync')),
+      ),
+      PopupMenuItem<String>(
+        value: 'refresh',
+        enabled: !_syncing,
+        child: Text(tr('Refresh')),
+      ),
+      PopupMenuItem<String>(value: 'help', child: Text(tr('Screen guide'))),
+      const PopupMenuDivider(),
+      ...mapTileOptions.map(
+        (option) => CheckedPopupMenuItem<String>(
+          value: 'layer:${option.id}',
+          checked: option.id == _selectedTileLayerId,
+          child: Text(option.label),
+        ),
+      ),
+      const PopupMenuDivider(),
+      CheckedPopupMenuItem<String>(
+        value: 'project:__all_projects__',
+        checked: _projectFilterId == null,
+        child: Text(tr('All tasks')),
+      ),
+      ..._projectOptions.entries.map(
+        (entry) => CheckedPopupMenuItem<String>(
+          value: 'project:${entry.key}',
+          checked: _projectFilterId == entry.key,
+          child: Text(entry.value),
+        ),
+      ),
+    ];
+  }
+
   Widget _buildDetailPane({bool showBack = false}) {
     if (_selectedCabinet == null) {
       return Center(
@@ -2870,79 +2978,59 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       appBar: AppBar(
         title: Text(tr('Network cabinets')),
         actions: [
-          PopupMenuButton<String>(
-            tooltip: tr('Map layer'),
-            initialValue: _selectedTileLayerId,
-            onSelected: (value) {
-              setState(() {
-                _selectedTileLayerId = value;
-              });
-            },
-            icon: const Icon(Icons.layers_outlined),
-            itemBuilder: (context) => mapTileOptions
-                .map(
-                  (option) => CheckedPopupMenuItem<String>(
-                    value: option.id,
-                    checked: option.id == _selectedTileLayerId,
-                    child: Text(option.label),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          IconButton(
-            onPressed: _syncing ? null : _syncAll,
-            icon: Icon(
-              Icons.cloud_upload_outlined,
-              color: _hasDirtyRecords ? Colors.redAccent : Colors.greenAccent,
-            ),
-            tooltip: tr('Sync'),
-          ),
-          PopupMenuButton<String>(
-            tooltip: tr('Task filter'),
-            icon: Icon(
-              _projectFilterId == null
-                  ? Icons.workspaces_outline
-                  : Icons.workspaces_rounded,
-            ),
-            onSelected: _applyProjectFilter,
-            itemBuilder: (context) => [
-              CheckedPopupMenuItem<String>(
-                value: '__all_projects__',
-                checked: _projectFilterId == null,
-                child: Text(tr('All tasks')),
-              ),
-              ..._projectOptions.entries.map(
-                (entry) => CheckedPopupMenuItem<String>(
-                  value: '${entry.key}',
-                  checked: _projectFilterId == entry.key,
-                  child: Text(entry.value),
+          ResponsiveAppBarActions(
+            breakpoint: 600,
+            actions: [
+              _buildMapLayerMenu(),
+              IconButton(
+                onPressed: _syncing ? null : _syncAll,
+                icon: Icon(
+                  Icons.cloud_upload_outlined,
+                  color: _hasDirtyRecords
+                      ? Colors.redAccent
+                      : Colors.greenAccent,
                 ),
+                tooltip: tr('Sync'),
+              ),
+              _buildProjectFilterMenu(),
+              IconButton(
+                onPressed: _toggleMapView,
+                icon: Icon(_mapView ? Icons.list : Icons.map),
+                tooltip: _mapView ? tr('List') : tr('Map'),
+              ),
+              IconButton(
+                onPressed: _syncing ? null : _loadFromStorage,
+                icon: const Icon(Icons.refresh),
+                tooltip: tr('Refresh'),
+              ),
+              IconButton(
+                onPressed: _showCabinetHelp,
+                icon: const Icon(Icons.info_outline_rounded),
+                tooltip: tr('Screen guide'),
+              ),
+              IconButton(
+                onPressed: () => _showCabinetEditor(),
+                icon: const Icon(Icons.add),
+                tooltip: tr('New cabinet'),
               ),
             ],
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _mapView = !_mapView;
-              });
-            },
-            icon: Icon(_mapView ? Icons.list : Icons.map),
-            tooltip: _mapView ? tr('List') : tr('Map'),
-          ),
-          IconButton(
-            onPressed: _syncing ? null : _loadFromStorage,
-            icon: const Icon(Icons.refresh),
-            tooltip: tr('Refresh'),
-          ),
-          IconButton(
-            onPressed: _showCabinetHelp,
-            icon: const Icon(Icons.info_outline_rounded),
-            tooltip: tr('Screen guide'),
-          ),
-          IconButton(
-            onPressed: () => _showCabinetEditor(),
-            icon: const Icon(Icons.add),
-            tooltip: tr('New cabinet'),
+            compactActions: [
+              IconButton(
+                onPressed: () => _showCabinetEditor(),
+                icon: const Icon(Icons.add),
+                tooltip: tr('New cabinet'),
+              ),
+              IconButton(
+                onPressed: _toggleMapView,
+                icon: Icon(_mapView ? Icons.list : Icons.map),
+                tooltip: _mapView ? tr('List') : tr('Map'),
+              ),
+              PopupMenuButton<String>(
+                tooltip: tr('Actions'),
+                onSelected: _handleCompactMenuAction,
+                itemBuilder: (context) => _buildCompactMenuItems(),
+              ),
+            ],
           ),
         ],
       ),

@@ -8,6 +8,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
 
 class CableLinesPage extends StatefulWidget {
@@ -1331,45 +1332,90 @@ class _CableLinesPageState extends State<CableLinesPage> {
       appBar: AppBar(
         title: Text(tr('Cable lines')),
         actions: [
-          IconButton(
-            tooltip: tr('New route'),
-            onPressed: _syncing ? null : _startCreateRoute,
-            icon: const Icon(Icons.add_road_rounded),
-          ),
-          PopupMenuButton<String>(
-            tooltip: tr('Map layer'),
-            initialValue: _selectedTileLayerId,
-            onSelected: (value) {
-              setState(() {
-                _selectedTileLayerId = value;
-              });
-            },
-            icon: const Icon(Icons.layers_outlined),
-            itemBuilder: (context) => mapTileOptions
-                .map(
-                  (option) => CheckedPopupMenuItem<String>(
-                    value: option.id,
-                    checked: option.id == _selectedTileLayerId,
-                    child: Text(option.label),
+          ResponsiveAppBarActions(
+            actions: [
+              IconButton(
+                tooltip: tr('New route'),
+                onPressed: _syncing ? null : _startCreateRoute,
+                icon: const Icon(Icons.add_road_rounded),
+              ),
+              PopupMenuButton<String>(
+                tooltip: tr('Map layer'),
+                initialValue: _selectedTileLayerId,
+                onSelected: (value) {
+                  setState(() {
+                    _selectedTileLayerId = value;
+                  });
+                },
+                icon: const Icon(Icons.layers_outlined),
+                itemBuilder: (context) => mapTileOptions
+                    .map(
+                      (option) => CheckedPopupMenuItem<String>(
+                        value: option.id,
+                        checked: option.id == _selectedTileLayerId,
+                        child: Text(option.label),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              IconButton(
+                tooltip: tr('Sync'),
+                onPressed: _loading || _syncing ? null : _syncNow,
+                icon: _syncing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_sync_outlined),
+              ),
+              IconButton(
+                tooltip: tr('Refresh'),
+                onPressed: _loading || _syncing ? null : _loadRoutes,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ],
+            compactActions: [
+              IconButton(
+                tooltip: tr('New route'),
+                onPressed: _syncing ? null : _startCreateRoute,
+                icon: const Icon(Icons.add_road_rounded),
+              ),
+              PopupMenuButton<String>(
+                tooltip: tr('Actions'),
+                onSelected: (value) {
+                  if (value == 'sync') {
+                    _syncNow();
+                  } else if (value == 'refresh') {
+                    _loadRoutes();
+                  } else {
+                    setState(() {
+                      _selectedTileLayerId = value;
+                    });
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: 'sync',
+                    enabled: !_loading && !_syncing,
+                    child: Text(tr('Sync')),
                   ),
-                )
-                .toList(growable: false),
-          ),
-          IconButton(
-            tooltip: tr('Sync'),
-            onPressed: _loading || _syncing ? null : _syncNow,
-            icon: _syncing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.cloud_sync_outlined),
-          ),
-          IconButton(
-            tooltip: tr('Refresh'),
-            onPressed: _loading || _syncing ? null : _loadRoutes,
-            icon: const Icon(Icons.refresh_rounded),
+                  PopupMenuItem<String>(
+                    value: 'refresh',
+                    enabled: !_loading && !_syncing,
+                    child: Text(tr('Refresh')),
+                  ),
+                  const PopupMenuDivider(),
+                  ...mapTileOptions.map(
+                    (option) => CheckedPopupMenuItem<String>(
+                      value: option.id,
+                      checked: option.id == _selectedTileLayerId,
+                      child: Text(option.label),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

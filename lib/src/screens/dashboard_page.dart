@@ -4,6 +4,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
+import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
 import 'profile_page.dart';
 
@@ -46,30 +47,72 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('Net Infra SaaS'),
         actions: [
-          IconButton(
-            tooltip: tr('Profile'),
-            onPressed: controller.isBusy
-                ? null
-                : () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProfilePage(controller: controller),
-                      ),
-                    );
-                  },
-            icon: const Icon(Icons.person_outline_rounded),
+          ResponsiveAppBarActions(
+            actions: [
+              IconButton(
+                tooltip: tr('Profile'),
+                onPressed: controller.isBusy
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProfilePage(controller: controller),
+                          ),
+                        );
+                      },
+                icon: const Icon(Icons.person_outline_rounded),
+              ),
+              IconButton(
+                tooltip: tr('Refresh'),
+                onPressed: controller.isBusy ? null : _refreshTeam,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+              TextButton(
+                onPressed: controller.isBusy ? null : controller.signOut,
+                child: Text(tr('Sign out')),
+              ),
+              const SizedBox(width: 12),
+            ],
+            compactActions: [
+              IconButton(
+                tooltip: tr('Profile'),
+                onPressed: controller.isBusy
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProfilePage(controller: controller),
+                          ),
+                        );
+                      },
+                icon: const Icon(Icons.person_outline_rounded),
+              ),
+              PopupMenuButton<String>(
+                tooltip: tr('Actions'),
+                onSelected: (value) {
+                  if (value == 'refresh') {
+                    _refreshTeam();
+                  } else if (value == 'sign_out') {
+                    controller.signOut();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'refresh',
+                    enabled: !controller.isBusy,
+                    child: Text(tr('Refresh')),
+                  ),
+                  PopupMenuItem(
+                    value: 'sign_out',
+                    enabled: !controller.isBusy,
+                    child: Text(tr('Sign out')),
+                  ),
+                ],
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: tr('Refresh'),
-            onPressed: controller.isBusy ? null : _refreshTeam,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          TextButton(
-            onPressed: controller.isBusy ? null : controller.signOut,
-            child: Text(tr('Sign out')),
-          ),
-          const SizedBox(width: 12),
         ],
       ),
       body: Center(

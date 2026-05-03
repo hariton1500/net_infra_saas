@@ -8,6 +8,9 @@ const Map<String, String> _employeePositionAliases = {
   'chief engineer': employeePositionChiefEngineer,
   'engineer': employeePositionEngineer,
   'installer': employeePositionInstaller,
+  'главный инженер': employeePositionChiefEngineer,
+  'инженер': employeePositionEngineer,
+  'монтажник': employeePositionInstaller,
 };
 
 const List<String> employeePositions = [
