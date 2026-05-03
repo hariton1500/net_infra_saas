@@ -11,6 +11,7 @@ import '../core/app_logger.dart';
 import '../core/company_module_sync_repository.dart';
 import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
+import '../core/signal_path_planner.dart';
 import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
 import 'muff_location_picker.dart';
@@ -45,8 +46,11 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
   static const String _allDistrictsValue = '__all_districts__';
   static const String _moduleKey = 'muff_notebook';
   static const String _muffsCacheKey = 'muff_notebook.muffs.v3';
+  static const String _cabinetsModuleKey = 'network_cabinet';
+  static const String _cabinetsCacheKey = 'network_cabinet.cabinets.v1';
 
   final List<Map<String, dynamic>> _muffs = [];
+  List<Map<String, dynamic>> _cabinetRecords = const [];
   List<Map<String, dynamic>> _projectRecords = const [];
   late final CompanyModuleSyncRepository _syncRepository;
   bool _loadingMuffs = true;
@@ -368,6 +372,359 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     );
   }
 
+  int _nextProjectId() {
+    return _projectRecords
+            .map((record) => (record['id'] as int?) ?? 0)
+            .fold(0, (current, next) => current > next ? current : next) +
+        1;
+  }
+
+  Future<void> _createSignalPathTask(SignalPathPlan plan) async {
+    if (_companyId == null) {
+      _showSnack('Company data is not loaded yet.');
+      return;
+    }
+
+    final targetMuff = _selectedMuff;
+    if (targetMuff == null) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final details = [
+      'Источник: ${plan.sourceLabel}',
+      'Цель: ${plan.targetLabel}',
+      ...plan.steps,
+      ...plan.actions.map((action) => 'Работа: $action'),
+    ];
+    final record = <String, dynamic>{
+      'id': _nextProjectId(),
+      'name': 'Сигнал до ${plan.targetLabel}',
+      'description': details.join('\n'),
+      'created_by_user_id': _actorUserId,
+      'created_by_email': _actorEmail,
+      'created_by_name': widget.controller.profile?.fullName ?? '',
+      'assignees': [
+        if (_actorUserId.trim().isNotEmpty || _actorEmail.trim().isNotEmpty)
+          {
+            'user_id': _actorUserId,
+            'email': _actorEmail,
+            'name': widget.controller.profile?.fullName ?? _actorEmail,
+          },
+      ],
+      'work_log': [
+        {
+          'at': now,
+          'kind': 'План подачи сигнала',
+          'summary': details.join(' • '),
+          'target_screen': 'muff_notebook',
+          'target_record_id': targetMuff['id'],
+        },
+      ],
+      'completed': false,
+      'verified': false,
+      'archived': false,
+      'updated_at': now,
+      'updated_by': _actorEmail,
+      'dirty': true,
+      'deleted': false,
+    };
+
+    final nextRecords = [
+      ..._projectRecords.map((record) => _syncRepository.clone(record)),
+      record,
+    ];
+    await _syncRepository.writeCache(projectsCacheKey, nextRecords);
+    final synced = await _syncRepository.syncAll(
+      companyId: _companyId!,
+      moduleKey: projectsModuleKey,
+      cacheKey: projectsCacheKey,
+      localRecords: nextRecords,
+    );
+    _projectRecords = synced;
+    await _syncRepository.writeActiveProject(
+      ProjectSelection(
+        id: record['id'] as int,
+        name: record['name'] as String,
+        authorUserId: _actorUserId.isEmpty ? null : _actorUserId,
+        authorEmail: _actorEmail.isEmpty ? null : _actorEmail,
+      ),
+    );
+    _activeProject = await _syncRepository.readActiveProject();
+
+    if (mounted) {
+      setState(() {});
+      _showSnack('Signal path task created.');
+    }
+  }
+
+  Future<void> _showSignalPathPlan(SignalPathPlan plan) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(tr('Signal path plan')),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tr('From: {value}', {'value': plan.sourceLabel})),
+                  Text(tr('To: {value}', {'value': plan.targetLabel})),
+                  const SizedBox(height: 12),
+                  if (plan.blockers.isNotEmpty) ...[
+                    Text(
+                      tr('Blockers'),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    ...plan.blockers.map(
+                      (blocker) => ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.error_outline),
+                        title: Text(blocker),
+                      ),
+                    ),
+                  ],
+                  if (plan.steps.isNotEmpty) ...[
+                    Text(
+                      tr('Route'),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    ...plan.steps.map(
+                      (step) => ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.route_outlined),
+                        title: Text(step),
+                      ),
+                    ),
+                  ],
+                  if (plan.actions.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      tr('Required work'),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    ...plan.actions.map(
+                      (action) => ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.build_outlined),
+                        title: Text(action),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(tr('Close')),
+            ),
+            FilledButton.icon(
+              onPressed: plan.isBuildable
+                  ? () async {
+                      final navigator = Navigator.of(context);
+                      await _createSignalPathTask(plan);
+                      if (mounted) {
+                        navigator.pop();
+                      }
+                    }
+                  : null,
+              icon: const Icon(Icons.task_alt_rounded),
+              label: Text(tr('Create task')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showSignalPathWizard() async {
+    final targetMuff = _selectedMuff;
+    if (targetMuff == null) {
+      return;
+    }
+    if (_cabinetRecords.isEmpty) {
+      _cabinetRecords = await _syncRepository.readCache(_cabinetsCacheKey);
+    }
+    final cabinets = _cabinetRecords
+        .where((record) => record['deleted'] != true)
+        .toList(growable: false);
+    if (cabinets.isEmpty) {
+      _showSnack('Add a cabinet with switches first.');
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+
+    int? cabinetId = cabinets.first['id'] as int?;
+    int? switchId;
+    int portIndex = 0;
+
+    List<Map<String, dynamic>> switchesFor(int? id) {
+      final cabinet = cabinets.cast<Map<String, dynamic>?>().firstWhere(
+        (record) => record?['id'] == id,
+        orElse: () => null,
+      );
+      return List<Map<String, dynamic>>.from(cabinet?['switches'] ?? const []);
+    }
+
+    String switchLabel(Map<String, dynamic>? sw) {
+      final name = (sw?['name'] ?? tr('Switch')).toString().trim();
+      final model = (sw?['model'] ?? '').toString().trim();
+      if (model.isEmpty) {
+        return name.isEmpty ? tr('Switch') : name;
+      }
+      return '${name.isEmpty ? tr('Switch') : name} | $model';
+    }
+
+    switchId = switchesFor(cabinetId).isEmpty
+        ? null
+        : switchesFor(cabinetId).first['id'] as int?;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            final switches = switchesFor(cabinetId);
+            final selectedSwitch = switches
+                .cast<Map<String, dynamic>?>()
+                .firstWhere(
+                  (item) => item?['id'] == switchId,
+                  orElse: () => null,
+                );
+            final ports = (selectedSwitch?['ports'] as int?) ?? 24;
+            if (portIndex >= ports) {
+              portIndex = 0;
+            }
+            return AlertDialog(
+              title: Text(tr('Get signal from port')),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      initialValue: cabinetId,
+                      decoration: InputDecoration(labelText: tr('Cabinet')),
+                      items: cabinets
+                          .map(
+                            (cabinet) => DropdownMenuItem<int>(
+                              value: cabinet['id'] as int?,
+                              child: Text(
+                                (cabinet['name'] ?? tr('Cabinet')).toString(),
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          cabinetId = value;
+                          final nextSwitches = switchesFor(cabinetId);
+                          switchId = nextSwitches.isEmpty
+                              ? null
+                              : nextSwitches.first['id'] as int?;
+                          portIndex = 0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: switchId,
+                      decoration: InputDecoration(labelText: tr('Switch')),
+                      items: switches
+                          .map(
+                            (sw) => DropdownMenuItem<int>(
+                              value: sw['id'] as int?,
+                              child: Text(switchLabel(sw)),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: switches.isEmpty
+                          ? null
+                          : (value) {
+                              setStateDialog(() {
+                                switchId = value;
+                                portIndex = 0;
+                              });
+                            },
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.dns_outlined),
+                      title: Text(tr('Switch')),
+                      subtitle: Text(switchLabel(selectedSwitch)),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      initialValue: portIndex,
+                      decoration: InputDecoration(labelText: tr('Port')),
+                      items: List.generate(
+                        ports,
+                        (index) => DropdownMenuItem<int>(
+                          value: index,
+                          child: Text(
+                            tr('Port {value}', {'value': '${index + 1}'}),
+                          ),
+                        ),
+                      ),
+                      onChanged: selectedSwitch == null
+                          ? null
+                          : (value) {
+                              setStateDialog(() {
+                                portIndex = value ?? 0;
+                              });
+                            },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(tr('Cancel')),
+                ),
+                FilledButton.icon(
+                  onPressed: cabinetId == null || switchId == null
+                      ? null
+                      : () {
+                          final navigator = Navigator.of(context);
+                          final plan =
+                              SignalPathPlanner(
+                                muffs: _muffs,
+                                cabinets: _cabinetRecords,
+                              ).buildPlan(
+                                source: SignalPortRef(
+                                  cabinetId: cabinetId!,
+                                  switchId: switchId!,
+                                  portIndex: portIndex,
+                                ),
+                                targetMuffId: targetMuff['id'] as int,
+                                targetEntityType: _isPonBox(targetMuff)
+                                    ? 'pon_box'
+                                    : 'muff',
+                              );
+                          navigator.pop();
+                          _showSignalPathPlan(plan);
+                        },
+                  icon: const Icon(Icons.route_outlined),
+                  label: Text(tr('Build plan')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _startAutoSync() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(const Duration(seconds: 60), (_) {
@@ -381,6 +738,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
     final selectedCableId = _selectedCableId;
     _activeProject = await _syncRepository.readActiveProject();
     _projectRecords = await _syncRepository.readCache(projectsCacheKey);
+    _cabinetRecords = await _syncRepository.readCache(_cabinetsCacheKey);
 
     _muffs
       ..clear()
@@ -404,6 +762,12 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
           localRecords: _projectRecords,
         );
         await _syncRepository.writeCache(projectsCacheKey, _projectRecords);
+        _cabinetRecords = await _syncRepository.pullMerge(
+          companyId: _companyId!,
+          moduleKey: _cabinetsModuleKey,
+          localRecords: _cabinetRecords,
+        );
+        await _syncRepository.writeCache(_cabinetsCacheKey, _cabinetRecords);
         final merged = await _syncRepository.pullMerge(
           companyId: _companyId!,
           moduleKey: _moduleKey,
@@ -2357,6 +2721,15 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
                       const SizedBox(height: 8),
                       Text(muff['comment']),
                     ],
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _showSignalPathWizard,
+                        icon: const Icon(Icons.online_prediction_outlined),
+                        label: Text(tr('Get signal from port')),
+                      ),
+                    ),
                   ],
                 ),
               ),

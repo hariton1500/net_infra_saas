@@ -714,7 +714,10 @@ class _StartPageState extends State<StartPage> {
                           ?.trim()
                           .isNotEmpty ==
                       true)
-                    Text((currentTask['description'] as String).trim())
+                    _TaskDescription(
+                      description: (currentTask['description'] as String)
+                          .trim(),
+                    )
                   else
                     Text(tr('Description is empty.')),
                   const SizedBox(height: 16),
@@ -2008,7 +2011,7 @@ class _ProjectRow extends StatelessWidget {
                     ),
                     if (description.trim().isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      Text(description),
+                      _TaskDescription(description: description),
                     ],
                     const SizedBox(height: 8),
                     TextButton(
@@ -2121,6 +2124,38 @@ class _ProjectRow extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _TaskDescription extends StatelessWidget {
+  const _TaskDescription({required this.description});
+
+  final String description;
+
+  List<String> get _lines => description
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList(growable: false);
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = _lines;
+    if (lines.length <= 1) {
+      return Text(description.trim());
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines
+          .map(
+            (line) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(line),
+            ),
+          )
+          .toList(growable: false),
     );
   }
 }
