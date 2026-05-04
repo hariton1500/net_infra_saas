@@ -7,7 +7,7 @@
 - Short description prepared
 - Full description prepared
 - Contact email prepared
-- Privacy policy URL prepared
+- Privacy policy URL prepared: publish `web/privacy.html` with the web app and enter `https://YOUR_DOMAIN/privacy.html`
 - 512x512 app icon exported
 - Feature graphic prepared
 - At least 6 phone screenshots prepared
@@ -18,4 +18,3 @@
 - Test release uploaded
 - Internal testing passed
 - Production release reviewed
-
