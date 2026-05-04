@@ -21,5 +21,14 @@ void main() {
         expect(canCreateProjectsForPosition('Монтажник'), isFalse);
       },
     );
+
+    test('returns null for unsupported metadata positions', () {
+      expect(
+        supportedEmployeePositionOrNull('Главный инженер'),
+        employeePositionChiefEngineer,
+      );
+      expect(supportedEmployeePositionOrNull(''), isNull);
+      expect(supportedEmployeePositionOrNull('Manager'), isNull);
+    });
   });
 }

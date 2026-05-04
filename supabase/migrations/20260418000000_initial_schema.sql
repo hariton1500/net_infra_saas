@@ -10,38 +10,85 @@ begin
 end;
 $$;
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    join pg_namespace on pg_namespace.oid = pg_type.typnamespace
+    where pg_namespace.nspname = 'public'
+      and pg_type.typname = 'employee_position'
+  ) then
+    create domain public.employee_position as text
+    check (value in ('Chief Engineer', 'Engineer', 'Installer'));
+  end if;
+end $$;
+
+create or replace function public.normalize_employee_position_value(
+  position_input text
+)
+returns public.employee_position
+language sql
+immutable
+set search_path = public
+as $$
+  select (case
+    when lower(trim(coalesce(position_input, ''))) = 'chief engineer' then 'Chief Engineer'
+    when lower(trim(coalesce(position_input, ''))) = 'engineer' then 'Engineer'
+    when lower(trim(coalesce(position_input, ''))) = 'installer' then 'Installer'
+    when trim(coalesce(position_input, '')) = 'Главный инженер' then 'Chief Engineer'
+    when trim(coalesce(position_input, '')) = 'Инженер' then 'Engineer'
+    when trim(coalesce(position_input, '')) = 'Монтажник' then 'Installer'
+    when trim(coalesce(position_input, '')) = '' then 'Engineer'
+    else 'Engineer'
+  end)::public.employee_position;
+$$;
+
+create or replace function public.normalize_employee_position_columns()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.position := public.normalize_employee_position_value(new.position::text);
+  return new;
+end;
+$$;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null unique,
   full_name text not null default '',
-  position text not null default 'Инженер',
+  position public.employee_position not null default 'Engineer',
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
 
 alter table public.profiles
-  add column if not exists position text not null default 'Инженер';
+  add column if not exists position public.employee_position not null default 'Engineer';
 
 update public.profiles
-set position = 'Инженер'
+set position = public.normalize_employee_position_value(position::text)
 where trim(coalesce(position, '')) = ''
-   or position not in ('Главный инженер', 'Инженер', 'Монтажник');
+   or position::text not in ('Chief Engineer', 'Engineer', 'Installer');
 
 alter table public.profiles
-  alter column position set default 'Инженер';
+  alter column position set default 'Engineer';
 
 alter table public.profiles
   drop constraint if exists profiles_position_check;
-
-alter table public.profiles
-  add constraint profiles_position_check
-  check (position in ('Главный инженер', 'Инженер', 'Монтажник'));
 
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
 for each row
 execute procedure public.set_updated_at();
+
+drop trigger if exists profiles_normalize_position on public.profiles;
+create trigger profiles_normalize_position
+before insert or update of position on public.profiles
+for each row
+execute function public.normalize_employee_position_columns();
 
 create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
@@ -66,7 +113,7 @@ create table if not exists public.company_invites (
   company_id uuid not null references public.companies (id) on delete cascade,
   invited_email text not null,
   role text not null default 'member' check (role in ('admin', 'member')),
-  position text not null default 'Инженер',
+  position public.employee_position not null default 'Engineer',
   invited_by_user_id uuid not null references auth.users (id) on delete restrict,
   status text not null default 'pending' check (status in ('pending', 'accepted', 'revoked')),
   token text not null unique default encode(gen_random_bytes(18), 'hex'),
@@ -75,22 +122,25 @@ create table if not exists public.company_invites (
 );
 
 alter table public.company_invites
-  add column if not exists position text not null default 'Инженер';
+  add column if not exists position public.employee_position not null default 'Engineer';
 
 update public.company_invites
-set position = 'Инженер'
+set position = public.normalize_employee_position_value(position::text)
 where trim(coalesce(position, '')) = ''
-   or position not in ('Главный инженер', 'Инженер', 'Монтажник');
+   or position::text not in ('Chief Engineer', 'Engineer', 'Installer');
 
 alter table public.company_invites
-  alter column position set default 'Инженер';
+  alter column position set default 'Engineer';
 
 alter table public.company_invites
   drop constraint if exists company_invites_position_check;
 
-alter table public.company_invites
-  add constraint company_invites_position_check
-  check (position in ('Главный инженер', 'Инженер', 'Монтажник'));
+drop trigger if exists company_invites_normalize_position
+on public.company_invites;
+create trigger company_invites_normalize_position
+before insert or update of position on public.company_invites
+for each row
+execute function public.normalize_employee_position_columns();
 
 create index if not exists company_invites_company_id_idx
   on public.company_invites (company_id);
@@ -209,7 +259,9 @@ begin
     new.id,
     coalesce(new.email, ''),
     coalesce(new.raw_user_meta_data ->> 'full_name', ''),
-    coalesce(nullif(new.raw_user_meta_data ->> 'position', ''), 'Инженер')
+    public.normalize_employee_position_value(
+      new.raw_user_meta_data ->> 'position'
+    )
   )
   on conflict (id) do update
   set
@@ -325,14 +377,12 @@ begin
     raise exception 'Unsupported role';
   end if;
 
-  if actor_membership.role <> 'owner' then
-    normalized_position := 'Монтажник';
-  elsif normalized_position = '' then
-    normalized_position := 'Монтажник';
-  end if;
-
-  if normalized_position not in ('Главный инженер', 'Инженер', 'Монтажник') then
-    raise exception 'Unsupported position';
+  if actor_membership.role <> 'owner' or normalized_position = '' then
+    normalized_position := 'Installer';
+  else
+    normalized_position := public.normalize_employee_position_value(
+      normalized_position
+    )::text;
   end if;
 
   if exists (
@@ -419,7 +469,7 @@ begin
 
   update public.profiles
   set position = case
-    when trim(coalesce(position, '')) = '' then coalesce(pending_invite.position, 'Инженер')
+    when trim(coalesce(position::text, '')) = '' then coalesce(pending_invite.position::text, 'Engineer')
     else position
   end
   where id = auth.uid();

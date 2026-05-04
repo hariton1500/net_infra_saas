@@ -43,3 +43,10 @@ String normalizeEmployeePosition(String position) {
 
 bool isSupportedEmployeePosition(String position) =>
     employeePositions.contains(normalizeEmployeePosition(position));
+
+String? supportedEmployeePositionOrNull(String position) {
+  final normalizedPosition = normalizeEmployeePosition(position);
+  return employeePositions.contains(normalizedPosition)
+      ? normalizedPosition
+      : null;
+}

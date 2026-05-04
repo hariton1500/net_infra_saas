@@ -243,7 +243,6 @@ class AuthController extends ChangeNotifier {
         password: password,
         data: {
           'full_name': fullName.trim(),
-          'position': normalizedPosition,
           'company_name': companyName.trim(),
         },
       );
@@ -260,6 +259,12 @@ class AuthController extends ChangeNotifier {
         );
       }
 
+      await _client.from('profiles').upsert({
+        'id': response.user!.id,
+        'email': response.user!.email,
+        'full_name': fullName.trim(),
+        'position': normalizedPosition,
+      });
       await refresh();
 
       if (_membership == null) {
@@ -340,7 +345,6 @@ class AuthController extends ChangeNotifier {
       final mergedMetadata = <String, dynamic>{
         ...?user.userMetadata,
         'full_name': normalizedFullName,
-        'position': normalizedPosition,
       };
 
       await _client.auth.updateUser(UserAttributes(data: mergedMetadata));
@@ -359,15 +363,14 @@ class AuthController extends ChangeNotifier {
 
   Future<void> _syncProfileFromUser(User user) async {
     final fullName = _readString(user.userMetadata, 'full_name');
-    final position = _readString(user.userMetadata, 'position');
+    final profileData = <String, dynamic>{
+      'id': user.id,
+      'email': user.email,
+      if (fullName.isNotEmpty) 'full_name': fullName,
+    };
 
     await _runAuthRequest(() {
-      return _client.from('profiles').upsert({
-        'id': user.id,
-        'email': user.email,
-        if (fullName.isNotEmpty) 'full_name': fullName,
-        if (position.isNotEmpty) 'position': position,
-      });
+      return _client.from('profiles').upsert(profileData);
     });
   }
 
@@ -385,7 +388,7 @@ class AuthController extends ChangeNotifier {
         id: user.id,
         email: user.email ?? '',
         fullName: _readString(user.userMetadata, 'full_name'),
-        position: _readString(user.userMetadata, 'position'),
+        position: employeePositionEngineer,
       );
     }
 
@@ -623,8 +626,8 @@ class AuthController extends ChangeNotifier {
   }
 
   String _assertValidPosition(String position) {
-    final normalizedPosition = normalizeEmployeePosition(position);
-    if (!isSupportedEmployeePosition(normalizedPosition)) {
+    final normalizedPosition = supportedEmployeePositionOrNull(position);
+    if (normalizedPosition == null) {
       throw const AuthException('Unsupported position');
     }
     return normalizedPosition;
