@@ -1,19 +1,15 @@
-Net Infra SaaS is a practical infrastructure workspace for telecom and network operations teams.
+Net Infra SaaS is a workspace for telecom teams and network infrastructure operations specialists.
 
-It helps companies manage cabinets, fiber routes, splice points, field changes, tasks, and team coordination from one shared system.
+The app helps companies manage tasks, network cabinets, splice closures, fiber routes, field changes, and employee coordination in one shared system.
 
-Instead of relying on scattered chats, spreadsheets, paper notes, and disconnected tools, teams can work from a structured digital workspace with clearer visibility and better operational discipline.
+With Net Infra SaaS, teams can:
 
-Use Net Infra SaaS to:
-
+- create and track operational tasks
 - document network cabinets and infrastructure nodes
-- manage fiber routes and technical records
-- connect infrastructure changes to active tasks
-- keep field teams and office teams aligned
-- reduce the risk of undocumented field changes
-- improve onboarding for new employees
+- manage splice closures, cables, ports, and fiber connections
+- view infrastructure objects and routes on a map
+- link infrastructure changes to active tasks
+- keep office teams and field employees synchronized
+- store technical records inside the company workspace
 
-Net Infra SaaS is designed for providers, contractors, engineers, and infrastructure teams that need practical tools for real operational work.
-
-This is not a generic project manager. It is a focused workspace for companies that build, maintain, and scale real network infrastructure.
-
+Net Infra SaaS is designed for internet service providers, contractors, engineers, and infrastructure teams that need a specialized tool for operating and maintaining network infrastructure.

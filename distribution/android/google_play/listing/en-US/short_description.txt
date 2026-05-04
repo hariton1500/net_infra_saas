@@ -1,1 +1,1 @@
-Infrastructure workspace for telecom teams, field operations, tasks, and network records.
+Workspace for telecom tasks, field work, and network infrastructure
