@@ -89,6 +89,8 @@ class AuthController extends ChangeNotifier {
   final SupabaseClient _client;
 
   StreamSubscription<AuthState>? _authSubscription;
+  Future<void>? _refreshInFlight;
+  bool _refreshQueued = false;
 
   AuthView _view = AuthView.loading;
   bool _isBusy = false;
@@ -140,7 +142,31 @@ class AuthController extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh() {
+    _refreshQueued = true;
+
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final operation = Future<void>.microtask(_refreshUntilSettled);
+    _refreshInFlight = operation;
+    return operation.whenComplete(() {
+      if (identical(_refreshInFlight, operation)) {
+        _refreshInFlight = null;
+      }
+    });
+  }
+
+  Future<void> _refreshUntilSettled() async {
+    while (_refreshQueued) {
+      _refreshQueued = false;
+      await _refreshSessionState();
+    }
+  }
+
+  Future<void> _refreshSessionState() async {
     final user = currentUser;
 
     if (user == null) {
@@ -164,7 +190,10 @@ class AuthController extends ChangeNotifier {
       await _acceptPendingInviteIfNeeded();
       _profile = await _fetchProfile(user);
       _membership = await _fetchMembership(user);
-      await _loadCompanyData();
+      await _loadCompanyDataForRefresh();
+      if (currentUser?.id != user.id) {
+        return;
+      }
       if (_isRecoveringPassword) {
         _view = AuthView.passwordRecovery;
       } else {
@@ -173,6 +202,9 @@ class AuthController extends ChangeNotifier {
             : AuthView.ready;
       }
     } catch (error, stackTrace) {
+      if (currentUser?.id != user.id) {
+        return;
+      }
       _errorMessage = _humanizeError(error);
       logUserFacingError(
         _errorMessage ?? tr('Failed to load session.'),
@@ -481,6 +513,20 @@ class AuthController extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  Future<void> _loadCompanyDataForRefresh() async {
+    try {
+      await _loadCompanyData();
+    } catch (error, stackTrace) {
+      if (!_isTransientAuthNetworkError(error)) {
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+
+      debugPrint(
+        '[WARN][auth.companyData] ${normalizeErrorText(error, fallback: 'Failed to refresh company data.')}',
+      );
+    }
+  }
+
   Future<String> _createCompany({required String companyName}) async {
     if (companyName.isEmpty) {
       throw AuthException(tr('Please enter a company name.'));
@@ -500,7 +546,7 @@ class AuthController extends ChangeNotifier {
       return;
     }
 
-    await _client.rpc('accept_company_invite');
+    await _runAuthRequest(() => _client.rpc('accept_company_invite'));
   }
 
   String _readString(Map<String, dynamic>? source, String key) {
