@@ -241,9 +241,12 @@ class AuthController extends ChangeNotifier {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
+        emailRedirectTo: _authRedirectUrl(),
         data: {
           'full_name': fullName.trim(),
           'company_name': companyName.trim(),
+          'locale': AppI18n.instance.locale.languageCode,
+          'locale_name': AppI18n.instance.localeName,
         },
       );
 
@@ -710,6 +713,10 @@ class AuthController extends ChangeNotifier {
   }
 
   String? _passwordRecoveryRedirectUrl() {
+    return _authRedirectUrl();
+  }
+
+  String? _authRedirectUrl() {
     final base = Uri.base;
     if (!base.hasAuthority) {
       return null;

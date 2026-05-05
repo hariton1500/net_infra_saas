@@ -1,0 +1,107 @@
+{{ $isRu := eq (index .Data "locale") "ru" }}
+{{ $fullName := index .Data "full_name" }}
+{{ $companyName := index .Data "company_name" }}
+<!doctype html>
+<html lang="{{ if $isRu }}ru{{ else }}en{{ end }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title>{{ if $isRu }}Проверка почты{{ else }}Email check{{ end }}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#071526;color:#f2f7fa;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#071526;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;border-collapse:collapse;background:#0e223a;border:1px solid #1d3f63;border-radius:24px;overflow:hidden;">
+            <tr>
+              <td style="padding:28px 28px 18px;background:#0c1d33;border-bottom:1px solid #1d3f63;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                  <tr>
+                    <td style="vertical-align:middle;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                        <tr>
+                          <td width="52" height="52" align="center" style="width:52px;height:52px;background:#173e61;border:1px solid #2a648e;border-radius:16px;color:#1eddc5;font-size:26px;font-weight:800;line-height:52px;">
+                            N
+                          </td>
+                          <td style="padding-left:14px;">
+                            <div style="font-size:18px;font-weight:800;line-height:1.2;color:#f2f7fa;">Net Infra</div>
+                            <div style="margin-top:4px;font-size:13px;line-height:1.4;color:#a7bdd1;">
+                              {{ if $isRu }}Рабочее пространство команды{{ else }}Team workspace{{ end }}
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                    <td align="right" style="vertical-align:middle;">
+                      <span style="display:inline-block;padding:8px 12px;border-radius:999px;background:#0b3a33;color:#86f7df;font-size:12px;font-weight:700;">
+                        {{ if $isRu }}Email check{{ else }}Email check{{ end }}
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:34px 28px 8px;">
+                <h1 style="margin:0;color:#f2f7fa;font-size:28px;line-height:1.18;font-weight:800;letter-spacing:0;">
+                  {{ if $isRu }}Проверьте рабочую почту{{ else }}Check your work email{{ end }}
+                </h1>
+                <p style="margin:16px 0 0;color:#cfdae4;font-size:16px;line-height:1.65;">
+                  {{ if $isRu }}
+                    {{ if $fullName }}Здравствуйте, {{ $fullName }}. {{ end }}Нажмите кнопку ниже, чтобы продолжить вход{{ if $companyName }} в рабочее пространство {{ $companyName }}{{ end }}.
+                  {{ else }}
+                    {{ if $fullName }}Hi {{ $fullName }}, {{ end }}use the button below to continue{{ if $companyName }} to the {{ $companyName }} workspace{{ end }}.
+                  {{ end }}
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding:22px 28px 26px;">
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#1eddc5;color:#071526;text-decoration:none;font-size:16px;font-weight:800;line-height:1;padding:17px 26px;border-radius:16px;">
+                  {{ if $isRu }}Продолжить{{ else }}Continue{{ end }}
+                </a>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:0 28px 28px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#102744;border:1px solid #224d74;border-radius:18px;">
+                  <tr>
+                    <td style="padding:18px 18px 16px;">
+                      <div style="color:#35c886;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">
+                        {{ if $isRu }}После проверки{{ else }}After the check{{ end }}
+                      </div>
+                      <p style="margin:10px 0 0;color:#cfdae4;font-size:14px;line-height:1.65;">
+                        {{ if $isRu }}
+                          Откройте приложение и войдите этой же почтой. Если рабочее пространство ещё не готово, приложение покажет короткую настройку.
+                        {{ else }}
+                          Open the app and sign in with this same email. If the workspace is not ready yet, the app will show a short setup flow.
+                        {{ end }}
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:20px 28px;background:#0a1b31;border-top:1px solid #1d3f63;">
+                <p style="margin:0;color:#8fa7bb;font-size:12px;line-height:1.6;">
+                  {{ if $isRu }}
+                    Это письмо отправлено для адреса {{ .Email }}.
+                  {{ else }}
+                    This message was sent for {{ .Email }}.
+                  {{ end }}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
