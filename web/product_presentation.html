@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Net Infra SaaS | Product Presentation</title>
+  <meta name="description" content="Interactive product presentation for Net Infra SaaS.">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #152033;
+      --muted: #607086;
+      --line: #dbe4ee;
+      --panel: #ffffff;
+      --wash: #f4f8fb;
+      --navy: #0c1d33;
+      --teal: #14b8a6;
+      --green: #4dba72;
+      --amber: #f0b429;
+      --coral: #e9655b;
+      --blue: #3f7ccf;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background: var(--wash);
+      color: var(--ink);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+    }
+
+    body {
+      overflow: hidden;
+      line-height: 1.5;
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .deck-shell {
+      display: grid;
+      grid-template-rows: 72px minmax(0, 1fr) 64px;
+      width: 100vw;
+      height: 100vh;
+      min-height: 620px;
+      background:
+        linear-gradient(135deg, rgba(20, 184, 166, 0.08), transparent 38%),
+        linear-gradient(315deg, rgba(240, 180, 41, 0.09), transparent 32%),
+        var(--wash);
+    }
+
+    .topbar,
+    .bottombar {
+      z-index: 10;
+      border-color: rgba(219, 228, 238, 0.86);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar {
+      border-bottom: 1px solid rgba(219, 228, 238, 0.86);
+    }
+
+    .bottombar {
+      border-top: 1px solid rgba(219, 228, 238, 0.86);
+    }
+
+    .topbar-inner,
+    .bottombar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: min(1280px, calc(100% - 32px));
+      height: 100%;
+      margin: 0 auto;
+      gap: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 12px;
+      font-weight: 900;
+    }
+
+    .brand img {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .top-actions,
+    .deck-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .lang-switch {
+      display: inline-flex;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .lang-switch button,
+    .icon-button,
+    .primary-button {
+      border: 0;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .lang-switch button {
+      min-width: 48px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .lang-switch button[aria-pressed="true"] {
+      color: #fff;
+      background: var(--navy);
+    }
+
+    .icon-button,
+    .primary-button {
+      min-height: 42px;
+      border-radius: 8px;
+    }
+
+    .icon-button {
+      min-width: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .primary-button {
+      padding: 0 16px;
+      color: #fff;
+      background: var(--teal);
+    }
+
+    .slide-stage {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .slide-page {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: clamp(18px, 4vw, 44px);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(42px) scale(0.985);
+      transition:
+        opacity 240ms ease,
+        transform 300ms ease,
+        visibility 0ms linear 300ms;
+    }
+
+    .slide-page.is-active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0) scale(1);
+      transition:
+        opacity 260ms ease,
+        transform 320ms ease,
+        visibility 0ms;
+    }
+
+    .slide-page.is-before {
+      transform: translateX(-42px) scale(0.985);
+    }
+
+    .slide-card {
+      display: grid;
+      grid-template-columns: minmax(0, 0.88fr) minmax(320px, 1.12fr);
+      align-items: stretch;
+      gap: clamp(22px, 4vw, 48px);
+      width: min(1180px, 100%);
+      min-height: min(680px, 100%);
+      max-height: 100%;
+      padding: clamp(24px, 4vw, 48px);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 24px 76px rgba(21, 32, 51, 0.16);
+      overflow: auto;
+    }
+
+    .slide-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .kicker {
+      margin: 0 0 14px;
+      color: var(--teal);
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .kicker span {
+      color: var(--muted);
+    }
+
+    h1,
+    h2 {
+      max-width: 880px;
+      margin: 0;
+      color: var(--ink);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: clamp(42px, 7vw, 82px);
+    }
+
+    h2 {
+      font-size: clamp(36px, 5.2vw, 66px);
+    }
+
+    .lead,
+    .slide-copy p {
+      max-width: 760px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(18px, 2.2vw, 24px);
+    }
+
+    .hero-points,
+    .metric-grid,
+    .comparison {
+      display: grid;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .hero-points {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 30px;
+    }
+
+    .hero-point,
+    .metric,
+    .comparison-cell,
+    .flow-box,
+    .timeline-step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .hero-point {
+      padding: 14px;
+      font-weight: 900;
+    }
+
+    .visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .app-visual {
+      width: min(100%, 560px);
+      border: 1px solid #173e61;
+      border-radius: 8px;
+      overflow: hidden;
+      color: #eaf6fb;
+      background: var(--navy);
+      box-shadow: 0 22px 62px rgba(21, 32, 51, 0.18);
+    }
+
+    .visual-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid #244866;
+    }
+
+    .visual-title {
+      font-weight: 900;
+    }
+
+    .visual-pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: #7cf1df;
+      background: rgba(20, 184, 166, 0.16);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .visual-body {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .map-mock,
+    .cabinet-mock,
+    .route-mock {
+      border-radius: 8px;
+      background: #102a43;
+    }
+
+    .map-mock {
+      position: relative;
+      min-height: 310px;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px) 0 0 / 48px 48px,
+        linear-gradient(0deg, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+        #102a43;
+    }
+
+    .map-route {
+      position: absolute;
+      width: 78%;
+      height: 4px;
+      left: 11%;
+      top: 54%;
+      border-radius: 999px;
+      background: var(--teal);
+      transform: rotate(-18deg);
+      box-shadow: 0 0 0 6px rgba(20, 184, 166, 0.12);
+    }
+
+    .map-route.alt {
+      width: 58%;
+      left: 24%;
+      top: 38%;
+      background: var(--amber);
+      transform: rotate(28deg);
+      box-shadow: none;
+    }
+
+    .map-node {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border: 3px solid #eaf6fb;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .node-a { left: 18%; top: 61%; }
+    .node-b { left: 46%; top: 43%; background: var(--amber); }
+    .node-c { left: 74%; top: 30%; background: var(--coral); }
+    .node-d { left: 70%; top: 72%; background: var(--blue); }
+
+    .side-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .cabinet-mock,
+    .route-mock {
+      padding: 14px;
+    }
+
+    .mock-label {
+      color: #a9bed3;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .port-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .port-grid span {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      background: #264f73;
+    }
+
+    .port-grid span:nth-child(3n) {
+      background: var(--teal);
+    }
+
+    .route-line {
+      height: 10px;
+      margin-top: 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--teal), var(--amber), var(--coral));
+    }
+
+    .bullet-list {
+      display: grid;
+      gap: 14px;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .bullet-list li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      min-width: 0;
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 900;
+    }
+
+    .bullet-list li::before {
+      content: "";
+      flex: 0 0 11px;
+      width: 11px;
+      height: 11px;
+      margin-top: 11px;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 14px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .flow-box {
+      display: grid;
+      gap: 10px;
+      padding: 18px;
+    }
+
+    .flow-box span {
+      padding: 12px;
+      border-radius: 8px;
+      color: var(--muted);
+      background: var(--wash);
+      font-weight: 900;
+    }
+
+    .flow-arrow {
+      color: var(--teal);
+      font-size: 38px;
+      font-weight: 900;
+    }
+
+    .metric-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .metric,
+    .comparison-cell {
+      padding: 18px;
+    }
+
+    .metric strong,
+    .comparison-cell strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--navy);
+      font-size: 20px;
+    }
+
+    .metric span,
+    .comparison-cell span {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .timeline-step {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      font-weight: 900;
+    }
+
+    .timeline-step span:first-child {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--navy);
+    }
+
+    .comparison {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: min(520px, 46vw);
+    }
+
+    .progress-track {
+      position: relative;
+      flex: 1;
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e4edf4;
+    }
+
+    .progress-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--teal), var(--amber));
+      transition: width 220ms ease;
+    }
+
+    .slide-count {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .thumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 44vw;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .thumbs button {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--muted);
+      background: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .thumbs button[aria-current="true"] {
+      color: #fff;
+      border-color: var(--navy);
+      background: var(--navy);
+    }
+
+    .mobile-hint {
+      display: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        overflow: auto;
+      }
+
+      .deck-shell {
+        height: auto;
+        min-height: 100vh;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+      }
+
+      .topbar-inner,
+      .bottombar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 12px 0;
+      }
+
+      .top-actions,
+      .deck-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .slide-stage {
+        min-height: calc(100vh - 190px);
+      }
+
+      .slide-page {
+        padding: 16px;
+      }
+
+      .slide-card {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+
+      .hero-points,
+      .metric-grid,
+      .comparison,
+      .visual-body {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-arrow {
+        justify-self: center;
+        transform: rotate(90deg);
+      }
+
+      .progress-wrap {
+        min-width: 100%;
+      }
+
+      .thumbs {
+        display: none;
+      }
+
+      .mobile-hint {
+        display: block;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .deck-shell {
+        min-height: 100vh;
+      }
+
+      .brand span {
+        max-width: 220px;
+      }
+
+      .slide-card {
+        padding: 22px;
+      }
+
+      h1 {
+        font-size: 40px;
+      }
+
+      h2 {
+        font-size: 34px;
+      }
+    }
+
+    @media print {
+      body {
+        overflow: visible;
+        background: #fff;
+      }
+
+      .deck-shell {
+        display: block;
+        height: auto;
+        min-height: 0;
+        background: #fff;
+      }
+
+      .topbar,
+      .bottombar {
+        display: none;
+      }
+
+      .slide-stage {
+        overflow: visible;
+      }
+
+      .slide-page {
+        position: relative;
+        inset: auto;
+        display: grid;
+        min-height: 100vh;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        page-break-after: always;
+      }
+
+      .slide-card {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="index.html" aria-label="Net Infra SaaS">
+          <img src="favicon.png" alt="">
+          <span>Net Infra SaaS</span>
+        </a>
+        <div class="top-actions">
+          <div class="lang-switch" aria-label="Language">
+            <button type="button" data-lang="en" aria-pressed="true">EN</button>
+            <button type="button" data-lang="ru" aria-pressed="false">RU</button>
+          </div>
+          <button class="primary-button" type="button" data-action="print" data-i18n="print">Print / PDF</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="slide-stage" aria-live="polite">
+      <section class="slide-page is-active" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker" data-i18n="eyebrow">Product presentation</p>
+            <h1 data-i18n="heroTitle">Network infrastructure, field work, and team coordination in one workspace</h1>
+            <p class="lead" data-i18n="heroLead">Net Infra SaaS helps telecom and infrastructure teams document cabinets, fiber routes, splice points, tasks, and field changes from a shared operational system.</p>
+            <div class="hero-points">
+              <div class="hero-point" data-i18n="heroPoint1">Infrastructure records</div>
+              <div class="hero-point" data-i18n="heroPoint2">Active field tasks</div>
+              <div class="hero-point" data-i18n="heroPoint3">Team accountability</div>
+            </div>
+          </div>
+          <div class="visual" aria-hidden="true">
+            <div class="app-visual">
+              <div class="visual-bar">
+                <span class="visual-title">Operations map</span>
+                <span class="visual-pill">Active task</span>
+              </div>
+              <div class="visual-body">
+                <div class="map-mock">
+                  <span class="map-route"></span>
+                  <span class="map-route alt"></span>
+                  <span class="map-node node-a"></span>
+                  <span class="map-node node-b"></span>
+                  <span class="map-node node-c"></span>
+                  <span class="map-node node-d"></span>
+                </div>
+                <div class="side-stack">
+                  <div class="cabinet-mock">
+                    <div class="mock-label">Network cabinet</div>
+                    <div class="port-grid">
+                      <span></span><span></span><span></span><span></span>
+                      <span></span><span></span><span></span><span></span>
+                      <span></span><span></span><span></span><span></span>
+                    </div>
+                  </div>
+                  <div class="route-mock">
+                    <div class="mock-label">Cable route</div>
+                    <div class="route-line"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 01</p>
+            <h2 data-i18n="s1Title">Infrastructure data often lives away from the work</h2>
+            <p data-i18n="s1Body">Important changes are scattered across chats, spreadsheets, paper notes, and disconnected maps.</p>
+          </div>
+          <div class="visual">
+            <div class="flow">
+              <div class="flow-box">
+                <span data-i18n="s1Flow1">Chats</span>
+                <span data-i18n="s1Flow2">Spreadsheets</span>
+                <span data-i18n="s1Flow3">Paper notes</span>
+              </div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">
+                <span data-i18n="s1Flow4">Delays</span>
+                <span data-i18n="s1Flow5">Duplicate work</span>
+                <span data-i18n="s1Flow6">Lost field context</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 02</p>
+            <h2 data-i18n="s2Title">One system for network operations</h2>
+            <p data-i18n="s2Body">Net Infra SaaS connects infrastructure objects, active tasks, and team work in one digital workspace.</p>
+          </div>
+          <div class="visual">
+            <ul class="bullet-list">
+              <li data-i18n="s2Item1">Infrastructure map</li>
+              <li data-i18n="s2Item2">Network cabinets</li>
+              <li data-i18n="s2Item3">Closures and fiber connections</li>
+              <li data-i18n="s2Item4">Cable routes</li>
+              <li data-i18n="s2Item5">Tasks, assignees, and statuses</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 03</p>
+            <h2 data-i18n="s3Title">Built for teams that build and maintain networks</h2>
+            <p data-i18n="s3Body">The product is aimed at companies where a task must be connected to a real technical object.</p>
+          </div>
+          <div class="visual">
+            <div class="metric-grid">
+              <div class="metric"><strong data-i18n="s3Item1">ISPs</strong><span data-i18n="s3Desc1">Service providers operating local networks.</span></div>
+              <div class="metric"><strong data-i18n="s3Item2">Fiber operators</strong><span data-i18n="s3Desc2">Teams managing routes and connection points.</span></div>
+              <div class="metric"><strong data-i18n="s3Item3">Contractors</strong><span data-i18n="s3Desc3">Field crews delivering telecom work.</span></div>
+              <div class="metric"><strong data-i18n="s3Item4">Supervisors</strong><span data-i18n="s3Desc4">Managers responsible for quality and visibility.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 04</p>
+            <h2 data-i18n="s4Title">Shared infrastructure visibility on the map</h2>
+            <p data-i18n="s4Body">Objects, routes, and task context stay visible for office staff and field engineers.</p>
+          </div>
+          <div class="visual">
+            <ul class="bullet-list">
+              <li data-i18n="s4Item1">Map objects and connection points</li>
+              <li data-i18n="s4Item2">Cable route overlays</li>
+              <li data-i18n="s4Item3">Task-based filtering</li>
+              <li data-i18n="s4Item4">One operational picture for the whole team</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 05</p>
+            <h2 data-i18n="s5Title">Structured cabinet documentation</h2>
+            <p data-i18n="s5Body">Cabinets, equipment, ports, cables, and connections can be kept as shared records instead of personal memory or photos.</p>
+          </div>
+          <div class="visual">
+            <ul class="bullet-list">
+              <li data-i18n="s5Item1">Equipment and port data</li>
+              <li data-i18n="s5Item2">Cable and connection records</li>
+              <li data-i18n="s5Item3">Quick object access</li>
+              <li data-i18n="s5Item4">Changes linked to active tasks</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 06</p>
+            <h2 data-i18n="s6Title">Field logic stays in the system</h2>
+            <p data-i18n="s6Body">Closures, fibers, route points, and field changes become part of the company knowledge base.</p>
+          </div>
+          <div class="visual">
+            <ul class="bullet-list">
+              <li data-i18n="s6Item1">Closures and cable records</li>
+              <li data-i18n="s6Item2">Fiber and splitter logic</li>
+              <li data-i18n="s6Item3">Route history</li>
+              <li data-i18n="s6Item4">Lower risk of undocumented changes</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 07</p>
+            <h2 data-i18n="s7Title">Tasks connect work, people, and objects</h2>
+            <p data-i18n="s7Body">Active tasks group field work and keep responsibility clear from assignment to verification.</p>
+          </div>
+          <div class="visual">
+            <div class="timeline">
+              <div class="timeline-step"><span>1</span><strong data-i18n="s7Step1">Create task</strong></div>
+              <div class="timeline-step"><span>2</span><strong data-i18n="s7Step2">Assign employees</strong></div>
+              <div class="timeline-step"><span>3</span><strong data-i18n="s7Step3">Record infrastructure changes</strong></div>
+              <div class="timeline-step"><span>4</span><strong data-i18n="s7Step4">Complete, verify, archive</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 08</p>
+            <h2 data-i18n="s8Title">Multi-user company workspace</h2>
+            <p data-i18n="s8Body">The system supports company onboarding, employee roles, invitations, and data isolation between companies.</p>
+          </div>
+          <div class="visual">
+            <ul class="bullet-list">
+              <li data-i18n="s8Item1">Company registration</li>
+              <li data-i18n="s8Item2">Employee profiles and positions</li>
+              <li data-i18n="s8Item3">Invites for team members</li>
+              <li data-i18n="s8Item4">Secure access through Supabase Auth</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 09</p>
+            <h2 data-i18n="s9Title">Business value</h2>
+            <p data-i18n="s9Body">The team gets one operational picture instead of fragmented manual knowledge transfer.</p>
+          </div>
+          <div class="visual">
+            <div class="metric-grid">
+              <div class="metric"><strong data-i18n="s9Item1">One source of truth</strong><span data-i18n="s9Desc1">Infrastructure records stay in a shared workspace.</span></div>
+              <div class="metric"><strong data-i18n="s9Item2">Faster coordination</strong><span data-i18n="s9Desc2">Office and field teams work from the same context.</span></div>
+              <div class="metric"><strong data-i18n="s9Item3">Cleaner documentation</strong><span data-i18n="s9Desc3">Changes are easier to find and review.</span></div>
+              <div class="metric"><strong data-i18n="s9Item4">Easier scaling</strong><span data-i18n="s9Desc4">New employees onboard with clearer records.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 10</p>
+            <h2 data-i18n="s10Title">Positioning</h2>
+            <p data-i18n="s10Body">Net Infra SaaS is not a generic project manager. It is built around real infrastructure operations.</p>
+          </div>
+          <div class="visual">
+            <div class="comparison">
+              <div class="comparison-cell"><strong data-i18n="s10Item1">Task trackers</strong><span data-i18n="s10Desc1">Good for work lists, weak on technical object context.</span></div>
+              <div class="comparison-cell"><strong data-i18n="s10Item2">Spreadsheets</strong><span data-i18n="s10Desc2">Flexible, but hard to keep synchronized in the field.</span></div>
+              <div class="comparison-cell"><strong data-i18n="s10Item3">Net Infra SaaS</strong><span data-i18n="s10Desc3">Tasks, map, objects, and team workflow in one place.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 11</p>
+            <h2 data-i18n="s11Title">Recommended demo scenario</h2>
+            <p data-i18n="s11Body">The best product demo follows one real operational process from task creation to documented result.</p>
+          </div>
+          <div class="visual">
+            <div class="timeline">
+              <div class="timeline-step"><span>1</span><strong data-i18n="s11Step1">Set up company and roles</strong></div>
+              <div class="timeline-step"><span>2</span><strong data-i18n="s11Step2">Create a field task</strong></div>
+              <div class="timeline-step"><span>3</span><strong data-i18n="s11Step3">Add cabinets, closures, or routes</strong></div>
+              <div class="timeline-step"><span>4</span><strong data-i18n="s11Step4">Review the documented change</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 12</p>
+            <h2 data-i18n="s12Title">Short pitch</h2>
+            <p data-i18n="s12Body">Net Infra SaaS helps telecom and infrastructure teams document, coordinate, and scale real network operations from a single digital workspace.</p>
+          </div>
+          <div class="visual">
+            <ul class="bullet-list">
+              <li data-i18n="s12Item1">Infrastructure operations, documented and coordinated</li>
+              <li data-i18n="s12Item2">One workspace for network teams and field work</li>
+              <li data-i18n="s12Item3">From field changes to shared network visibility</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide-page" data-slide>
+        <div class="slide-card">
+          <div class="slide-copy">
+            <p class="kicker"><span data-i18n="slideLabel">Slide</span> 13</p>
+            <h2 data-i18n="closingTitle">Show the product on one real infrastructure workflow</h2>
+            <p data-i18n="closingBody">Start with a real task, connect it to cabinets, closures, or routes, and show how the result becomes visible to the whole team.</p>
+          </div>
+          <div class="visual">
+            <div class="timeline">
+              <div class="timeline-step"><span>1</span><strong data-i18n="closingStep1">Request a demo</strong></div>
+              <div class="timeline-step"><span>2</span><strong data-i18n="closingStep2">Use real infrastructure records</strong></div>
+              <div class="timeline-step"><span>3</span><strong data-i18n="closingStep3">Map the workflow into Net Infra SaaS</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bottombar">
+      <div class="bottombar-inner">
+        <div class="progress-wrap">
+          <span class="slide-count" data-count>1 / 14</span>
+          <div class="progress-track" aria-hidden="true">
+            <span class="progress-fill" data-progress></span>
+          </div>
+        </div>
+        <div class="deck-actions">
+          <button class="icon-button" type="button" data-action="prev" aria-label="Previous slide">←</button>
+          <div class="thumbs" data-thumbs aria-label="Slides"></div>
+          <button class="icon-button" type="button" data-action="next" aria-label="Next slide">→</button>
+          <span class="mobile-hint" data-i18n="mobileHint">Use arrows or swipe</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const translations = {
+      en: {
+        print: 'Print / PDF',
+        mobileHint: 'Use arrows or swipe',
+        eyebrow: 'Product presentation',
+        heroTitle: 'Network infrastructure, field work, and team coordination in one workspace',
+        heroLead: 'Net Infra SaaS helps telecom and infrastructure teams document cabinets, fiber routes, splice points, tasks, and field changes from a shared operational system.',
+        heroPoint1: 'Infrastructure records',
+        heroPoint2: 'Active field tasks',
+        heroPoint3: 'Team accountability',
+        slideLabel: 'Slide',
+        s1Title: 'Infrastructure data often lives away from the work',
+        s1Body: 'Important changes are scattered across chats, spreadsheets, paper notes, and disconnected maps.',
+        s1Flow1: 'Chats',
+        s1Flow2: 'Spreadsheets',
+        s1Flow3: 'Paper notes',
+        s1Flow4: 'Delays',
+        s1Flow5: 'Duplicate work',
+        s1Flow6: 'Lost field context',
+        s2Title: 'One system for network operations',
+        s2Body: 'Net Infra SaaS connects infrastructure objects, active tasks, and team work in one digital workspace.',
+        s2Item1: 'Infrastructure map',
+        s2Item2: 'Network cabinets',
+        s2Item3: 'Closures and fiber connections',
+        s2Item4: 'Cable routes',
+        s2Item5: 'Tasks, assignees, and statuses',
+        s3Title: 'Built for teams that build and maintain networks',
+        s3Body: 'The product is aimed at companies where a task must be connected to a real technical object.',
+        s3Item1: 'ISPs',
+        s3Desc1: 'Service providers operating local networks.',
+        s3Item2: 'Fiber operators',
+        s3Desc2: 'Teams managing routes and connection points.',
+        s3Item3: 'Contractors',
+        s3Desc3: 'Field crews delivering telecom work.',
+        s3Item4: 'Supervisors',
+        s3Desc4: 'Managers responsible for quality and visibility.',
+        s4Title: 'Shared infrastructure visibility on the map',
+        s4Body: 'Objects, routes, and task context stay visible for office staff and field engineers.',
+        s4Item1: 'Map objects and connection points',
+        s4Item2: 'Cable route overlays',
+        s4Item3: 'Task-based filtering',
+        s4Item4: 'One operational picture for the whole team',
+        s5Title: 'Structured cabinet documentation',
+        s5Body: 'Cabinets, equipment, ports, cables, and connections can be kept as shared records instead of personal memory or photos.',
+        s5Item1: 'Equipment and port data',
+        s5Item2: 'Cable and connection records',
+        s5Item3: 'Quick object access',
+        s5Item4: 'Changes linked to active tasks',
+        s6Title: 'Field logic stays in the system',
+        s6Body: 'Closures, fibers, route points, and field changes become part of the company knowledge base.',
+        s6Item1: 'Closures and cable records',
+        s6Item2: 'Fiber and splitter logic',
+        s6Item3: 'Route history',
+        s6Item4: 'Lower risk of undocumented changes',
+        s7Title: 'Tasks connect work, people, and objects',
+        s7Body: 'Active tasks group field work and keep responsibility clear from assignment to verification.',
+        s7Step1: 'Create task',
+        s7Step2: 'Assign employees',
+        s7Step3: 'Record infrastructure changes',
+        s7Step4: 'Complete, verify, archive',
+        s8Title: 'Multi-user company workspace',
+        s8Body: 'The system supports company onboarding, employee roles, invitations, and data isolation between companies.',
+        s8Item1: 'Company registration',
+        s8Item2: 'Employee profiles and positions',
+        s8Item3: 'Invites for team members',
+        s8Item4: 'Secure access through Supabase Auth',
+        s9Title: 'Business value',
+        s9Body: 'The team gets one operational picture instead of fragmented manual knowledge transfer.',
+        s9Item1: 'One source of truth',
+        s9Desc1: 'Infrastructure records stay in a shared workspace.',
+        s9Item2: 'Faster coordination',
+        s9Desc2: 'Office and field teams work from the same context.',
+        s9Item3: 'Cleaner documentation',
+        s9Desc3: 'Changes are easier to find and review.',
+        s9Item4: 'Easier scaling',
+        s9Desc4: 'New employees onboard with clearer records.',
+        s10Title: 'Positioning',
+        s10Body: 'Net Infra SaaS is not a generic project manager. It is built around real infrastructure operations.',
+        s10Item1: 'Task trackers',
+        s10Desc1: 'Good for work lists, weak on technical object context.',
+        s10Item2: 'Spreadsheets',
+        s10Desc2: 'Flexible, but hard to keep synchronized in the field.',
+        s10Item3: 'Net Infra SaaS',
+        s10Desc3: 'Tasks, map, objects, and team workflow in one place.',
+        s11Title: 'Recommended demo scenario',
+        s11Body: 'The best product demo follows one real operational process from task creation to documented result.',
+        s11Step1: 'Set up company and roles',
+        s11Step2: 'Create a field task',
+        s11Step3: 'Add cabinets, closures, or routes',
+        s11Step4: 'Review the documented change',
+        s12Title: 'Short pitch',
+        s12Body: 'Net Infra SaaS helps telecom and infrastructure teams document, coordinate, and scale real network operations from a single digital workspace.',
+        s12Item1: 'Infrastructure operations, documented and coordinated',
+        s12Item2: 'One workspace for network teams and field work',
+        s12Item3: 'From field changes to shared network visibility',
+        closingTitle: 'Show the product on one real infrastructure workflow',
+        closingBody: 'Start with a real task, connect it to cabinets, closures, or routes, and show how the result becomes visible to the whole team.',
+        closingStep1: 'Request a demo',
+        closingStep2: 'Use real infrastructure records',
+        closingStep3: 'Map the workflow into Net Infra SaaS'
+      },
+      ru: {
+        print: 'Печать / PDF',
+        mobileHint: 'Стрелки или свайп',
+        eyebrow: 'Презентация продукта',
+        heroTitle: 'Сетевая инфраструктура, полевые работы и координация команды в одном workspace',
+        heroLead: 'Net Infra SaaS помогает телеком- и инфраструктурным командам документировать шкафы, ВОЛС-маршруты, муфты, задачи и полевые изменения в общей операционной системе.',
+        heroPoint1: 'Записи инфраструктуры',
+        heroPoint2: 'Активные полевые задачи',
+        heroPoint3: 'Ответственность команды',
+        slideLabel: 'Слайд',
+        s1Title: 'Инфраструктурные данные часто живут отдельно от работы',
+        s1Body: 'Важные изменения разбросаны по чатам, таблицам, бумажным заметкам и несвязанным картам.',
+        s1Flow1: 'Чаты',
+        s1Flow2: 'Таблицы',
+        s1Flow3: 'Бумажные заметки',
+        s1Flow4: 'Задержки',
+        s1Flow5: 'Дублирование работ',
+        s1Flow6: 'Потеря полевого контекста',
+        s2Title: 'Одна система для сетевой эксплуатации',
+        s2Body: 'Net Infra SaaS связывает инфраструктурные объекты, активные задачи и командную работу в едином цифровом пространстве.',
+        s2Item1: 'Карта инфраструктуры',
+        s2Item2: 'Сетевые шкафы',
+        s2Item3: 'Муфты и волоконные соединения',
+        s2Item4: 'Кабельные маршруты',
+        s2Item5: 'Задачи, исполнители и статусы',
+        s3Title: 'Для команд, которые строят и обслуживают сети',
+        s3Body: 'Продукт подходит компаниям, где задача должна быть связана с реальным техническим объектом.',
+        s3Item1: 'Интернет-провайдеры',
+        s3Desc1: 'Компании, эксплуатирующие локальные сети.',
+        s3Item2: 'Операторы ВОЛС',
+        s3Desc2: 'Команды, ведущие маршруты и точки подключения.',
+        s3Item3: 'Подрядчики',
+        s3Desc3: 'Полевые бригады, выполняющие телеком-работы.',
+        s3Item4: 'Руководители',
+        s3Desc4: 'Ответственные за качество, сроки и прозрачность.',
+        s4Title: 'Общая видимость инфраструктуры на карте',
+        s4Body: 'Объекты, маршруты и контекст задач остаются видимыми для офиса и полевых инженеров.',
+        s4Item1: 'Объекты карты и точки подключения',
+        s4Item2: 'Слои кабельных маршрутов',
+        s4Item3: 'Фильтрация по задачам',
+        s4Item4: 'Единая операционная картина для команды',
+        s5Title: 'Структурированная документация шкафов',
+        s5Body: 'Шкафы, оборудование, порты, кабели и соединения хранятся как общие записи, а не как память одного инженера или набор фотографий.',
+        s5Item1: 'Оборудование и порты',
+        s5Item2: 'Кабели и подключения',
+        s5Item3: 'Быстрый доступ к объекту',
+        s5Item4: 'Изменения в контексте активной задачи',
+        s6Title: 'Полевая логика остается в системе',
+        s6Body: 'Муфты, волокна, точки маршрутов и изменения после выезда становятся частью базы знаний компании.',
+        s6Item1: 'Записи муфт и кабелей',
+        s6Item2: 'Логика волокон и сплиттеров',
+        s6Item3: 'История маршрутов',
+        s6Item4: 'Меньше недокументированных изменений',
+        s7Title: 'Задачи связывают работы, людей и объекты',
+        s7Body: 'Активные задачи группируют полевые работы и сохраняют понятную ответственность от назначения до проверки.',
+        s7Step1: 'Создать задачу',
+        s7Step2: 'Назначить сотрудников',
+        s7Step3: 'Зафиксировать изменения инфраструктуры',
+        s7Step4: 'Выполнить, проверить, архивировать',
+        s8Title: 'Многопользовательское пространство компании',
+        s8Body: 'Система поддерживает создание компании, роли сотрудников, приглашения и изоляцию данных между организациями.',
+        s8Item1: 'Регистрация компании',
+        s8Item2: 'Профили и должности сотрудников',
+        s8Item3: 'Приглашения для команды',
+        s8Item4: 'Безопасный доступ через Supabase Auth',
+        s9Title: 'Ценность для бизнеса',
+        s9Body: 'Команда получает одну операционную картину вместо ручной передачи разрозненных знаний.',
+        s9Item1: 'Единый источник правды',
+        s9Desc1: 'Инфраструктурные записи остаются в общем workspace.',
+        s9Item2: 'Быстрее координация',
+        s9Desc2: 'Офис и поле работают из одного контекста.',
+        s9Item3: 'Чище документация',
+        s9Desc3: 'Изменения проще найти и проверить.',
+        s9Item4: 'Проще масштабирование',
+        s9Desc4: 'Новые сотрудники быстрее входят в работу.',
+        s10Title: 'Позиционирование',
+        s10Body: 'Net Infra SaaS - не универсальный проектный менеджер. Он построен вокруг реальной инфраструктурной эксплуатации.',
+        s10Item1: 'Таск-трекеры',
+        s10Desc1: 'Удобны для списка работ, но слабы в техническом контексте объектов.',
+        s10Item2: 'Таблицы',
+        s10Desc2: 'Гибкие, но плохо синхронизируются с полевой работой.',
+        s10Item3: 'Net Infra SaaS',
+        s10Desc3: 'Задачи, карта, объекты и командный процесс в одном месте.',
+        s11Title: 'Рекомендуемый сценарий демо',
+        s11Body: 'Лучшее демо продукта проходит через один реальный операционный процесс: от постановки задачи до задокументированного результата.',
+        s11Step1: 'Настроить компанию и роли',
+        s11Step2: 'Создать полевую задачу',
+        s11Step3: 'Добавить шкафы, муфты или маршруты',
+        s11Step4: 'Проверить зафиксированное изменение',
+        s12Title: 'Короткий pitch',
+        s12Body: 'Net Infra SaaS помогает телеком- и инфраструктурным командам документировать, координировать и масштабировать реальные сетевые операции из одного цифрового workspace.',
+        s12Item1: 'Инфраструктурная работа, собранная и скоординированная',
+        s12Item2: 'Один workspace для сетевых команд и полевых работ',
+        s12Item3: 'От полевого изменения до общей сетевой видимости',
+        closingTitle: 'Покажите продукт на одном реальном инфраструктурном процессе',
+        closingBody: 'Начните с реальной задачи, свяжите ее со шкафами, муфтами или маршрутами и покажите, как результат становится видимым для всей команды.',
+        closingStep1: 'Запросить демо',
+        closingStep2: 'Взять реальные записи инфраструктуры',
+        closingStep3: 'Перенести процесс в Net Infra SaaS'
+      }
+    };
+
+    const supportedLanguages = ['en', 'ru'];
+    const slides = Array.from(document.querySelectorAll('[data-slide]'));
+    const thumbs = document.querySelector('[data-thumbs]');
+    const count = document.querySelector('[data-count]');
+    const progress = document.querySelector('[data-progress]');
+    const params = new URLSearchParams(window.location.search);
+    const requestedLanguage = params.get('lang');
+    const storedLanguage = window.localStorage.getItem('net-infra-presentation-lang');
+    const browserLanguage = navigator.language && navigator.language.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+    let activeLanguage = supportedLanguages.includes(requestedLanguage) ? requestedLanguage : storedLanguage || browserLanguage;
+    let activeSlide = slideIndexFromHash();
+
+    if (!supportedLanguages.includes(activeLanguage)) {
+      activeLanguage = 'en';
+    }
+
+    slides.forEach((_, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = String(index + 1);
+      button.addEventListener('click', () => goToSlide(index));
+      thumbs.appendChild(button);
+    });
+
+    function slideIndexFromHash() {
+      const match = window.location.hash.match(/slide-(\d+)/);
+      if (!match) {
+        return 0;
+      }
+      const parsed = Number(match[1]) - 1;
+      return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 0), slides.length - 1) : 0;
+    }
+
+    function applyLanguage(language) {
+      const copy = translations[language] || translations.en;
+      document.documentElement.lang = language;
+      document.title = language === 'ru'
+        ? 'Net Infra SaaS | Презентация продукта'
+        : 'Net Infra SaaS | Product Presentation';
+
+      document.querySelectorAll('[data-i18n]').forEach((node) => {
+        const key = node.dataset.i18n;
+        if (copy[key]) {
+          node.textContent = copy[key];
+        }
+      });
+
+      document.querySelectorAll('[data-lang]').forEach((button) => {
+        button.setAttribute('aria-pressed', button.dataset.lang === language ? 'true' : 'false');
+      });
+
+      window.localStorage.setItem('net-infra-presentation-lang', language);
+    }
+
+    function goToSlide(index, updateHash = true) {
+      const next = Math.min(Math.max(index, 0), slides.length - 1);
+      activeSlide = next;
+
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle('is-active', slideIndex === next);
+        slide.classList.toggle('is-before', slideIndex < next);
+        slide.setAttribute('aria-hidden', slideIndex === next ? 'false' : 'true');
+      });
+
+      Array.from(thumbs.children).forEach((button, thumbIndex) => {
+        button.setAttribute('aria-current', thumbIndex === next ? 'true' : 'false');
+      });
+
+      count.textContent = `${next + 1} / ${slides.length}`;
+      progress.style.width = `${((next + 1) / slides.length) * 100}%`;
+      document.querySelector('[data-action="prev"]').disabled = next === 0;
+      document.querySelector('[data-action="next"]').disabled = next === slides.length - 1;
+
+      if (updateHash) {
+        const nextHash = `#slide-${next + 1}`;
+        if (window.location.hash !== nextHash) {
+          history.replaceState(null, '', nextHash);
+        }
+      }
+    }
+
+    function nextSlide() {
+      goToSlide(activeSlide + 1);
+    }
+
+    function prevSlide() {
+      goToSlide(activeSlide - 1);
+    }
+
+    document.querySelectorAll('[data-lang]').forEach((button) => {
+      button.addEventListener('click', () => applyLanguage(button.dataset.lang));
+    });
+
+    document.querySelector('[data-action="print"]').addEventListener('click', () => window.print());
+    document.querySelector('[data-action="next"]').addEventListener('click', nextSlide);
+    document.querySelector('[data-action="prev"]').addEventListener('click', prevSlide);
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+        event.preventDefault();
+        nextSlide();
+      }
+      if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+        event.preventDefault();
+        prevSlide();
+      }
+      if (event.key === 'Home') {
+        event.preventDefault();
+        goToSlide(0);
+      }
+      if (event.key === 'End') {
+        event.preventDefault();
+        goToSlide(slides.length - 1);
+      }
+    });
+
+    let touchStartX = null;
+    let touchStartY = null;
+
+    window.addEventListener('touchstart', (event) => {
+      const touch = event.changedTouches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    }, { passive: true });
+
+    window.addEventListener('touchend', (event) => {
+      if (touchStartX === null || touchStartY === null) {
+        return;
+      }
+
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+
+      if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        deltaX < 0 ? nextSlide() : prevSlide();
+      }
+
+      touchStartX = null;
+      touchStartY = null;
+    }, { passive: true });
+
+    window.addEventListener('hashchange', () => goToSlide(slideIndexFromHash(), false));
+
+    applyLanguage(activeLanguage);
+    goToSlide(activeSlide, window.location.hash === '');
+  </script>
+</body>
+</html>

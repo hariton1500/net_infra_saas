@@ -4,6 +4,7 @@ import '../auth/auth_controller.dart';
 import '../core/app_i18n.dart';
 import '../core/app_logger.dart';
 import '../core/employee_positions.dart';
+import '../core/product_presentation_launcher.dart';
 import '../widgets/screen_instruction.dart';
 
 class AuthPage extends StatefulWidget {
@@ -191,7 +192,10 @@ class _AuthPageState extends State<AuthPage>
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const _BrandPanel(isCompact: true),
+                            _BrandPanel(
+                              isCompact: true,
+                              onOpenPresentation: _openProductPresentation,
+                            ),
                             const SizedBox(height: 24),
                             authCard,
                           ],
@@ -201,7 +205,12 @@ class _AuthPageState extends State<AuthPage>
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Expanded(child: _BrandPanel(isCompact: false)),
+                          Expanded(
+                            child: _BrandPanel(
+                              isCompact: false,
+                              onOpenPresentation: _openProductPresentation,
+                            ),
+                          ),
                           const SizedBox(width: 24),
                           Expanded(child: authCard),
                         ],
@@ -406,6 +415,15 @@ class _AuthPageState extends State<AuthPage>
       _signInEmailController.text = email;
     }
   }
+
+  Future<void> _openProductPresentation() async {
+    final didOpen = await openProductPresentation(
+      AppI18n.instance.locale.languageCode,
+    );
+    if (!didOpen && mounted) {
+      _showMessage(tr('Product presentation is available in the web version.'));
+    }
+  }
 }
 
 class _BackgroundShell extends StatelessWidget {
@@ -587,9 +605,13 @@ class _AuthHelpSection extends StatelessWidget {
 }
 
 class _BrandPanel extends StatelessWidget {
-  const _BrandPanel({required this.isCompact});
+  const _BrandPanel({
+    required this.isCompact,
+    required this.onOpenPresentation,
+  });
 
   final bool isCompact;
+  final VoidCallback onOpenPresentation;
 
   @override
   Widget build(BuildContext context) {
@@ -620,6 +642,25 @@ class _BrandPanel extends StatelessWidget {
             Text(
               tr(
                 'Access the company workspace, create the first organization, and prepare employee access on one shared platform.',
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onOpenPresentation,
+                icon: const Icon(Icons.slideshow_rounded),
+                label: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Text(
+                    tr('View product presentation'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
             ),
             SizedBox(height: isCompact ? 24 : 40),

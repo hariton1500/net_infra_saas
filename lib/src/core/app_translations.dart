@@ -40,6 +40,9 @@ const Map<String, Map<String, String>> appTranslations = {
         'Управление инфраструктурой для компаний и команд',
     'Access the company workspace, create the first organization, and prepare employee access on one shared platform.':
         'Входите в рабочее пространство компании, создавайте первую организацию и готовьте доступ сотрудников на общей платформе.',
+    'View product presentation': 'Посмотреть презентацию продукта',
+    'Product presentation is available in the web version.':
+        'Презентация продукта доступна в web-версии.',
     'One account per company': 'Один аккаунт на компанию',
     'The owner creates the workspace and then adds employees.':
         'Владелец создаёт рабочее пространство и затем добавляет сотрудников.',
