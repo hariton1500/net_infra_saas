@@ -100,6 +100,7 @@ class _CableLinesPageState extends State<CableLinesPage> {
     super.initState();
     _syncRepository = CompanyModuleSyncRepository(
       client: widget.controller.client,
+      companyId: widget.controller.membership?.companyId,
     );
     _loadRoutes();
   }

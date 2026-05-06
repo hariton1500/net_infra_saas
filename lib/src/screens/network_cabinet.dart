@@ -175,6 +175,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     super.initState();
     _syncRepository = CompanyModuleSyncRepository(
       client: widget.controller.client,
+      companyId: widget.controller.membership?.companyId,
     );
     _loadFromStorage();
     _startAutoSync();

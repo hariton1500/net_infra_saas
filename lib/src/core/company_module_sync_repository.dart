@@ -20,14 +20,18 @@ class CompanyModuleSyncRepository {
   static const String _activeProjectAuthorEmailKey =
       'projects.active.author_email.v1';
 
-  const CompanyModuleSyncRepository({required SupabaseClient client})
-    : _client = client;
+  const CompanyModuleSyncRepository({
+    required SupabaseClient client,
+    required String? companyId,
+  }) : _client = client,
+       _companyId = companyId;
 
   final SupabaseClient _client;
+  final String? _companyId;
 
   Future<List<NotebookRecord>> readCache(String cacheKey) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(cacheKey);
+    final raw = prefs.getString(_scopedKey(cacheKey));
     if (raw == null || raw.isEmpty) {
       return <NotebookRecord>[];
     }
@@ -40,18 +44,18 @@ class CompanyModuleSyncRepository {
 
   Future<void> writeCache(String cacheKey, List<NotebookRecord> records) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(cacheKey, jsonEncode(_jsonSafe(records)));
+    await prefs.setString(_scopedKey(cacheKey), jsonEncode(_jsonSafe(records)));
   }
 
   Future<void> removeCache(String cacheKey) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(cacheKey);
+    await prefs.remove(_scopedKey(cacheKey));
   }
 
   Future<LatLng?> readLastPickedLocation() async {
     final prefs = await SharedPreferences.getInstance();
-    final lat = prefs.getDouble(_lastLocationLatKey);
-    final lng = prefs.getDouble(_lastLocationLngKey);
+    final lat = prefs.getDouble(_scopedKey(_lastLocationLatKey));
+    final lng = prefs.getDouble(_scopedKey(_lastLocationLngKey));
     if (lat == null || lng == null) {
       return null;
     }
@@ -60,53 +64,67 @@ class CompanyModuleSyncRepository {
 
   Future<void> writeLastPickedLocation(LatLng point) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_lastLocationLatKey, point.latitude);
-    await prefs.setDouble(_lastLocationLngKey, point.longitude);
+    await prefs.setDouble(_scopedKey(_lastLocationLatKey), point.latitude);
+    await prefs.setDouble(_scopedKey(_lastLocationLngKey), point.longitude);
   }
 
   Future<ProjectSelection?> readActiveProject() async {
     final prefs = await SharedPreferences.getInstance();
-    final id = prefs.getInt(_activeProjectIdKey);
-    final name = prefs.getString(_activeProjectNameKey)?.trim();
+    final id = prefs.getInt(_scopedKey(_activeProjectIdKey));
+    final name = prefs.getString(_scopedKey(_activeProjectNameKey))?.trim();
     if (id == null || name == null || name.isEmpty) {
       return null;
     }
     return ProjectSelection(
       id: id,
       name: name,
-      authorUserId: prefs.getString(_activeProjectAuthorUserIdKey)?.trim(),
-      authorEmail:
-          prefs.getString(_activeProjectAuthorEmailKey)?.trim().toLowerCase(),
+      authorUserId: prefs
+          .getString(_scopedKey(_activeProjectAuthorUserIdKey))
+          ?.trim(),
+      authorEmail: prefs
+          .getString(_scopedKey(_activeProjectAuthorEmailKey))
+          ?.trim()
+          .toLowerCase(),
     );
   }
 
   Future<void> writeActiveProject(ProjectSelection project) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_activeProjectIdKey, project.id);
-    await prefs.setString(_activeProjectNameKey, project.name);
+    await prefs.setInt(_scopedKey(_activeProjectIdKey), project.id);
+    await prefs.setString(_scopedKey(_activeProjectNameKey), project.name);
     if ((project.authorUserId ?? '').trim().isNotEmpty) {
       await prefs.setString(
-        _activeProjectAuthorUserIdKey,
+        _scopedKey(_activeProjectAuthorUserIdKey),
         project.authorUserId!.trim(),
       );
     } else {
-      await prefs.remove(_activeProjectAuthorUserIdKey);
+      await prefs.remove(_scopedKey(_activeProjectAuthorUserIdKey));
     }
     final normalizedAuthorEmail =
         project.authorEmail?.trim().toLowerCase() ?? '';
     if (normalizedAuthorEmail.isNotEmpty) {
-      await prefs.setString(_activeProjectAuthorEmailKey, normalizedAuthorEmail);
+      await prefs.setString(
+        _scopedKey(_activeProjectAuthorEmailKey),
+        normalizedAuthorEmail,
+      );
     } else {
-      await prefs.remove(_activeProjectAuthorEmailKey);
+      await prefs.remove(_scopedKey(_activeProjectAuthorEmailKey));
     }
   }
 
   Future<void> clearActiveProject() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_activeProjectIdKey);
-    await prefs.remove(_activeProjectNameKey);
-    await prefs.remove(_activeProjectAuthorUserIdKey);
-    await prefs.remove(_activeProjectAuthorEmailKey);
+    await prefs.remove(_scopedKey(_activeProjectIdKey));
+    await prefs.remove(_scopedKey(_activeProjectNameKey));
+    await prefs.remove(_scopedKey(_activeProjectAuthorUserIdKey));
+    await prefs.remove(_scopedKey(_activeProjectAuthorEmailKey));
+  }
+
+  String _scopedKey(String key) {
+    final companyId = _companyId?.trim().isNotEmpty == true
+        ? _companyId!.trim()
+        : 'unassigned';
+    return '$key.company.$companyId';
   }
 
   Future<bool> appendTaskWorkLog({
@@ -120,7 +138,9 @@ class CompanyModuleSyncRepository {
     int? targetRecordId,
   }) async {
     final records = await readCache(projectsCacheKey);
-    final index = records.indexWhere((record) => record['id'] == activeProject.id);
+    final index = records.indexWhere(
+      (record) => record['id'] == activeProject.id,
+    );
     if (index == -1) {
       return false;
     }
@@ -159,16 +179,20 @@ class CompanyModuleSyncRepository {
         ProjectSelection(
           id: activeProject.id,
           name: activeProject.name,
-          authorUserId:
-              normalizedAuthorUserId.isEmpty ? null : normalizedAuthorUserId,
-          authorEmail:
-              normalizedAuthorEmail.isEmpty ? null : normalizedAuthorEmail,
+          authorUserId: normalizedAuthorUserId.isEmpty
+              ? null
+              : normalizedAuthorUserId,
+          authorEmail: normalizedAuthorEmail.isEmpty
+              ? null
+              : normalizedAuthorEmail,
         ),
       );
     }
 
     final normalizedTargetScreen = targetScreen?.trim();
-    final workLog = List<Map<String, dynamic>>.from(task['work_log'] ?? const []);
+    final workLog = List<Map<String, dynamic>>.from(
+      task['work_log'] ?? const [],
+    );
     workLog.add({
       'at': DateTime.now(),
       'kind': kind,
@@ -363,7 +387,9 @@ class CompanyModuleSyncRepository {
   NotebookRecord _normalizeStoredRecord(NotebookRecord source) {
     final record = Map<String, dynamic>.from(source);
     record['updated_at'] = _parseTime(record['updated_at']);
-    record['task_id'] = _asNullableInt(record['task_id'] ?? record['project_id']);
+    record['task_id'] = _asNullableInt(
+      record['task_id'] ?? record['project_id'],
+    );
     record['dirty'] = record['dirty'] == true;
     record['deleted'] = record['deleted'] == true;
     return record;
@@ -376,7 +402,9 @@ class CompanyModuleSyncRepository {
 
     final record = Map<String, dynamic>.from(payload);
     record['updated_at'] = _parseTime(record['updated_at']);
-    record['task_id'] = _asNullableInt(record['task_id'] ?? record['project_id']);
+    record['task_id'] = _asNullableInt(
+      record['task_id'] ?? record['project_id'],
+    );
     record['dirty'] = false;
     record['deleted'] = false;
     return record;
@@ -432,9 +460,7 @@ class CompanyModuleSyncRepository {
     }
 
     if (value is List) {
-      return value
-          .map(_stripTaskMarkers)
-          .toList(growable: false);
+      return value.map(_stripTaskMarkers).toList(growable: false);
     }
 
     return value;

@@ -328,6 +328,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     _activeTraceRequest = widget.initialTraceRequest;
     _syncRepository = CompanyModuleSyncRepository(
       client: widget.controller.client,
+      companyId: widget.controller.membership?.companyId,
     );
     unawaited(_loadInstructionBannerPreference());
     _loadMapData();

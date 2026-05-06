@@ -40,6 +40,7 @@ class _StartPageState extends State<StartPage> {
     super.initState();
     _syncRepository = CompanyModuleSyncRepository(
       client: widget.controller.client,
+      companyId: widget.controller.membership?.companyId,
     );
     _cleanupLegacyCaches();
     _loadProjects();
