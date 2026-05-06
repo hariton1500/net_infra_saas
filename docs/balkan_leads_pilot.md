@@ -62,6 +62,15 @@ First wave sent from Gmail on 2026-05-05.
 | Tehnoline Telekom | internet@tehnoline.hr | Sent |
 | Optix Infra | info@optix-infra.hr | Sent |
 
+Replies checked on 2026-05-06:
+
+| Company | Reply status | Next action |
+|---|---|---|
+| Interfiber | Interested; asked for a demo user to see how the system works, then discuss details. | Create demo access or send demo link and short Albanian reply. |
+| Optix Infra | Interested/curious; asked for more details, presentation, or website link because they could not find public information. | Send a short presentation or product details and clarify website/status. |
+
+No delivery failure messages found in Gmail for this outreach as of 2026-05-06.
+
 Not sent yet because the available public path is a contact form, WhatsApp, phone, or an email hidden by the website crawler:
 
 | Company | Next action |

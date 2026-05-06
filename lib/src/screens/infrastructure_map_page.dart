@@ -15,6 +15,8 @@ import '../core/map_tile_providers.dart';
 import '../core/project_scope.dart';
 import '../widgets/responsive_app_bar_actions.dart';
 import '../widgets/screen_instruction.dart';
+import 'muff_notebook.dart';
+import 'network_cabinet.dart';
 
 class InfrastructureSignalTraceRequest {
   const InfrastructureSignalTraceRequest({
@@ -150,6 +152,22 @@ class _RouteSplitDialogResult {
   final String name;
   final String comment;
   final List<int?> fiberMap;
+}
+
+class _MapObjectDialogResult {
+  const _MapObjectDialogResult({
+    required this.name,
+    required this.area,
+    required this.location,
+    required this.comment,
+    required this.isPonBox,
+  });
+
+  final String name;
+  final String area;
+  final String location;
+  final String comment;
+  final bool isPonBox;
 }
 
 enum _TraceEndpointKind { cabinetPort, cableFiber, splitterPort }
@@ -290,9 +308,11 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   bool _routeEditMode = false;
   bool _routeCreateMode = false;
   bool _routeSplitMode = false;
+  bool _mapObjectCreateMode = false;
   bool _legendExpanded = false;
   bool _showInstructionBanner = true;
   bool _showCableRoutes = true;
+  bool _showEntityLabels = true;
   bool _mapReady = false;
   Set<_InfrastructureEntityType> _visibleEntityTypes = {
     _InfrastructureEntityType.muff,
@@ -1488,6 +1508,63 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         .toList(growable: false);
   }
 
+  bool _canOpenClosureNotebook(_InfrastructureEntity entity) {
+    return entity.type == _InfrastructureEntityType.muff ||
+        entity.type == _InfrastructureEntityType.ponBox;
+  }
+
+  bool _canOpenObjectNotebook(_InfrastructureEntity entity) {
+    return _canOpenClosureNotebook(entity) ||
+        entity.type == _InfrastructureEntityType.cabinet;
+  }
+
+  String _openObjectNotebookLabel(_InfrastructureEntity entity) {
+    return entity.type == _InfrastructureEntityType.cabinet
+        ? tr('Open in network cabinets')
+        : tr('Open in closure notebook');
+  }
+
+  Future<void> _openClosureNotebookForEntity(
+    _InfrastructureEntity entity,
+  ) async {
+    if (!_canOpenClosureNotebook(entity)) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MuffNotebookPage(
+          controller: widget.controller,
+          initialMuffId: entity.id,
+        ),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    await _loadMapData();
+  }
+
+  Future<void> _openObjectNotebookForEntity(
+    _InfrastructureEntity entity,
+  ) async {
+    if (entity.type == _InfrastructureEntityType.cabinet) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => CabinetNotebookPage(
+            controller: widget.controller,
+            initialCabinetId: entity.id,
+          ),
+        ),
+      );
+      if (!mounted) {
+        return;
+      }
+      await _loadMapData();
+      return;
+    }
+    await _openClosureNotebookForEntity(entity);
+  }
+
   void _showEntitySheet(_InfrastructureEntity entity) {
     final relatedRoutes = _routesForEntity(entity);
     final metaSummary = entity.meta.entries
@@ -1568,6 +1645,22 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                                     ).colorScheme.onSurfaceVariant,
                                     fontWeight: FontWeight.w600,
                                   ),
+                            ),
+                          ],
+                          if (_canOpenObjectNotebook(entity)) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton.icon(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  unawaited(
+                                    _openObjectNotebookForEntity(entity),
+                                  );
+                                },
+                                icon: const Icon(Icons.open_in_new_rounded),
+                                label: Text(_openObjectNotebookLabel(entity)),
+                              ),
                             ),
                           ],
                         ],
@@ -1727,10 +1820,31 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   }
 
   bool get _shouldClusterEntities =>
-      !_routeCreateMode && !_routeEditMode && !_routeSplitMode && _mapZoom < 16;
+      !_routeCreateMode &&
+      !_routeEditMode &&
+      !_routeSplitMode &&
+      !_mapObjectCreateMode &&
+      _mapZoom < 16;
 
   bool get _useCompactEntityMarkers =>
-      _mapZoom < 15 && !_routeCreateMode && !_routeEditMode && !_routeSplitMode;
+      _mapZoom < 15 &&
+      !_routeCreateMode &&
+      !_routeEditMode &&
+      !_routeSplitMode &&
+      !_mapObjectCreateMode;
+
+  InteractionOptions get _mapInteractionOptions {
+    if (_routeEditMode && _selectedRoute != null) {
+      return const InteractionOptions(
+        flags:
+            InteractiveFlag.all &
+            ~InteractiveFlag.drag &
+            ~InteractiveFlag.flingAnimation &
+            ~InteractiveFlag.doubleTapDragZoom,
+      );
+    }
+    return const InteractionOptions();
+  }
 
   double get _clusterCellSize {
     if (_mapZoom < 13.5) {
@@ -1860,6 +1974,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _selectedRouteId = route.id;
       _routeCreateMode = false;
       _routeSplitMode = false;
+      _mapObjectCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -1874,6 +1989,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _selectedRouteId = null;
       _routeEditMode = false;
       _routeSplitMode = false;
+      _mapObjectCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -1885,6 +2001,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeCreateMode = !_routeCreateMode;
       _routeEditMode = false;
       _routeSplitMode = false;
+      _mapObjectCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -1899,6 +2016,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeEditMode = !_routeEditMode;
       _routeCreateMode = false;
       _routeSplitMode = false;
+      _mapObjectCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -1913,6 +2031,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeSplitMode = !_routeSplitMode;
       _routeCreateMode = false;
       _routeEditMode = false;
+      _mapObjectCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -1922,6 +2041,19 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         tr('Tap the selected route where the closure must be installed.'),
       );
     }
+  }
+
+  void _toggleMapObjectCreateMode() {
+    setState(() {
+      _mapObjectCreateMode = !_mapObjectCreateMode;
+      _routeCreateMode = false;
+      _routeEditMode = false;
+      _routeSplitMode = false;
+      _selectedRouteId = null;
+      _pendingStartEntityKey = null;
+      _pendingStartCableId = null;
+      _pendingRequiredFibers = null;
+    });
   }
 
   void handleEntityTapLegacy(_InfrastructureEntity entity) {
@@ -3276,6 +3408,180 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     return _RouteSplitTarget(insertIndex: bestIndex, point: bestPoint);
   }
 
+  Future<_MapObjectDialogResult?> _showMapObjectDialog({
+    required LatLng point,
+    required String suggestedName,
+  }) async {
+    final nameController = TextEditingController(text: suggestedName);
+    final areaController = TextEditingController();
+    final locationController = TextEditingController();
+    final commentController = TextEditingController();
+    var isPonBox = false;
+    String? errorText;
+
+    final result = await showDialog<_MapObjectDialogResult>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(tr('New closure or PON box')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: tr('Name'),
+                        errorText: errorText,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: areaController,
+                      decoration: InputDecoration(labelText: tr('Area')),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: locationController,
+                      decoration: InputDecoration(
+                        labelText: tr('Address/place'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: commentController,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: InputDecoration(labelText: tr('Comment')),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(tr('This is a PON box')),
+                      value: isPonBox,
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          isPonBox = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(tr('Cancel')),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) {
+                      setStateDialog(() {
+                        errorText = tr('Name is required.');
+                      });
+                      return;
+                    }
+                    Navigator.of(context).pop(
+                      _MapObjectDialogResult(
+                        name: name,
+                        area: areaController.text.trim(),
+                        location: locationController.text.trim(),
+                        comment: commentController.text.trim(),
+                        isPonBox: isPonBox,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add_location_alt_outlined),
+                  label: Text(tr('Create')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    areaController.dispose();
+    locationController.dispose();
+    commentController.dispose();
+    return result;
+  }
+
+  Future<void> _createMapObjectAt(LatLng point) async {
+    if (_syncingRoutes) {
+      return;
+    }
+    final muffId = _nextMuffId(_muffRecords);
+    final result = await _showMapObjectDialog(
+      point: point,
+      suggestedName: 'M-$muffId',
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final record = <String, dynamic>{
+      'id': muffId,
+      'name': result.name,
+      'district': result.area,
+      'location': result.location,
+      'comment': result.comment,
+      'is_pon_box': result.isPonBox,
+      'location_lat': point.latitude,
+      'location_lng': point.longitude,
+      'updated_at': now,
+      'updated_by': _actorEmail,
+      'created_by': _actorEmail,
+      'deleted': false,
+      'dirty': true,
+      'splitters': <Map<String, dynamic>>[],
+      'cables': <Map<String, dynamic>>[],
+      'connections': <Map<String, dynamic>>[],
+    };
+
+    final nextMuffs =
+        _muffRecords
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true)
+          ..add(record);
+
+    await _persistAllRecords(
+      nextRouteRecords: _routeRecords
+          .map((record) => _syncRepository.clone(record))
+          .toList(growable: true),
+      nextMuffRecords: nextMuffs,
+      nextCabinetRecords: _cabinetRecords
+          .map((record) => _syncRepository.clone(record))
+          .toList(growable: true),
+      selectedRouteId: _selectedRouteId,
+      preserveModes: true,
+    );
+    await _recordTaskAddition(
+      kind: result.isPonBox ? 'PON box added' : 'Closure added',
+      summary: result.name,
+      targetRecordId: muffId,
+    );
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _mapObjectCreateMode = false;
+    });
+    _showSnackBar(result.isPonBox ? tr('PON box added') : tr('Closure added'));
+  }
+
   double _routeDistanceToTap(_CableRoute route, Offset tapOffset) {
     var bestDistance = double.infinity;
     for (var i = 0; i < route.points.length - 1; i++) {
@@ -3337,6 +3643,11 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   void _handleMapTap(TapPosition tapPosition, LatLng point) {
     final relative = tapPosition.relative;
     if (relative == null) {
+      return;
+    }
+
+    if (_mapObjectCreateMode) {
+      unawaited(_createMapObjectAt(point));
       return;
     }
 
@@ -3512,15 +3823,36 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                                   });
                                 },
                               ),
+                              FilterChip(
+                                selected: _showEntityLabels,
+                                avatar: const Icon(
+                                  Icons.title_rounded,
+                                  size: 16,
+                                ),
+                                label: Text(tr('Names')),
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _showEntityLabels = selected;
+                                  });
+                                },
+                              ),
                             ],
                           ),
                           if (_routeCreateMode ||
                               _routeEditMode ||
                               _routeSplitMode ||
+                              _mapObjectCreateMode ||
                               _traceSummary != null ||
-                              (_routeEditMode && selectedRoute != null))
+                              selectedRoute != null)
                             const SizedBox(height: 12),
-                          if (_routeCreateMode)
+                          if (_mapObjectCreateMode)
+                            Text(
+                              tr(
+                                'Tap the map where the closure or PON box should be created.',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else if (_routeCreateMode)
                             Text(
                               _pendingStartEntityKey == null
                                   ? tr(
@@ -3543,9 +3875,11 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                               ),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
-                          if (_routeEditMode && selectedRoute != null)
+                          if (selectedRoute != null)
                             Padding(
-                              padding: const EdgeInsets.only(top: 8),
+                              padding: EdgeInsets.only(
+                                top: _routeEditMode ? 8 : 0,
+                              ),
                               child: Text(
                                 tr('Route length: {value}', {
                                   'value': _formatRouteLength(
@@ -3928,46 +4262,63 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         ? const Color(0xFF6B7280).withValues(alpha: 0.2)
         : color.withValues(alpha: compact ? 0.72 : (isCandidate ? 0.28 : 0.2));
 
+    final markerBody = GestureDetector(
+      onTap: () => _handleEntityTapV2(entity),
+      child: Container(
+        decoration: BoxDecoration(
+          color: fillColor,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: borderColor,
+            width: isPending || isTraced ? 3 : (compact ? 1.5 : 2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  (isPending
+                          ? const Color(0xFFFFA629)
+                          : isTraced
+                          ? const Color(0xFFFFB347)
+                          : color)
+                      .withValues(alpha: compact ? 0.22 : 0.32),
+              blurRadius: compact ? 8 : 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(
+          _entityIcon(entity.type),
+          size: compact ? 15 : 24,
+          color: isPending
+              ? const Color(0xFFFFA629)
+              : isTraced
+              ? const Color(0xFFFFB347)
+              : isDimmed
+              ? Colors.white38
+              : (_routeCreateMode && isCandidate ? color : Colors.white),
+        ),
+      ),
+    );
+
     return Marker(
       point: entity.point,
       width: size,
       height: size,
-      child: GestureDetector(
-        onTap: () => _handleEntityTapV2(entity),
-        child: Container(
-          decoration: BoxDecoration(
-            color: fillColor,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: borderColor,
-              width: isPending || isTraced ? 3 : (compact ? 1.5 : 2),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color:
-                    (isPending
-                            ? const Color(0xFFFFA629)
-                            : isTraced
-                            ? const Color(0xFFFFB347)
-                            : color)
-                        .withValues(alpha: compact ? 0.22 : 0.32),
-                blurRadius: compact ? 8 : 14,
-                offset: const Offset(0, 4),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          markerBody,
+          if (_showEntityLabels)
+            Positioned(
+              top: size + 4,
+              left: -58,
+              right: -58,
+              child: IgnorePointer(
+                child: Center(child: _EntityNameLabel(name: entity.name)),
               ),
-            ],
-          ),
-          child: Icon(
-            _entityIcon(entity.type),
-            size: compact ? 15 : 24,
-            color: isPending
-                ? const Color(0xFFFFA629)
-                : isTraced
-                ? const Color(0xFFFFB347)
-                : isDimmed
-                ? Colors.white38
-                : (_routeCreateMode && isCandidate ? color : Colors.white),
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -4064,25 +4415,39 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             final point = selectedRoute.points[pointIndex];
             return Marker(
               point: point,
-              width: 26,
-              height: 26,
+              width: 56,
+              height: 56,
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onPanUpdate: (details) => _dragIntermediatePoint(
                   selectedRoute.id,
                   pointIndex,
                   details,
                 ),
                 onPanEnd: (_) => _syncSelectedRoutePoints(),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFA629),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.drag_indicator_rounded,
-                    size: 14,
-                    color: Color(0xFF071526),
+                child: Center(
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFA629),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFFFFA629,
+                          ).withValues(alpha: 0.32),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.drag_indicator_rounded,
+                      size: 16,
+                      color: Color(0xFF071526),
+                    ),
                   ),
                 ),
               ),
@@ -4100,6 +4465,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
               initialCenter: center,
               initialZoom: _mapZoom,
               maxZoom: 19,
+              interactionOptions: _mapInteractionOptions,
               onMapReady: () {
                 if (!mounted) {
                   return;
@@ -4305,6 +4671,19 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                   onPressed: _clearTraceHighlight,
                   icon: const Icon(Icons.alt_route_rounded),
                 ),
+              IconButton(
+                tooltip: _mapObjectCreateMode
+                    ? tr('Cancel object creation')
+                    : tr('New closure or PON box'),
+                onPressed: _loading || _syncingRoutes
+                    ? null
+                    : _toggleMapObjectCreateMode,
+                icon: Icon(
+                  _mapObjectCreateMode
+                      ? Icons.close_rounded
+                      : Icons.add_location_alt_outlined,
+                ),
+              ),
               IconButton(
                 tooltip: _routeCreateMode
                     ? tr('Cancel route creation')
@@ -4906,6 +5285,36 @@ class _LegendRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(child: Text(label)),
       ],
+    );
+  }
+}
+
+class _EntityNameLabel extends StatelessWidget {
+  const _EntityNameLabel({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF071526).withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        child: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }

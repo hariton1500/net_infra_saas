@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -78,27 +79,18 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   List<Map<String, dynamic>> _projectRecords = const [];
   final MapController _mapController = MapController();
   late final CompanyModuleSyncRepository _syncRepository;
-  final GlobalKey _fiberAreaKey = GlobalKey();
-  final Map<String, GlobalKey> _fiberKeys = {};
-  final Set<String> _currentFiberKeys = {};
-  final Map<String, Offset> _fiberOffsets = {};
-  final Map<String, Color> _fiberColorByKey = {};
-  final Map<String, int> _fiberSideByKey = {};
-
+  final _ConnectionAnchorRegistry _connectionAnchors =
+      _ConnectionAnchorRegistry();
   bool _loading = true;
   bool _syncing = false;
   bool _mapView = false;
-  bool _showConnectionLineControls = false;
   Map<String, dynamic>? _selectedCabinet;
   int? _selectedCableId;
   int? _projectFilterId;
   ProjectSelection? _activeProject;
   double _mapZoom = 14;
-  double _connectionLineWidth = 1.25;
-  double _connectionLineOpacity = 0.38;
-  double _portSize = 26;
-  double _fiberSize = 24;
-  bool _routeConnectionLines = true;
+  final double _portSize = 26;
+  final double _fiberSize = 24;
   String _selectedTileLayerId = 'osm';
   Timer? _syncTimer;
 
@@ -123,6 +115,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     (cabinet) => cabinet['deleted'] != true && cabinet['dirty'] == true,
   );
 
+  String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
+
+  String _portKey(int switchId, int portIndex) => 's$switchId:$portIndex';
+
   Future<void> _recordTaskAddition({
     required String kind,
     required String summary,
@@ -142,10 +138,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       targetRecordId: targetRecordId,
     );
   }
-
-  String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
-
-  String _portKey(int switchId, int portIndex) => 's$switchId:$portIndex';
 
   Future<void> _openPortTraceOnMap({
     required int switchId,
@@ -421,6 +413,23 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _scheduleRebuild() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  void _scheduleAddConnectionUnified(Map<String, dynamic> connection) {
+    final payload = Map<String, dynamic>.from(connection);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _addConnectionUnified(payload);
+      }
+    });
+  }
+
   Widget _buildActiveProjectBanner() {
     final activeProject = _activeProject;
     final hasActiveProject =
@@ -472,61 +481,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         ],
       ),
     );
-  }
-
-  void _scheduleFiberLayout() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final areaContext = _fiberAreaKey.currentContext;
-      if (areaContext == null) {
-        return;
-      }
-
-      final areaBox = areaContext.findRenderObject() as RenderBox?;
-      if (areaBox == null || !areaBox.hasSize) {
-        return;
-      }
-
-      _fiberKeys.removeWhere((key, _) => !_currentFiberKeys.contains(key));
-
-      final nextOffsets = <String, Offset>{};
-      for (final entry in _fiberKeys.entries) {
-        final currentContext = entry.value.currentContext;
-        if (currentContext == null) {
-          continue;
-        }
-
-        final box = currentContext.findRenderObject() as RenderBox?;
-        if (box == null || !box.hasSize) {
-          continue;
-        }
-
-        final localAnchor = entry.key.startsWith('s')
-            ? Offset(box.size.width / 2, box.size.height)
-            : Offset(box.size.width / 2, box.size.height / 2);
-        final globalPoint = box.localToGlobal(localAnchor);
-        nextOffsets[entry.key] = areaBox.globalToLocal(globalPoint);
-      }
-
-      var changed = nextOffsets.length != _fiberOffsets.length;
-      if (!changed) {
-        for (final entry in nextOffsets.entries) {
-          final previous = _fiberOffsets[entry.key];
-          if (previous == null ||
-              (previous - entry.value).distanceSquared > 0.5) {
-            changed = true;
-            break;
-          }
-        }
-      }
-
-      if (changed && mounted) {
-        setState(() {
-          _fiberOffsets
-            ..clear()
-            ..addAll(nextOffsets);
-        });
-      }
-    });
   }
 
   Future<void> _showCabinetEditor({Map<String, dynamic>? cabinet}) async {
@@ -1892,7 +1846,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         ].join(' • '),
         targetRecordId: cabinet['id'] as int?,
       );
-      setState(() {});
+      _scheduleRebuild();
     }
   }
 
@@ -2214,8 +2168,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       ].join(' • '),
                       targetRecordId: cabinet['id'] as int?,
                     );
-                    setState(() {});
                     navigator.pop();
+                    _scheduleRebuild();
                   },
                   icon: const Icon(Icons.add),
                   label: Text(tr('Add')),
@@ -2502,82 +2456,79 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     ? portTypes[index]
                     : _portTypeOptical;
                 final portColor = _portTypeColor(portType);
-                final keyId = _portKey(sw['id'] as int, index);
-                _currentFiberKeys.add(keyId);
-                _fiberColorByKey[keyId] = portColor;
-                _fiberSideByKey[keyId] = 0;
-                final anchorKey = _fiberKeys.putIfAbsent(
-                  keyId,
-                  () => GlobalKey(),
-                );
-                return DragTarget<Map<String, dynamic>>(
-                  onWillAcceptWithDetails: (_) => true,
-                  onAcceptWithDetails: (details) {
-                    final data = details.data;
-                    final connection = data['cableId'] != null
-                        ? {
-                            'cable1': data['cableId'],
-                            'fiber1': data['fiberIndex'],
-                            'switch2': sw['id'],
-                            'port2': index,
-                          }
-                        : {
-                            'switch1': data['switchId'],
-                            'port1': data['portIndex'],
-                            'switch2': sw['id'],
-                            'port2': index,
-                          };
-                    _addConnectionUnified(connection);
-                  },
-                  builder: (context, candidateData, rejectedData) {
-                    final hover = candidateData.isNotEmpty;
-                    return Draggable<Map<String, dynamic>>(
-                      data: {'switchId': sw['id'], 'portIndex': index},
-                      feedback: Material(
-                        color: Colors.transparent,
-                        child: Container(
-                          width: _portSize,
-                          height: _portSize,
-                          decoration: BoxDecoration(
-                            color: portColor,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.black, width: 2),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: (_portSize * 0.38).clamp(8, 12),
+                final switchId = sw['id'] as int;
+                return _ConnectionAnchor(
+                  registry: _connectionAnchors,
+                  anchorKey: _portKey(switchId, index),
+                  color: portColor,
+                  child: DragTarget<Map<String, dynamic>>(
+                    onWillAcceptWithDetails: (_) => true,
+                    onAcceptWithDetails: (details) {
+                      final data = details.data;
+                      final connection = data['cableId'] != null
+                          ? {
+                              'cable1': data['cableId'],
+                              'fiber1': data['fiberIndex'],
+                              'switch2': sw['id'],
+                              'port2': index,
+                            }
+                          : {
+                              'switch1': data['switchId'],
+                              'port1': data['portIndex'],
+                              'switch2': sw['id'],
+                              'port2': index,
+                            };
+                      _scheduleAddConnectionUnified(connection);
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      final hover = candidateData.isNotEmpty;
+                      return Draggable<Map<String, dynamic>>(
+                        data: {'switchId': sw['id'], 'portIndex': index},
+                        feedback: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            width: _portSize,
+                            height: _portSize,
+                            decoration: BoxDecoration(
+                              color: portColor,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.black, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  fontSize: (_portSize * 0.38).clamp(8, 12),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.3,
-                        child: _portSquare(
-                          index + 1,
-                          hover,
-                          portColor,
-                          portType,
+                        childWhenDragging: Opacity(
+                          opacity: 0.3,
+                          child: _portSquare(
+                            index + 1,
+                            hover,
+                            portColor,
+                            portType,
+                          ),
                         ),
-                      ),
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _showSwitchPortSheet(
-                          switchId: sw['id'] as int,
-                          portIndex: index,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _showSwitchPortSheet(
+                            switchId: switchId,
+                            portIndex: index,
+                          ),
+                          child: _portSquare(
+                            index + 1,
+                            hover,
+                            portColor,
+                            portType,
+                          ),
                         ),
-                        child: _portSquare(
-                          index + 1,
-                          hover,
-                          portColor,
-                          portType,
-                          key: anchorKey,
-                        ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               }),
             ),
@@ -2675,174 +2626,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
-  Widget _buildConnectionLineControls() {
-    final theme = Theme.of(context);
-    final lineStyleLabel = _routeConnectionLines
-        ? tr('Маршрут')
-        : tr('Плавные');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(
-            alpha: 0.45,
-          ),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.linear_scale_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      tr('Линии соединений'),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '$lineStyleLabel / '
-                    '${_connectionLineWidth.toStringAsFixed(1)} / '
-                    '${(_connectionLineOpacity * 100).round()}% / '
-                    '${_portSize.round()} / ${_fiberSize.round()}',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    tooltip: _showConnectionLineControls
-                        ? tr('Скрыть настройки')
-                        : tr('Показать настройки'),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      setState(() {
-                        _showConnectionLineControls =
-                            !_showConnectionLineControls;
-                      });
-                    },
-                    icon: Icon(
-                      _showConnectionLineControls
-                          ? Icons.expand_less
-                          : Icons.tune,
-                    ),
-                  ),
-                ],
-              ),
-              if (_showConnectionLineControls) ...[
-                Row(
-                  children: [
-                    SizedBox(width: 100, child: Text(tr('Стиль'))),
-                    Expanded(
-                      child: SegmentedButton<bool>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        segments: [
-                          ButtonSegment<bool>(
-                            value: false,
-                            label: Text(tr('Плавные')),
-                          ),
-                          ButtonSegment<bool>(
-                            value: true,
-                            label: Text(tr('Маршрут')),
-                          ),
-                        ],
-                        selected: {_routeConnectionLines},
-                        onSelectionChanged: (selection) {
-                          setState(() {
-                            _routeConnectionLines = selection.first;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    SizedBox(width: 100, child: Text(tr('Толщина'))),
-                    Expanded(
-                      child: Slider(
-                        min: 0.75,
-                        max: 4,
-                        divisions: 13,
-                        value: _connectionLineWidth,
-                        onChanged: (value) {
-                          setState(() {
-                            _connectionLineWidth = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    SizedBox(width: 100, child: Text(tr('Прозрачность'))),
-                    Expanded(
-                      child: Slider(
-                        min: 0.15,
-                        max: 1,
-                        divisions: 17,
-                        value: _connectionLineOpacity,
-                        onChanged: (value) {
-                          setState(() {
-                            _connectionLineOpacity = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    SizedBox(width: 100, child: Text(tr('Порты'))),
-                    Expanded(
-                      child: Slider(
-                        min: 20,
-                        max: 34,
-                        divisions: 14,
-                        value: _portSize,
-                        onChanged: (value) {
-                          setState(() {
-                            _portSize = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    SizedBox(width: 100, child: Text(tr('Волокна'))),
-                    Expanded(
-                      child: Slider(
-                        min: 18,
-                        max: 32,
-                        divisions: 14,
-                        value: _fiberSize,
-                        onChanged: (value) {
-                          setState(() {
-                            _fiberSize = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCableCard(Map<String, dynamic> cable) {
     final scheme = cable['color_scheme'] ?? 'default';
     final colors = _fiberSchemes[scheme] ?? _fiberSchemes.values.first;
@@ -2881,7 +2664,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           ),
                         ),
                         Text(
-                          tr('Волокон: {value}', {'value': '$fibersCount'}),
+                          tr('Fibers: {value}', {'value': '$fibersCount'}),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(
@@ -2916,14 +2699,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 children: List.generate(fibersCount, (index) {
                   final color = colors[index % colors.length];
                   final spliter = index < spliters.length ? spliters[index] : 0;
-                  final keyId = _fiberKey(cable['id'] as int, index);
-                  _currentFiberKeys.add(keyId);
-                  _fiberColorByKey[keyId] = color;
-                  _fiberSideByKey[keyId] = 0;
-                  final anchorKey = _fiberKeys.putIfAbsent(
-                    keyId,
-                    () => GlobalKey(),
-                  );
                   final fiberWidget = DragTarget<Map<String, dynamic>>(
                     onWillAcceptWithDetails: (_) => true,
                     onAcceptWithDetails: (details) {
@@ -2941,7 +2716,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                               'cable2': cable['id'],
                               'fiber2': index,
                             };
-                      _addConnectionUnified(connection);
+                      _scheduleAddConnectionUnified(connection);
                     },
                     builder: (context, candidateData, rejectedData) {
                       final hover = candidateData.isNotEmpty;
@@ -2976,12 +2751,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         ),
                         child: GestureDetector(
                           onTap: () => _editFiber(cable['id'] as int, index),
-                          child: _fiberCircle(
-                            color,
-                            index + 1,
-                            hover,
-                            key: spliter > 0 ? null : anchorKey,
-                          ),
+                          child: _fiberCircle(color, index + 1, hover),
                         ),
                       );
                     },
@@ -2989,9 +2759,19 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      fiberWidget,
-                      if (spliter > 0) const SizedBox(width: 4),
-                      if (spliter > 0) _spliterBadge(spliter, key: anchorKey),
+                      _ConnectionAnchor(
+                        registry: _connectionAnchors,
+                        anchorKey: _fiberKey(cable['id'] as int, index),
+                        color: color,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            fiberWidget,
+                            if (spliter > 0) const SizedBox(width: 4),
+                            if (spliter > 0) _spliterBadge(spliter),
+                          ],
+                        ),
+                      ),
                     ],
                   );
                 }),
@@ -3245,10 +3025,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     final connections = List<Map<String, dynamic>>.from(
       cabinet['connections'] ?? const [],
     );
-    _currentFiberKeys.clear();
-    _fiberColorByKey.clear();
-    _fiberSideByKey.clear();
-    _scheduleFiberLayout();
+    _connectionAnchors.clear();
 
     return SingleChildScrollView(
       child: Column(
@@ -3321,64 +3098,40 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             ),
           ),
           if (switches.isNotEmpty) _buildPortTypeLegend(),
-          if (connections.isNotEmpty) _buildConnectionLineControls(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SizedBox(
-                  width: constraints.maxWidth,
-                  child: Stack(
-                    key: _fiberAreaKey,
-                    alignment: Alignment.topLeft,
-                    children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (switches.isEmpty)
-                            Text(tr('No switches'))
-                          else
-                            ...switches.map(_buildSwitchCard),
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 0),
-                            child: Row(
-                              children: [
-                                Text(
-                                  tr('Cables'),
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                const Spacer(),
-                                TextButton.icon(
-                                  onPressed: _addCable,
-                                  icon: const Icon(Icons.add),
-                                  label: Text(tr('Add cable')),
-                                ),
-                              ],
-                            ),
-                          ),
-                          _buildCableList(),
-                        ],
-                      ),
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: CustomPaint(
-                            painter: _ConnectionsPainter(
-                              connections: connections,
-                              positions: _fiberOffsets,
-                              colors: _fiberColorByKey,
-                              lineWidth: _connectionLineWidth,
-                              lineOpacity: _connectionLineOpacity,
-                              routeConnections: _routeConnectionLines,
-                            ),
-                          ),
+            child: _ConnectionLineLayer(
+              registry: _connectionAnchors,
+              connections: connections,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (switches.isEmpty)
+                    Text(tr('No switches'))
+                  else
+                    ...switches.map(_buildSwitchCard),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: Row(
+                      children: [
+                        Text(
+                          tr('Cables'),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: _addCable,
+                          icon: const Icon(Icons.add),
+                          label: Text(tr('Add cable')),
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              },
+                  _buildCableList(),
+                ],
+              ),
             ),
           ),
           if (_selectedCableId != null) ...[
@@ -3519,7 +3272,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
           _buildActiveProjectBanner(),
           ScreenInstruction(
             text: tr(
-              'Создайте шкаф, выберите его, затем добавьте коммутаторы, кабели, порты и соединения в панели деталей.',
+              'Create a cabinet, select it, then add switches, cables, ports, and connections from the detail pane.',
             ),
             margin: const EdgeInsets.all(12),
           ),
@@ -3999,80 +3752,207 @@ class _CabinetConnectionHelpPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _ConnectionsPainter extends CustomPainter {
-  const _ConnectionsPainter({
-    required this.connections,
-    required this.positions,
-    required this.colors,
-    required this.lineWidth,
-    required this.lineOpacity,
-    required this.routeConnections,
-  });
+class _ConnectionAnchorRegistry {
+  final Map<String, _ConnectionAnchorEntry> _entries = {};
 
-  final List<Map<String, dynamic>> connections;
-  final Map<String, Offset> positions;
-  final Map<String, Color> colors;
-  final double lineWidth;
-  final double lineOpacity;
-  final bool routeConnections;
-
-  String _fiberKey(int cableId, int fiberIndex) => '$cableId:$fiberIndex';
-
-  String _portKey(int switchId, int portIndex) => 's$switchId:$portIndex';
-
-  Offset? _positionFor(Map<String, dynamic> connection, bool first) {
-    String key;
-    if (first) {
-      if (connection['cable1'] != null && connection['fiber1'] != null) {
-        key = _fiberKey(
-          connection['cable1'] as int,
-          connection['fiber1'] as int,
-        );
-      } else if (connection['switch1'] != null && connection['port1'] != null) {
-        key = _portKey(
-          connection['switch1'] as int,
-          connection['port1'] as int,
-        );
-      } else {
-        return null;
-      }
-    } else {
-      if (connection['cable2'] != null && connection['fiber2'] != null) {
-        key = _fiberKey(
-          connection['cable2'] as int,
-          connection['fiber2'] as int,
-        );
-      } else if (connection['switch2'] != null && connection['port2'] != null) {
-        key = _portKey(
-          connection['switch2'] as int,
-          connection['port2'] as int,
-        );
-      } else {
-        return null;
-      }
-    }
-
-    return positions[key];
+  void clear() {
+    _entries.clear();
   }
 
-  Color _colorFor(Map<String, dynamic> connection, bool first) {
-    if (first && connection['cable1'] != null && connection['fiber1'] != null) {
-      return colors[_fiberKey(
-            connection['cable1'] as int,
-            connection['fiber1'] as int,
-          )] ??
-          Colors.deepOrange;
+  void update({
+    required String key,
+    required Offset globalCenter,
+    required Color color,
+  }) {
+    _entries[key] = _ConnectionAnchorEntry(
+      globalCenter: globalCenter,
+      color: color,
+    );
+  }
+
+  _ConnectionAnchorEntry? operator [](String key) => _entries[key];
+}
+
+class _ConnectionAnchorEntry {
+  const _ConnectionAnchorEntry({
+    required this.globalCenter,
+    required this.color,
+  });
+
+  final Offset globalCenter;
+  final Color color;
+}
+
+class _ConnectionAnchor extends SingleChildRenderObjectWidget {
+  const _ConnectionAnchor({
+    required this.registry,
+    required this.anchorKey,
+    required this.color,
+    required super.child,
+  });
+
+  final _ConnectionAnchorRegistry registry;
+  final String anchorKey;
+  final Color color;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderConnectionAnchor(
+      registry: registry,
+      anchorKey: anchorKey,
+      color: color,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderConnectionAnchor renderObject,
+  ) {
+    renderObject
+      ..registry = registry
+      ..anchorKey = anchorKey
+      ..color = color;
+  }
+}
+
+class _RenderConnectionAnchor extends RenderProxyBox {
+  _RenderConnectionAnchor({
+    required _ConnectionAnchorRegistry registry,
+    required String anchorKey,
+    required Color color,
+  }) : _registry = registry,
+       _anchorKey = anchorKey,
+       _color = color;
+
+  _ConnectionAnchorRegistry _registry;
+  String _anchorKey;
+  Color _color;
+
+  set registry(_ConnectionAnchorRegistry value) {
+    if (_registry == value) {
+      return;
     }
-    if (!first &&
-        connection['cable2'] != null &&
-        connection['fiber2'] != null) {
-      return colors[_fiberKey(
-            connection['cable2'] as int,
-            connection['fiber2'] as int,
-          )] ??
-          Colors.deepOrange;
+    _registry = value;
+    markNeedsPaint();
+  }
+
+  set anchorKey(String value) {
+    if (_anchorKey == value) {
+      return;
     }
-    return Colors.grey;
+    _anchorKey = value;
+    markNeedsPaint();
+  }
+
+  set color(Color value) {
+    if (_color == value) {
+      return;
+    }
+    _color = value;
+    markNeedsPaint();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    super.paint(context, offset);
+    if (!hasSize) {
+      return;
+    }
+
+    _registry.update(
+      key: _anchorKey,
+      globalCenter: localToGlobal(Offset(size.width / 2, size.height / 2)),
+      color: _color,
+    );
+  }
+}
+
+class _ConnectionLineLayer extends SingleChildRenderObjectWidget {
+  const _ConnectionLineLayer({
+    required this.registry,
+    required this.connections,
+    required super.child,
+  });
+
+  final _ConnectionAnchorRegistry registry;
+  final List<Map<String, dynamic>> connections;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderConnectionLineLayer(
+      registry: registry,
+      connections: connections,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderConnectionLineLayer renderObject,
+  ) {
+    renderObject
+      ..registry = registry
+      ..connections = connections;
+  }
+}
+
+class _RenderConnectionLineLayer extends RenderProxyBox {
+  _RenderConnectionLineLayer({
+    required _ConnectionAnchorRegistry registry,
+    required List<Map<String, dynamic>> connections,
+  }) : _registry = registry,
+       _connections = connections;
+
+  static const double _lineWidth = 1.25;
+  static const double _lineOpacity = 0.38;
+
+  _ConnectionAnchorRegistry _registry;
+  List<Map<String, dynamic>> _connections;
+
+  set registry(_ConnectionAnchorRegistry value) {
+    if (_registry == value) {
+      return;
+    }
+    _registry = value;
+    markNeedsPaint();
+  }
+
+  set connections(List<Map<String, dynamic>> value) {
+    if (_connections == value) {
+      return;
+    }
+    _connections = value;
+    markNeedsPaint();
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
+  }
+
+  String? _endpointKey(Map<String, dynamic> connection, bool first) {
+    final cableId = _asInt(connection[first ? 'cable1' : 'cable2']);
+    final fiberIndex = _asInt(connection[first ? 'fiber1' : 'fiber2']);
+    if (cableId != null && fiberIndex != null) {
+      return '$cableId:$fiberIndex';
+    }
+
+    final switchId = _asInt(connection[first ? 'switch1' : 'switch2']);
+    final portIndex = _asInt(connection[first ? 'port1' : 'port2']);
+    if (switchId != null && portIndex != null) {
+      return 's$switchId:$portIndex';
+    }
+
+    return null;
   }
 
   double _direction(double value) {
@@ -4111,7 +3991,7 @@ class _ConnectionsPainter extends CustomPainter {
     final trackY = _routeY(p1, p2, size);
     final points = [p1, Offset(p1.dx, trackY), Offset(p2.dx, trackY), p2];
     final path = ui.Path()..moveTo(points.first.dx, points.first.dy);
-    final cornerRadius = (lineWidth * 5).clamp(6.0, 14.0).toDouble();
+    final cornerRadius = (_lineWidth * 5).clamp(6.0, 14.0).toDouble();
 
     for (var index = 1; index < points.length - 1; index += 1) {
       final previous = points[index - 1];
@@ -4161,48 +4041,47 @@ class _ConnectionsPainter extends CustomPainter {
     return path;
   }
 
-  ui.Path _curvedPath(Offset p1, Offset p2) {
-    final midX = (p1.dx + p2.dx) / 2;
-    return ui.Path()
-      ..moveTo(p1.dx, p1.dy)
-      ..cubicTo(midX, p1.dy, midX, p2.dy, p2.dx, p2.dy);
-  }
-
   @override
-  void paint(Canvas canvas, Size size) {
+  void paint(PaintingContext context, Offset offset) {
+    super.paint(context, offset);
+    if (_connections.isEmpty || !hasSize) {
+      return;
+    }
+
+    final origin = localToGlobal(Offset.zero);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = lineWidth
+      ..strokeWidth = _lineWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    for (final connection in connections) {
-      final p1 = _positionFor(connection, true);
-      final p2 = _positionFor(connection, false);
-      if (p1 == null || p2 == null) {
+    context.canvas.save();
+    context.canvas.translate(offset.dx, offset.dy);
+
+    for (final connection in _connections) {
+      final leftKey = _endpointKey(connection, true);
+      final rightKey = _endpointKey(connection, false);
+      if (leftKey == null || rightKey == null) {
         continue;
       }
 
-      paint.color = _colorFor(connection, true).withValues(alpha: lineOpacity);
-      final path = routeConnections
-          ? _roundedOrthogonalPath(p1, p2, size)
-          : _curvedPath(p1, p2);
-      canvas.drawPath(path, paint);
+      final left = _registry[leftKey];
+      final right = _registry[rightKey];
+      if (left == null || right == null) {
+        continue;
+      }
+
+      final p1 = left.globalCenter - origin;
+      final p2 = right.globalCenter - origin;
+      paint.color = left.color.withValues(alpha: _lineOpacity);
+      final path = _roundedOrthogonalPath(p1, p2, size);
+      context.canvas.drawPath(path, paint);
 
       final dotPaint = Paint()..color = paint.color;
-      final dotRadius = (lineWidth * 1.6).clamp(2.25, 5.0).toDouble();
-      canvas.drawCircle(p1, dotRadius, dotPaint);
-      canvas.drawCircle(p2, dotRadius, dotPaint);
+      context.canvas.drawCircle(p1, 2.25, dotPaint);
+      context.canvas.drawCircle(p2, 2.25, dotPaint);
     }
-  }
 
-  @override
-  bool shouldRepaint(covariant _ConnectionsPainter oldDelegate) {
-    return oldDelegate.connections != connections ||
-        oldDelegate.positions != positions ||
-        oldDelegate.colors != colors ||
-        oldDelegate.lineWidth != lineWidth ||
-        oldDelegate.lineOpacity != lineOpacity ||
-        oldDelegate.routeConnections != routeConnections;
+    context.canvas.restore();
   }
 }
