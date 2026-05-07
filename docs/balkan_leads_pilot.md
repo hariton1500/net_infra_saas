@@ -71,6 +71,15 @@ Replies checked on 2026-05-06:
 
 No delivery failure messages found in Gmail for this outreach as of 2026-05-06.
 
+Replies checked on 2026-05-07:
+
+| Company | Reply status | Next action |
+|---|---|---|
+| Interfiber | Hot lead; reviewed the demo and asked to schedule a meeting to discuss possibilities in more detail. | Reply with written/async option or propose times only if the user is ready to handle the call language. |
+| Tehnoline Telekom | Automated support-ticket acknowledgement: Ticket ID 73927, response promised within 2 business days. | Wait for a human response or follow up later through the ticket. |
+
+No delivery failure messages found in Gmail for this outreach as of 2026-05-07.
+
 Not sent yet because the available public path is a contact form, WhatsApp, phone, or an email hidden by the website crawler:
 
 | Company | Next action |
