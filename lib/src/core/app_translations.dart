@@ -254,6 +254,8 @@ const Map<String, Map<String, String>> appTranslations = {
     'Open in network cabinets': 'Открыть в сетевых шкафах',
     'Tap the map where the closure or PON box should be created.':
         'Нажмите на карту в месте создания муфты или PON бокса.',
+    'Tap the map where the cabinet should be created.':
+        'Нажмите на карту в месте создания шкафа.',
     'Name is required.': 'Укажите название.',
     'PON box added': 'PON бокс добавлен',
     'Closures': 'Муфты',

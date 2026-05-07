@@ -1376,8 +1376,6 @@ class _StartPageState extends State<StartPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildProjectsCard(context),
-                  const SizedBox(height: 20),
                   Text(
                     tr('Work sections'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -1469,6 +1467,8 @@ class _StartPageState extends State<StartPage> {
                       );
                     },
                   ),
+                  const SizedBox(height: 20),
+                  _buildProjectsCard(context),
                 ],
               ),
             ),

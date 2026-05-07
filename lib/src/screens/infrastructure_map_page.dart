@@ -170,6 +170,18 @@ class _MapObjectDialogResult {
   final bool isPonBox;
 }
 
+class _CabinetDialogResult {
+  const _CabinetDialogResult({
+    required this.name,
+    required this.location,
+    required this.comment,
+  });
+
+  final String name;
+  final String location;
+  final String comment;
+}
+
 enum _TraceEndpointKind { cabinetPort, cableFiber, splitterPort }
 
 class _TraceEndpoint {
@@ -309,6 +321,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   bool _routeCreateMode = false;
   bool _routeSplitMode = false;
   bool _mapObjectCreateMode = false;
+  bool _cabinetCreateMode = false;
   bool _legendExpanded = false;
   bool _showInstructionBanner = true;
   bool _showCableRoutes = true;
@@ -1824,6 +1837,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       !_routeEditMode &&
       !_routeSplitMode &&
       !_mapObjectCreateMode &&
+      !_cabinetCreateMode &&
       _mapZoom < 16;
 
   bool get _useCompactEntityMarkers =>
@@ -1831,7 +1845,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       !_routeCreateMode &&
       !_routeEditMode &&
       !_routeSplitMode &&
-      !_mapObjectCreateMode;
+      !_mapObjectCreateMode &&
+      !_cabinetCreateMode;
 
   InteractionOptions get _mapInteractionOptions {
     if (_routeEditMode && _selectedRoute != null) {
@@ -1975,6 +1990,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeCreateMode = false;
       _routeSplitMode = false;
       _mapObjectCreateMode = false;
+      _cabinetCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -1990,6 +2006,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeEditMode = false;
       _routeSplitMode = false;
       _mapObjectCreateMode = false;
+      _cabinetCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -2002,6 +2019,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeEditMode = false;
       _routeSplitMode = false;
       _mapObjectCreateMode = false;
+      _cabinetCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -2017,6 +2035,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeCreateMode = false;
       _routeSplitMode = false;
       _mapObjectCreateMode = false;
+      _cabinetCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -2032,6 +2051,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _routeCreateMode = false;
       _routeEditMode = false;
       _mapObjectCreateMode = false;
+      _cabinetCreateMode = false;
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
@@ -2046,6 +2066,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   void _toggleMapObjectCreateMode() {
     setState(() {
       _mapObjectCreateMode = !_mapObjectCreateMode;
+      _cabinetCreateMode = false;
       _routeCreateMode = false;
       _routeEditMode = false;
       _routeSplitMode = false;
@@ -2053,6 +2074,24 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _pendingStartEntityKey = null;
       _pendingStartCableId = null;
       _pendingRequiredFibers = null;
+    });
+  }
+
+  void _toggleCabinetCreateMode() {
+    setState(() {
+      _cabinetCreateMode = !_cabinetCreateMode;
+      _mapObjectCreateMode = false;
+      _routeCreateMode = false;
+      _routeEditMode = false;
+      _routeSplitMode = false;
+      _selectedRouteId = null;
+      _pendingStartEntityKey = null;
+      _pendingStartCableId = null;
+      _pendingRequiredFibers = null;
+      _visibleEntityTypes = {
+        ..._visibleEntityTypes,
+        _InfrastructureEntityType.cabinet,
+      };
     });
   }
 
@@ -2405,6 +2444,19 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
   }
 
   int _nextMuffId(List<Map<String, dynamic>> records) {
+    var maxId = 0;
+    for (final record in records) {
+      final id = record['id'];
+      if (id is int && id > maxId) {
+        maxId = id;
+      } else if (id is num && id.toInt() > maxId) {
+        maxId = id.toInt();
+      }
+    }
+    return maxId + 1;
+  }
+
+  int _nextCabinetId(List<Map<String, dynamic>> records) {
     var maxId = 0;
     for (final record in records) {
       final id = record['id'];
@@ -3137,6 +3189,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           _routeCreateMode = false;
           _routeEditMode = false;
           _routeSplitMode = false;
+          _mapObjectCreateMode = false;
+          _cabinetCreateMode = false;
           _pendingStartEntityKey = null;
           _pendingStartCableId = null;
           _pendingRequiredFibers = null;
@@ -3250,6 +3304,8 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
           _routeCreateMode = false;
           _routeEditMode = false;
           _routeSplitMode = false;
+          _mapObjectCreateMode = false;
+          _cabinetCreateMode = false;
           _pendingStartEntityKey = null;
           _pendingStartCableId = null;
           _pendingRequiredFibers = null;
@@ -3517,6 +3573,94 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     return result;
   }
 
+  Future<_CabinetDialogResult?> _showCabinetDialog({
+    required LatLng point,
+    required String suggestedName,
+  }) async {
+    final nameController = TextEditingController(text: suggestedName);
+    final locationController = TextEditingController();
+    final commentController = TextEditingController();
+    String? errorText;
+
+    final result = await showDialog<_CabinetDialogResult>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(tr('New cabinet')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: tr('Name'),
+                        errorText: errorText,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: locationController,
+                      decoration: InputDecoration(
+                        labelText: tr('Address/place'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: commentController,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: InputDecoration(labelText: tr('Comment')),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(tr('Cancel')),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) {
+                      setStateDialog(() {
+                        errorText = tr('Name is required.');
+                      });
+                      return;
+                    }
+                    Navigator.of(context).pop(
+                      _CabinetDialogResult(
+                        name: name,
+                        location: locationController.text.trim(),
+                        comment: commentController.text.trim(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.dns_rounded),
+                  label: Text(tr('Create')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    locationController.dispose();
+    commentController.dispose();
+    return result;
+  }
+
   Future<void> _createMapObjectAt(LatLng point) async {
     if (_syncingRoutes) {
       return;
@@ -3580,6 +3724,74 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       _mapObjectCreateMode = false;
     });
     _showSnackBar(result.isPonBox ? tr('PON box added') : tr('Closure added'));
+  }
+
+  Future<void> _createCabinetAt(LatLng point) async {
+    if (_syncingRoutes) {
+      return;
+    }
+    final cabinetId = _nextCabinetId(_cabinetRecords);
+    final result = await _showCabinetDialog(
+      point: point,
+      suggestedName: '${tr('Cabinet')} $cabinetId',
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final record = <String, dynamic>{
+      'id': cabinetId,
+      'name': result.name,
+      'location': result.location,
+      'comment': result.comment,
+      'location_lat': point.latitude,
+      'location_lng': point.longitude,
+      'updated_at': now,
+      'updated_by': _actorEmail,
+      'created_by': _actorEmail,
+      'deleted': false,
+      'dirty': true,
+      'switches': <Map<String, dynamic>>[],
+      'cables': <Map<String, dynamic>>[],
+      'connections': <Map<String, dynamic>>[],
+    };
+    applyProjectSelection(record, _activeProject);
+
+    final nextCabinets =
+        _cabinetRecords
+            .map((record) => _syncRepository.clone(record))
+            .toList(growable: true)
+          ..add(record);
+
+    await _persistAllRecords(
+      nextRouteRecords: _routeRecords
+          .map((record) => _syncRepository.clone(record))
+          .toList(growable: true),
+      nextMuffRecords: _muffRecords
+          .map((record) => _syncRepository.clone(record))
+          .toList(growable: true),
+      nextCabinetRecords: nextCabinets,
+      selectedRouteId: _selectedRouteId,
+      preserveModes: true,
+    );
+    await _recordTaskAddition(
+      kind: 'Cabinet added',
+      summary: result.name,
+      targetRecordId: cabinetId,
+    );
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _cabinetCreateMode = false;
+      _visibleEntityTypes = {
+        ..._visibleEntityTypes,
+        _InfrastructureEntityType.cabinet,
+      };
+    });
+    _showSnackBar(tr('Cabinet added'));
   }
 
   double _routeDistanceToTap(_CableRoute route, Offset tapOffset) {
@@ -3648,6 +3860,11 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
 
     if (_mapObjectCreateMode) {
       unawaited(_createMapObjectAt(point));
+      return;
+    }
+
+    if (_cabinetCreateMode) {
+      unawaited(_createCabinetAt(point));
       return;
     }
 
@@ -3842,6 +4059,7 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                               _routeEditMode ||
                               _routeSplitMode ||
                               _mapObjectCreateMode ||
+                              _cabinetCreateMode ||
                               _traceSummary != null ||
                               selectedRoute != null)
                             const SizedBox(height: 12),
@@ -3849,6 +4067,13 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                             Text(
                               tr(
                                 'Tap the map where the closure or PON box should be created.',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else if (_cabinetCreateMode)
+                            Text(
+                              tr(
+                                'Tap the map where the cabinet should be created.',
                               ),
                               style: Theme.of(context).textTheme.bodySmall,
                             )
@@ -4685,6 +4910,17 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                 ),
               ),
               IconButton(
+                tooltip: _cabinetCreateMode
+                    ? tr('Cancel object creation')
+                    : tr('New cabinet'),
+                onPressed: _loading || _syncingRoutes
+                    ? null
+                    : _toggleCabinetCreateMode,
+                icon: Icon(
+                  _cabinetCreateMode ? Icons.close_rounded : Icons.dns_rounded,
+                ),
+              ),
+              IconButton(
                 tooltip: _routeCreateMode
                     ? tr('Cancel route creation')
                     : tr('New route'),
@@ -4749,6 +4985,17 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
             ],
             compactActions: [
               IconButton(
+                tooltip: _cabinetCreateMode
+                    ? tr('Cancel object creation')
+                    : tr('New cabinet'),
+                onPressed: _loading || _syncingRoutes
+                    ? null
+                    : _toggleCabinetCreateMode,
+                icon: Icon(
+                  _cabinetCreateMode ? Icons.close_rounded : Icons.dns_rounded,
+                ),
+              ),
+              IconButton(
                 tooltip: _routeCreateMode
                     ? tr('Cancel route creation')
                     : tr('New route'),
@@ -4766,6 +5013,10 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                 onSelected: (value) {
                   if (value == 'clear_trace') {
                     _clearTraceHighlight();
+                  } else if (value == 'create_map_object') {
+                    _toggleMapObjectCreateMode();
+                  } else if (value == 'create_cabinet') {
+                    _toggleCabinetCreateMode();
                   } else if (value == 'edit_route') {
                     _toggleRouteEditMode();
                   } else if (value == 'split_route') {
@@ -4790,6 +5041,24 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
                       value: 'clear_trace',
                       child: Text(tr('Clear route highlight')),
                     ),
+                  PopupMenuItem(
+                    value: 'create_map_object',
+                    enabled: !_loading && !_syncingRoutes,
+                    child: Text(
+                      _mapObjectCreateMode
+                          ? tr('Cancel object creation')
+                          : tr('New closure or PON box'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'create_cabinet',
+                    enabled: !_loading && !_syncingRoutes,
+                    child: Text(
+                      _cabinetCreateMode
+                          ? tr('Cancel object creation')
+                          : tr('New cabinet'),
+                    ),
+                  ),
                   PopupMenuItem(
                     value: 'edit_route',
                     enabled:
