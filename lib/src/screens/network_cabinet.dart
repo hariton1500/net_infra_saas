@@ -31,6 +31,18 @@ class CabinetNotebookPage extends StatefulWidget {
   State<CabinetNotebookPage> createState() => _CabinetNotebookPageState();
 }
 
+class _EndpointChoice {
+  const _EndpointChoice({
+    required this.key,
+    required this.label,
+    required this.endpoint,
+  });
+
+  final String key;
+  final String label;
+  final Map<String, dynamic> endpoint;
+}
+
 class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   static const String _moduleKey = 'network_cabinet';
   static const String _cacheKey = 'network_cabinet.cabinets.v1';
@@ -119,6 +131,55 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
   String _portKey(int switchId, int portIndex) => 's$switchId:$portIndex';
 
+  String _splitterPortKey(int splitterId, String portType, int portIndex) =>
+      'splitter:$splitterId:$portType:$portIndex';
+
+  Map<String, dynamic> _cableEndpoint(int cableId, int fiberIndex) => {
+    'type': 'cable',
+    'cableId': cableId,
+    'fiberIndex': fiberIndex,
+  };
+
+  Map<String, dynamic> _switchEndpoint(int switchId, int portIndex) => {
+    'type': 'switch',
+    'switchId': switchId,
+    'portIndex': portIndex,
+  };
+
+  Map<String, dynamic> _splitterEndpoint(
+    int splitterId,
+    String portType,
+    int portIndex,
+  ) => {
+    'type': 'splitter',
+    'splitterId': splitterId,
+    'portType': portType,
+    'portIndex': portIndex,
+  };
+
+  String _endpointKey(Map<String, dynamic> endpoint) {
+    if (endpoint['type'] == 'switch') {
+      return _portKey(
+        endpoint['switchId'] as int,
+        (endpoint['portIndex'] as int?) ?? 0,
+      );
+    }
+    if (endpoint['type'] == 'splitter') {
+      return _splitterPortKey(
+        endpoint['splitterId'] as int,
+        (endpoint['portType'] as String?) ?? 'output',
+        (endpoint['portIndex'] as int?) ?? 0,
+      );
+    }
+    return _fiberKey(
+      endpoint['cableId'] as int,
+      (endpoint['fiberIndex'] as int?) ?? 0,
+    );
+  }
+
+  bool _sameEndpoint(Map<String, dynamic> left, Map<String, dynamic> right) =>
+      _endpointKey(left) == _endpointKey(right);
+
   Future<void> _recordTaskAddition({
     required String kind,
     required String summary,
@@ -196,6 +257,9 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     _cabinets
       ..clear()
       ..addAll(await _syncRepository.readCache(_cacheKey));
+    if (_cleanupLegacyCabinetTopology(_cabinets)) {
+      await _syncRepository.writeCache(_cacheKey, _cabinets);
+    }
     _nextCabinetId = _maxId(_cabinets) + 1;
     _rebuildView(
       selectedCabinetId: selectedCabinetId,
@@ -219,7 +283,19 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         _cabinets
           ..clear()
           ..addAll(merged);
-        await _syncRepository.writeCache(_cacheKey, _cabinets);
+        if (_cleanupLegacyCabinetTopology(_cabinets)) {
+          final cleaned = await _syncRepository.syncAll(
+            companyId: _companyId!,
+            moduleKey: _moduleKey,
+            cacheKey: _cacheKey,
+            localRecords: _cabinets,
+          );
+          _cabinets
+            ..clear()
+            ..addAll(cleaned);
+        } else {
+          await _syncRepository.writeCache(_cacheKey, _cabinets);
+        }
         _nextCabinetId = _maxId(_cabinets) + 1;
       }
     } catch (error, stackTrace) {
@@ -289,12 +365,21 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     try {
       await _refreshActiveProject();
       _hydrateDirtyCabinetsWithActiveProject();
-      final merged = await _syncRepository.syncAll(
+      _cleanupLegacyCabinetTopology(_cabinets);
+      var merged = await _syncRepository.syncAll(
         companyId: _companyId!,
         moduleKey: _moduleKey,
         cacheKey: _cacheKey,
         localRecords: _cabinets,
       );
+      if (_cleanupLegacyCabinetTopology(merged)) {
+        merged = await _syncRepository.syncAll(
+          companyId: _companyId!,
+          moduleKey: _moduleKey,
+          cacheKey: _cacheKey,
+          localRecords: merged,
+        );
+      }
       _cabinets
         ..clear()
         ..addAll(merged);
@@ -324,6 +409,131 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     return items
         .map((item) => (item['id'] as int?) ?? 0)
         .fold(0, (current, next) => current > next ? current : next);
+  }
+
+  int? _nullableInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
+  }
+
+  bool _cleanupLegacyCabinetTopology(List<Map<String, dynamic>> cabinets) {
+    var changed = false;
+    for (final cabinet in cabinets) {
+      if (cabinet['deleted'] == true) {
+        continue;
+      }
+
+      if (_cleanupLegacyCabinetPayload(cabinet)) {
+        cabinet['updated_at'] = DateTime.now();
+        cabinet['dirty'] = true;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  bool _cleanupLegacyCabinetPayload(Map<String, dynamic> cabinet) {
+    final rawCables = List<dynamic>.from(cabinet['cables'] ?? const []);
+    final splitterFiberKeys = <String>{};
+    final cleanedCables = <Map<String, dynamic>>[];
+    var changed = false;
+
+    for (final rawCable in rawCables) {
+      if (rawCable is! Map) {
+        continue;
+      }
+
+      final cable = Map<String, dynamic>.from(rawCable);
+      final cableId = _nullableInt(cable['id']);
+      final splitterValues = List<dynamic>.from(
+        cable['spliters'] ?? cable['splitters'] ?? const [],
+      );
+      if (cableId != null) {
+        for (var index = 0; index < splitterValues.length; index++) {
+          final value = _nullableInt(splitterValues[index]) ?? 0;
+          if (value > 0) {
+            splitterFiberKeys.add('$cableId:$index');
+          }
+        }
+      }
+
+      if (cable.containsKey('spliters')) {
+        cable.remove('spliters');
+        changed = true;
+      }
+      if (cable.containsKey('splitters')) {
+        cable.remove('splitters');
+        changed = true;
+      }
+      cleanedCables.add(cable);
+    }
+
+    if (changed) {
+      cabinet['cables'] = cleanedCables;
+    }
+
+    final connections = List<Map<String, dynamic>>.from(
+      cabinet['connections'] ?? const [],
+    );
+    final cleanedConnections = connections
+        .where((connection) {
+          if (connection['endpoint1'] is! Map ||
+              connection['endpoint2'] is! Map) {
+            return false;
+          }
+          if (splitterFiberKeys.isEmpty) {
+            return true;
+          }
+          return !_connectionTouchesEndpointWhere(connection, (endpoint) {
+            if (endpoint['type'] != 'cable') {
+              return false;
+            }
+            final cableId = _nullableInt(endpoint['cableId']);
+            final fiberIndex = _nullableInt(endpoint['fiberIndex']);
+            if (cableId == null || fiberIndex == null) {
+              return false;
+            }
+            return splitterFiberKeys.contains('$cableId:$fiberIndex');
+          });
+        })
+        .toList(growable: false);
+    if (cleanedConnections.length != connections.length) {
+      cabinet['connections'] = cleanedConnections;
+      changed = true;
+    }
+
+    return changed;
+  }
+
+  bool _connectionTouchesEndpointWhere(
+    Map<String, dynamic> connection,
+    bool Function(Map<String, dynamic> endpoint) matches,
+  ) {
+    if (connection['endpoint1'] is Map) {
+      final endpoint = Map<String, dynamic>.from(
+        connection['endpoint1'] as Map,
+      );
+      if (matches(endpoint)) {
+        return true;
+      }
+    }
+    if (connection['endpoint2'] is Map) {
+      final endpoint = Map<String, dynamic>.from(
+        connection['endpoint2'] as Map,
+      );
+      if (matches(endpoint)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _rebuildView({
@@ -421,11 +631,15 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     });
   }
 
-  void _scheduleAddConnectionUnified(Map<String, dynamic> connection) {
-    final payload = Map<String, dynamic>.from(connection);
+  void _scheduleAddConnectionBetweenEndpoints({
+    required Map<String, dynamic> endpoint1,
+    required Map<String, dynamic> endpoint2,
+  }) {
+    final first = Map<String, dynamic>.from(endpoint1);
+    final second = Map<String, dynamic>.from(endpoint2);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _addConnectionUnified(payload);
+        _addConnectionBetweenEndpoints(endpoint1: first, endpoint2: second);
       }
     });
   }
@@ -599,6 +813,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       payload['created_by'] = _actorLabel;
                       payload['switches'] = <Map<String, dynamic>>[];
                       payload['cables'] = <Map<String, dynamic>>[];
+                      payload['splitters'] = <Map<String, dynamic>>[];
                       payload['connections'] = <Map<String, dynamic>>[];
                       payload['deleted'] = false;
                       payload['dirty'] = true;
@@ -611,6 +826,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           cabinet['switches'] ?? <Map<String, dynamic>>[];
                       payload['cables'] =
                           cabinet['cables'] ?? <Map<String, dynamic>>[];
+                      payload['splitters'] =
+                          cabinet['splitters'] ?? <Map<String, dynamic>>[];
                       payload['connections'] =
                           cabinet['connections'] ?? <Map<String, dynamic>>[];
                       if (projectIdOf(cabinet) == null &&
@@ -654,7 +871,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                             tr('note: {value}', {
                               'value': payload['comment'].toString().trim(),
                             }),
-                        ].join(' • '),
+                        ].join(' вЂў '),
                         targetRecordId: payload['id'] as int?,
                       );
                     }
@@ -753,6 +970,129 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     }
 
     return null;
+  }
+
+  Map<String, dynamic>? _getSplitterById(int id) {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return null;
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(
+      cabinet['splitters'] ?? const [],
+    )) {
+      if (item['id'] == id) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  List<Map<String, dynamic>> _getSplittersBySide(int side) {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return const [];
+    }
+
+    return List<Map<String, dynamic>>.from(cabinet['splitters'] ?? const [])
+        .where((splitter) => (splitter['side'] as int? ?? 0) == side)
+        .toList(growable: false);
+  }
+
+  List<_EndpointChoice> _endpointChoices(Map<String, dynamic> cabinet) {
+    final choices = <_EndpointChoice>[];
+
+    for (final cable in List<Map<String, dynamic>>.from(
+      cabinet['cables'] ?? const [],
+    )) {
+      final cableId = cable['id'] as int;
+      final fibers = (cable['fibers'] as int?) ?? 1;
+      for (var index = 0; index < fibers; index++) {
+        final endpoint = _cableEndpoint(cableId, index);
+        choices.add(
+          _EndpointChoice(
+            key: _endpointKey(endpoint),
+            label: '${cable['name'] ?? 'Cable'} вЂў Fiber ${index + 1}',
+            endpoint: endpoint,
+          ),
+        );
+      }
+    }
+
+    for (final sw in List<Map<String, dynamic>>.from(
+      cabinet['switches'] ?? const [],
+    )) {
+      final switchId = sw['id'] as int;
+      final ports = (sw['ports'] as int?) ?? 24;
+      for (var index = 0; index < ports; index++) {
+        final endpoint = _switchEndpoint(switchId, index);
+        choices.add(
+          _EndpointChoice(
+            key: _endpointKey(endpoint),
+            label: '${sw['name'] ?? 'Switch'} вЂў Port ${index + 1}',
+            endpoint: endpoint,
+          ),
+        );
+      }
+    }
+
+    for (final splitter in List<Map<String, dynamic>>.from(
+      cabinet['splitters'] ?? const [],
+    )) {
+      final splitterId = splitter['id'] as int;
+      final ratio = (splitter['ratio'] as int?) ?? 8;
+      final input = _splitterEndpoint(splitterId, 'input', 0);
+      choices.add(
+        _EndpointChoice(
+          key: _endpointKey(input),
+          label: '${splitter['name'] ?? 'Splitter'} вЂў Input',
+          endpoint: input,
+        ),
+      );
+
+      for (var index = 0; index < ratio; index++) {
+        final output = _splitterEndpoint(splitterId, 'output', index);
+        choices.add(
+          _EndpointChoice(
+            key: _endpointKey(output),
+            label: '${splitter['name'] ?? 'Splitter'} вЂў Output ${index + 1}',
+            endpoint: output,
+          ),
+        );
+      }
+    }
+
+    return choices;
+  }
+
+  String _endpointLabel(Map<String, dynamic> endpoint) {
+    if (endpoint['type'] == 'switch') {
+      final sw = _getSwitchById(endpoint['switchId'] as int);
+      return '${sw?['name'] ?? 'Switch'} port ${(endpoint['portIndex'] as int) + 1}';
+    }
+
+    if (endpoint['type'] == 'splitter') {
+      final splitter = _getSplitterById(endpoint['splitterId'] as int);
+      final name = splitter?['name'] ?? 'Splitter';
+      final portType = (endpoint['portType'] as String?) ?? 'output';
+      if (portType == 'input') {
+        return '$name[Input]';
+      }
+      return '$name[Output ${(endpoint['portIndex'] as int) + 1}]';
+    }
+
+    final cable = _getCableById(endpoint['cableId'] as int);
+    return '${cable?['name'] ?? 'Cable'}[${(endpoint['fiberIndex'] as int) + 1}]';
+  }
+
+  String _connectionLabel(Map<String, dynamic> connection) {
+    if (connection['endpoint1'] is! Map || connection['endpoint2'] is! Map) {
+      return 'Point <--> Point';
+    }
+    final endpoint1 = Map<String, dynamic>.from(connection['endpoint1'] as Map);
+    final endpoint2 = Map<String, dynamic>.from(connection['endpoint2'] as Map);
+    return '${_endpointLabel(endpoint1)} <--> ${_endpointLabel(endpoint2)}';
   }
 
   List<String> _portTypesForSwitch(Map<String, dynamic> sw) {
@@ -891,7 +1231,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         tr('ports: {value}', {
                           'value': '${switches.last['ports'] ?? ports}',
                         }),
-                      ].join(' • '),
+                      ].join(' вЂў '),
                       targetRecordId: cabinet['id'] as int?,
                     );
                     setState(() {});
@@ -920,8 +1260,12 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     final connections =
         List<Map<String, dynamic>>.from(cabinet['connections'] ?? const [])
           ..removeWhere((connection) {
-            return connection['switch1'] == switchId ||
-                connection['switch2'] == switchId;
+            return _connectionTouchesEndpointWhere(
+              connection,
+              (endpoint) =>
+                  endpoint['type'] == 'switch' &&
+                  endpoint['switchId'] == switchId,
+            );
           });
 
     cabinet['switches'] = switches;
@@ -1124,11 +1468,13 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     for (final connection in List<Map<String, dynamic>>.from(
       cabinet['connections'] ?? const [],
     )) {
-      final isLeftPort =
-          connection['switch1'] == switchId && connection['port1'] == portIndex;
-      final isRightPort =
-          connection['switch2'] == switchId && connection['port2'] == portIndex;
-      if (isLeftPort || isRightPort) {
+      if (_connectionTouchesEndpointWhere(
+        connection,
+        (endpoint) =>
+            endpoint['type'] == 'switch' &&
+            endpoint['switchId'] == switchId &&
+            endpoint['portIndex'] == portIndex,
+      )) {
         return connection;
       }
     }
@@ -1145,10 +1491,13 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     final connections =
         List<Map<String, dynamic>>.from(cabinet['connections'] ?? const [])
           ..removeWhere((connection) {
-            return (connection['switch1'] == switchId &&
-                    connection['port1'] == portIndex) ||
-                (connection['switch2'] == switchId &&
-                    connection['port2'] == portIndex);
+            return _connectionTouchesEndpointWhere(
+              connection,
+              (endpoint) =>
+                  endpoint['type'] == 'switch' &&
+                  endpoint['switchId'] == switchId &&
+                  endpoint['portIndex'] == portIndex,
+            );
           });
     cabinet['connections'] = connections;
     _touchCabinet(cabinet);
@@ -1260,8 +1609,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                           connection == null
                               ? tr('Port is not connected')
                               : tr('Connected: {value}', {
-                                  'value':
-                                      '${_connectionLabelPart(connection, true)} <--> ${_connectionLabelPart(connection, false)}',
+                                  'value': _connectionLabel(connection),
                                 }),
                         ),
                       ),
@@ -1337,6 +1685,308 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         );
       },
     );
+  }
+
+  Future<void> _addSplitter() async {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return;
+    }
+
+    var name = '';
+    var ratio = 8;
+    var side = 0;
+    var orientation = 'vertical';
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(tr('Add splitter')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: tr('Splitter name'),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => name = value.trim(),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: ratio,
+                      decoration: InputDecoration(
+                        labelText: tr('Split ratio'),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [2, 4, 8, 16, 32]
+                          .map(
+                            (value) => DropdownMenuItem<int>(
+                              value: value,
+                              child: Text('1:$value'),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          ratio = value ?? 8;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: side,
+                      decoration: InputDecoration(
+                        labelText: tr('Side'),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        DropdownMenuItem(value: 0, child: Text(tr('Left'))),
+                        DropdownMenuItem(value: 1, child: Text(tr('Right'))),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          side = value ?? 0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: orientation,
+                      decoration: InputDecoration(
+                        labelText: tr('Output port layout'),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'vertical',
+                          child: Text(tr('Vertical')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'horizontal',
+                          child: Text(tr('Horizontal')),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          orientation = value ?? 'vertical';
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(tr('Cancel')),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final splitters = List<Map<String, dynamic>>.from(
+                      cabinet['splitters'] ?? const [],
+                    );
+                    splitters.add({
+                      'id': DateTime.now().microsecondsSinceEpoch,
+                      'name': name.isEmpty
+                          ? tr('Splitter 1:{ratio}', {'ratio': '$ratio'})
+                          : name,
+                      'ratio': ratio,
+                      'side': side,
+                      'orientation': orientation,
+                    });
+                    cabinet['splitters'] = splitters;
+                    _touchCabinet(cabinet);
+                    await _persist();
+                    if (!mounted) {
+                      return;
+                    }
+                    await _recordTaskAddition(
+                      kind: 'Splitter added to cabinet',
+                      summary: [
+                        '${cabinet['name'] ?? 'Cabinet'}',
+                        '${splitters.last['name'] ?? 'Splitter'}',
+                        '1:${splitters.last['ratio'] ?? ratio}',
+                        'side: ${((splitters.last['side'] as int?) ?? side) == 0 ? 'left' : 'right'}',
+                        'orientation: ${((splitters.last['orientation'] ?? orientation) == 'vertical') ? 'vertical' : 'horizontal'}',
+                      ].join(' вЂў '),
+                      targetRecordId: cabinet['id'] as int?,
+                    );
+                    setState(() {});
+                    navigator.pop();
+                  },
+                  icon: const Icon(Icons.add),
+                  label: Text(tr('Add')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editSplitter(int splitterId) async {
+    final cabinet = _selectedCabinet;
+    final splitter = _getSplitterById(splitterId);
+    if (cabinet == null || splitter == null) {
+      return;
+    }
+
+    var name = (splitter['name'] as String?) ?? '';
+    var ratio = (splitter['ratio'] as int?) ?? 8;
+    var side = (splitter['side'] as int?) ?? 0;
+    var orientation = (splitter['orientation'] as String?) ?? 'vertical';
+    final nameController = TextEditingController(text: name);
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(tr('Edit splitter')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: tr('Splitter name'),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => name = value.trim(),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: ratio,
+                      decoration: InputDecoration(
+                        labelText: tr('Split ratio'),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [2, 4, 8, 16, 32]
+                          .map(
+                            (value) => DropdownMenuItem<int>(
+                              value: value,
+                              child: Text('1:$value'),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          ratio = value ?? 8;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: side,
+                      decoration: InputDecoration(
+                        labelText: tr('Side'),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        DropdownMenuItem(value: 0, child: Text(tr('Left'))),
+                        DropdownMenuItem(value: 1, child: Text(tr('Right'))),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          side = value ?? 0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: orientation,
+                      decoration: InputDecoration(
+                        labelText: tr('Output port layout'),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'vertical',
+                          child: Text(tr('Vertical')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'horizontal',
+                          child: Text(tr('Horizontal')),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          orientation = value ?? 'vertical';
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(tr('Cancel')),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    splitter['name'] = nameController.text.trim().isEmpty
+                        ? tr('Splitter 1:{ratio}', {'ratio': '$ratio'})
+                        : nameController.text.trim();
+                    splitter['ratio'] = ratio;
+                    splitter['side'] = side;
+                    splitter['orientation'] = orientation;
+                    _touchCabinet(cabinet);
+                    await _persist();
+                    if (!mounted) {
+                      return;
+                    }
+                    setState(() {});
+                    navigator.pop();
+                  },
+                  icon: const Icon(Icons.save),
+                  label: Text(tr('Save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteSplitter(int splitterId) async {
+    final cabinet = _selectedCabinet;
+    if (cabinet == null) {
+      return;
+    }
+
+    final splitters = List<Map<String, dynamic>>.from(
+      cabinet['splitters'] ?? const [],
+    )..removeWhere((splitter) => splitter['id'] == splitterId);
+    final connections =
+        List<Map<String, dynamic>>.from(cabinet['connections'] ?? const [])
+          ..removeWhere((connection) {
+            return _connectionTouchesEndpointWhere(
+              connection,
+              (endpoint) =>
+                  endpoint['type'] == 'splitter' &&
+                  endpoint['splitterId'] == splitterId,
+            );
+          });
+
+    cabinet['splitters'] = splitters;
+    cabinet['connections'] = connections;
+    _touchCabinet(cabinet);
+    await _persist();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _addCable() async {
@@ -1433,7 +2083,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                       'fibers': fibersNumber,
                       'color_scheme': scheme,
                       'fiber_comments': List<String>.filled(fibersNumber, ''),
-                      'spliters': List<int>.filled(fibersNumber, 0),
                     });
                     cabinet['cables'] = cables;
                     _touchCabinet(cabinet);
@@ -1452,7 +2101,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                             .trim()
                             .isNotEmpty)
                           'label: ${cables.last['color_scheme']}',
-                      ].join(' • '),
+                      ].join(' вЂў '),
                       targetRecordId: cabinet['id'] as int?,
                     );
                     setState(() {});
@@ -1481,8 +2130,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     final connections =
         List<Map<String, dynamic>>.from(cabinet['connections'] ?? const [])
           ..removeWhere((connection) {
-            return connection['cable1'] == cableId ||
-                connection['cable2'] == cableId;
+            return _connectionTouchesEndpointWhere(
+              connection,
+              (endpoint) =>
+                  endpoint['type'] == 'cable' && endpoint['cableId'] == cableId,
+            );
           });
 
     cabinet['cables'] = cables;
@@ -1546,14 +2198,16 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       return;
     }
 
+    final fibersCount = (cable['fibers'] as int?) ?? 1;
     final comments = List<String>.from(cable['fiber_comments'] ?? const []);
-    final spliters = List<int>.from(cable['spliters'] ?? const []);
-    if (fiberIndex >= comments.length || fiberIndex >= spliters.length) {
+    while (comments.length < fibersCount) {
+      comments.add('');
+    }
+    if (fiberIndex >= comments.length) {
       return;
     }
 
     final commentController = TextEditingController(text: comments[fiberIndex]);
-    int spliter = spliters[fiberIndex];
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1582,29 +2236,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     controller: commentController,
                     decoration: InputDecoration(labelText: tr('Comment')),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(tr('Splitter:')),
-                      const SizedBox(width: 12),
-                      DropdownButton<int>(
-                        value: spliter,
-                        items: [0, 2, 4, 8, 16, 32]
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value == 0 ? 'No' : '$value'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          setStateSheet(() {
-                            spliter = value ?? 0;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -1618,9 +2249,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         onPressed: () async {
                           final navigator = Navigator.of(context);
                           comments[fiberIndex] = commentController.text.trim();
-                          spliters[fiberIndex] = spliter;
                           cable['fiber_comments'] = comments;
-                          cable['spliters'] = spliters;
                           if (_selectedCabinet != null) {
                             _touchCabinet(_selectedCabinet!);
                           }
@@ -1645,43 +2274,10 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
-  bool _isFiberBusy(
-    List<Map<String, dynamic>> connections,
-    int cableId,
-    int fiberIndex,
-  ) {
-    final cable = _getCableById(cableId);
-    final spliters = List<int>.from(cable?['spliters'] ?? const []);
-    final hasSpliter =
-        fiberIndex >= 0 &&
-        fiberIndex < spliters.length &&
-        spliters[fiberIndex] > 0;
-    if (hasSpliter) {
-      return false;
-    }
-
-    return connections.any((connection) {
-      return (connection['cable1'] == cableId &&
-              connection['fiber1'] == fiberIndex) ||
-          (connection['cable2'] == cableId &&
-              connection['fiber2'] == fiberIndex);
-    });
-  }
-
-  bool _isPortBusy(
-    List<Map<String, dynamic>> connections,
-    int switchId,
-    int portIndex,
-  ) {
-    return connections.any((connection) {
-      return (connection['switch1'] == switchId &&
-              connection['port1'] == portIndex) ||
-          (connection['switch2'] == switchId &&
-              connection['port2'] == portIndex);
-    });
-  }
-
   String? _endpointPortType(Map<String, dynamic> endpoint) {
+    if (endpoint['type'] != 'switch') {
+      return null;
+    }
     final switchId = endpoint['switchId'] as int?;
     final portIndex = endpoint['portIndex'] as int?;
     if (switchId == null || portIndex == null) {
@@ -1707,16 +2303,16 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   ) {
     final isCopperToFiber =
         (_endpointPortType(endpoint1) == _portTypeCopper &&
-            endpoint2['cableId'] != null) ||
+            endpoint2['type'] == 'cable') ||
         (_endpointPortType(endpoint2) == _portTypeCopper &&
-            endpoint1['cableId'] != null);
+            endpoint1['type'] == 'cable');
     if (isCopperToFiber) {
       return 'A copper port cannot be connected to a cable fiber';
     }
 
     final isPortToPort =
-        endpoint1['switchId'] != null &&
-        endpoint2['switchId'] != null &&
+        endpoint1['type'] == 'switch' &&
+        endpoint2['type'] == 'switch' &&
         endpoint1['portIndex'] != null &&
         endpoint2['portIndex'] != null;
     if (!isPortToPort) {
@@ -1734,35 +2330,18 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
 
   bool _connectionExists(
     List<Map<String, dynamic>> connections,
-    Map<String, dynamic> connection,
+    Map<String, dynamic> endpoint1,
+    Map<String, dynamic> endpoint2,
   ) {
-    String keyFor(Map<String, dynamic> item, bool first) {
-      if (first && item['cable1'] != null && item['fiber1'] != null) {
-        return 'f${item['cable1']}:${item['fiber1']}';
-      }
-      if (first && item['switch1'] != null && item['port1'] != null) {
-        return 'p${item['switch1']}:${item['port1']}';
-      }
-      if (!first && item['cable2'] != null && item['fiber2'] != null) {
-        return 'f${item['cable2']}:${item['fiber2']}';
-      }
-      if (!first && item['switch2'] != null && item['port2'] != null) {
-        return 'p${item['switch2']}:${item['port2']}';
-      }
-      return '';
-    }
-
-    final left = keyFor(connection, true);
-    final right = keyFor(connection, false);
-    if (left.isEmpty || right.isEmpty) {
-      return false;
-    }
-
     return connections.any((entry) {
-      final entryLeft = keyFor(entry, true);
-      final entryRight = keyFor(entry, false);
-      return (left == entryLeft && right == entryRight) ||
-          (left == entryRight && right == entryLeft);
+      if (entry['endpoint1'] is! Map || entry['endpoint2'] is! Map) {
+        return false;
+      }
+      final left = Map<String, dynamic>.from(entry['endpoint1'] as Map);
+      final right = Map<String, dynamic>.from(entry['endpoint2'] as Map);
+      return (_sameEndpoint(left, endpoint1) &&
+              _sameEndpoint(right, endpoint2)) ||
+          (_sameEndpoint(left, endpoint2) && _sameEndpoint(right, endpoint1));
     });
   }
 
@@ -1770,70 +2349,67 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     List<Map<String, dynamic>> connections,
     Map<String, dynamic> endpoint,
   ) {
-    if (endpoint['cableId'] != null && endpoint['fiberIndex'] != null) {
-      return _isFiberBusy(
-        connections,
-        endpoint['cableId'] as int,
-        endpoint['fiberIndex'] as int,
-      );
-    }
-    if (endpoint['switchId'] != null && endpoint['portIndex'] != null) {
-      return _isPortBusy(
-        connections,
-        endpoint['switchId'] as int,
-        endpoint['portIndex'] as int,
-      );
-    }
-    return false;
+    return connections.any((connection) {
+      if (connection['endpoint1'] is! Map || connection['endpoint2'] is! Map) {
+        return false;
+      }
+      final left = Map<String, dynamic>.from(connection['endpoint1'] as Map);
+      final right = Map<String, dynamic>.from(connection['endpoint2'] as Map);
+      return _sameEndpoint(left, endpoint) || _sameEndpoint(right, endpoint);
+    });
   }
 
-  Future<void> _addConnectionUnified(Map<String, dynamic> connection) async {
+  Future<void> _addConnectionBetweenEndpoints({
+    required Map<String, dynamic> endpoint1,
+    required Map<String, dynamic> endpoint2,
+  }) async {
     final cabinet = _selectedCabinet;
     if (cabinet == null) {
+      return;
+    }
+
+    if (_sameEndpoint(endpoint1, endpoint2)) {
+      _showSnack('A point cannot be connected to itself');
+      return;
+    }
+
+    if (endpoint1['type'] == 'cable' &&
+        endpoint2['type'] == 'cable' &&
+        endpoint1['cableId'] == endpoint2['cableId']) {
+      _showSnack('Fibers of the same cable cannot be connected');
+      return;
+    }
+    if (endpoint1['type'] == 'switch' &&
+        endpoint2['type'] == 'switch' &&
+        endpoint1['switchId'] == endpoint2['switchId']) {
+      _showSnack('Ports of the same switch cannot be connected');
+      return;
+    }
+
+    final typeError = _validateConnectionTypes(endpoint1, endpoint2);
+    if (typeError != null) {
+      _showSnack(typeError);
       return;
     }
 
     final connections = List<Map<String, dynamic>>.from(
       cabinet['connections'] ?? const [],
     );
-    final leftEndpoint = connection['cable1'] != null
-        ? {'cableId': connection['cable1'], 'fiberIndex': connection['fiber1']}
-        : {'switchId': connection['switch1'], 'portIndex': connection['port1']};
-    final rightEndpoint = connection['cable2'] != null
-        ? {'cableId': connection['cable2'], 'fiberIndex': connection['fiber2']}
-        : {'switchId': connection['switch2'], 'portIndex': connection['port2']};
-
-    if (leftEndpoint['cableId'] != null &&
-        rightEndpoint['cableId'] != null &&
-        leftEndpoint['cableId'] == rightEndpoint['cableId']) {
-      _showSnack('Fibers of the same cable cannot be connected');
-      return;
-    }
-    if (leftEndpoint['switchId'] != null &&
-        rightEndpoint['switchId'] != null &&
-        leftEndpoint['switchId'] == rightEndpoint['switchId']) {
-      _showSnack('Ports of the same switch cannot be connected');
-      return;
-    }
-
-    final typeError = _validateConnectionTypes(leftEndpoint, rightEndpoint);
-    if (typeError != null) {
-      _showSnack(typeError);
-      return;
-    }
-
-    if (_isEndpointBusy(connections, leftEndpoint) ||
-        _isEndpointBusy(connections, rightEndpoint)) {
+    if (_isEndpointBusy(connections, endpoint1) ||
+        _isEndpointBusy(connections, endpoint2)) {
       _showSnack('The end point is already in use');
       return;
     }
 
-    if (_connectionExists(connections, connection)) {
+    if (_connectionExists(connections, endpoint1, endpoint2)) {
       _showSnack('This connection already exists');
       return;
     }
 
-    connections.add(Map<String, dynamic>.from(connection));
+    connections.add({
+      'endpoint1': Map<String, dynamic>.from(endpoint1),
+      'endpoint2': Map<String, dynamic>.from(endpoint2),
+    });
     cabinet['connections'] = connections;
     _touchCabinet(cabinet);
     await _persist();
@@ -1842,8 +2418,8 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         kind: 'Connection added to cabinet',
         summary: [
           cabinet['name']?.toString() ?? 'Cabinet',
-          '${_connectionLabelPart(connection, true)} ↔ ${_connectionLabelPart(connection, false)}',
-        ].join(' • '),
+          '${_endpointLabel(endpoint1)} в†” ${_endpointLabel(endpoint2)}',
+        ].join(' вЂў '),
         targetRecordId: cabinet['id'] as int?,
       );
       _scheduleRebuild();
@@ -1856,135 +2432,26 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
       return;
     }
 
-    final cables = List<Map<String, dynamic>>.from(
-      cabinet['cables'] ?? const [],
-    );
-    final switches = List<Map<String, dynamic>>.from(
-      cabinet['switches'] ?? const [],
-    );
-    if (cables.isEmpty && switches.isEmpty) {
-      _showSnack('Add cables or switches');
+    final choices = _endpointChoices(cabinet);
+    if (choices.length < 2) {
+      _showSnack('At least two connection points are required');
       return;
     }
 
-    String leftType = cables.isNotEmpty ? 'cable' : 'switch';
-    String rightType = switches.isNotEmpty ? 'switch' : 'cable';
-    int? leftCableId = cables.isNotEmpty ? cables.first['id'] as int : null;
-    int? rightCableId = cables.isNotEmpty ? cables.first['id'] as int : null;
-    int leftFiber = 0;
-    int rightFiber = 0;
-    int? leftSwitchId = switches.isNotEmpty
-        ? switches.first['id'] as int
-        : null;
-    int? rightSwitchId = switches.isNotEmpty
-        ? switches.last['id'] as int
-        : null;
-    int leftPort = 0;
-    int rightPort = 0;
+    var endpoint1 = choices.first.endpoint;
+    var endpoint2 = choices.last.endpoint;
 
-    List<DropdownMenuItem<int>> cableItems() => cables
+    List<DropdownMenuItem<String>> endpointItems() => choices
         .map(
-          (cable) => DropdownMenuItem<int>(
-            value: cable['id'] as int,
-            child: Text(cable['name'] ?? tr('Cable')),
+          (choice) => DropdownMenuItem<String>(
+            value: choice.key,
+            child: Text(choice.label),
           ),
         )
         .toList(growable: false);
 
-    List<DropdownMenuItem<int>> switchItems() => switches
-        .map(
-          (sw) => DropdownMenuItem<int>(
-            value: sw['id'] as int,
-            child: Text(sw['name'] ?? tr('Switch')),
-          ),
-        )
-        .toList(growable: false);
-
-    List<DropdownMenuItem<int>> fiberItems(int cableId) {
-      final cable = cables.firstWhere((item) => item['id'] == cableId);
-      final fibersCount = (cable['fibers'] as int?) ?? 1;
-      return List.generate(
-        fibersCount,
-        (index) =>
-            DropdownMenuItem<int>(value: index, child: Text('${index + 1}')),
-      );
-    }
-
-    List<DropdownMenuItem<int>> portItems(int switchId) {
-      final sw = switches.firstWhere((item) => item['id'] == switchId);
-      final portsCount = (sw['ports'] as int?) ?? 24;
-      return List.generate(
-        portsCount,
-        (index) => DropdownMenuItem<int>(
-          value: index,
-          child: Text(tr('Port {value}', {'value': '${index + 1}'})),
-        ),
-      );
-    }
-
-    Widget endpointEditor({
-      required String label,
-      required String type,
-      required ValueChanged<String?> onTypeChanged,
-      required int? cableId,
-      required ValueChanged<int?> onCableChanged,
-      required int fiberIndex,
-      required ValueChanged<int?> onFiberChanged,
-      required int? switchId,
-      required ValueChanged<int?> onSwitchChanged,
-      required int portIndex,
-      required ValueChanged<int?> onPortChanged,
-    }) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: type,
-            decoration: InputDecoration(labelText: tr('Point type')),
-            items: [
-              if (cables.isNotEmpty)
-                DropdownMenuItem(value: 'cable', child: Text(tr('Cable'))),
-              if (switches.isNotEmpty)
-                DropdownMenuItem(value: 'switch', child: Text(tr('Switch'))),
-            ],
-            onChanged: onTypeChanged,
-          ),
-          const SizedBox(height: 8),
-          if (type == 'cable' && cables.isNotEmpty) ...[
-            DropdownButtonFormField<int>(
-              initialValue: cableId,
-              decoration: InputDecoration(labelText: tr('Cable')),
-              items: cableItems(),
-              onChanged: onCableChanged,
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
-              initialValue: fiberIndex,
-              decoration: InputDecoration(labelText: tr('Fiber')),
-              items: fiberItems(cableId ?? cables.first['id'] as int),
-              onChanged: onFiberChanged,
-            ),
-          ],
-          if (type == 'switch' && switches.isNotEmpty) ...[
-            DropdownButtonFormField<int>(
-              initialValue: switchId,
-              decoration: InputDecoration(labelText: tr('Switch')),
-              items: switchItems(),
-              onChanged: onSwitchChanged,
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
-              initialValue: portIndex,
-              decoration: InputDecoration(labelText: tr('Port')),
-              items: portItems(switchId ?? switches.first['id'] as int),
-              onChanged: onPortChanged,
-            ),
-          ],
-        ],
-      );
-    }
+    Map<String, dynamic> choiceByKey(String key) =>
+        choices.firstWhere((choice) => choice.key == key).endpoint;
 
     await showDialog<void>(
       context: context,
@@ -1999,80 +2466,38 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      endpointEditor(
-                        label: 'From',
-                        type: leftType,
-                        onTypeChanged: (value) {
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(tr('From:')),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        initialValue: _endpointKey(endpoint1),
+                        items: endpointItems(),
+                        onChanged: (value) {
                           if (value == null) {
                             return;
                           }
                           setStateDialog(() {
-                            leftType = value;
-                          });
-                        },
-                        cableId: leftCableId,
-                        onCableChanged: (value) {
-                          setStateDialog(() {
-                            leftCableId = value;
-                            leftFiber = 0;
-                          });
-                        },
-                        fiberIndex: leftFiber,
-                        onFiberChanged: (value) {
-                          setStateDialog(() {
-                            leftFiber = value ?? 0;
-                          });
-                        },
-                        switchId: leftSwitchId,
-                        onSwitchChanged: (value) {
-                          setStateDialog(() {
-                            leftSwitchId = value;
-                            leftPort = 0;
-                          });
-                        },
-                        portIndex: leftPort,
-                        onPortChanged: (value) {
-                          setStateDialog(() {
-                            leftPort = value ?? 0;
+                            endpoint1 = choiceByKey(value);
                           });
                         },
                       ),
                       const SizedBox(height: 16),
-                      endpointEditor(
-                        label: 'To',
-                        type: rightType,
-                        onTypeChanged: (value) {
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(tr('To:')),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        initialValue: _endpointKey(endpoint2),
+                        items: endpointItems(),
+                        onChanged: (value) {
                           if (value == null) {
                             return;
                           }
                           setStateDialog(() {
-                            rightType = value;
-                          });
-                        },
-                        cableId: rightCableId,
-                        onCableChanged: (value) {
-                          setStateDialog(() {
-                            rightCableId = value;
-                            rightFiber = 0;
-                          });
-                        },
-                        fiberIndex: rightFiber,
-                        onFiberChanged: (value) {
-                          setStateDialog(() {
-                            rightFiber = value ?? 0;
-                          });
-                        },
-                        switchId: rightSwitchId,
-                        onSwitchChanged: (value) {
-                          setStateDialog(() {
-                            rightSwitchId = value;
-                            rightPort = 0;
-                          });
-                        },
-                        portIndex: rightPort,
-                        onPortChanged: (value) {
-                          setStateDialog(() {
-                            rightPort = value ?? 0;
+                            endpoint2 = choiceByKey(value);
                           });
                         },
                       ),
@@ -2088,88 +2513,14 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 FilledButton.tonalIcon(
                   onPressed: () async {
                     final navigator = Navigator.of(context);
-                    final connections = List<Map<String, dynamic>>.from(
-                      cabinet['connections'] ?? const [],
+                    await _addConnectionBetweenEndpoints(
+                      endpoint1: endpoint1,
+                      endpoint2: endpoint2,
                     );
-
-                    final leftEndpoint = leftType == 'cable'
-                        ? {'cableId': leftCableId, 'fiberIndex': leftFiber}
-                        : {'switchId': leftSwitchId, 'portIndex': leftPort};
-                    final rightEndpoint = rightType == 'cable'
-                        ? {'cableId': rightCableId, 'fiberIndex': rightFiber}
-                        : {'switchId': rightSwitchId, 'portIndex': rightPort};
-
-                    if (leftEndpoint['cableId'] != null &&
-                        rightEndpoint['cableId'] != null &&
-                        leftEndpoint['cableId'] == rightEndpoint['cableId']) {
-                      _showSnack(
-                        'Fibers of the same cable cannot be connected',
-                      );
-                      return;
-                    }
-                    if (leftEndpoint['switchId'] != null &&
-                        rightEndpoint['switchId'] != null &&
-                        leftEndpoint['switchId'] == rightEndpoint['switchId']) {
-                      _showSnack(
-                        'Ports of the same switch cannot be connected',
-                      );
-                      return;
-                    }
-
-                    final typeError = _validateConnectionTypes(
-                      leftEndpoint,
-                      rightEndpoint,
-                    );
-                    if (typeError != null) {
-                      _showSnack(typeError);
-                      return;
-                    }
-
-                    if (_isEndpointBusy(connections, leftEndpoint) ||
-                        _isEndpointBusy(connections, rightEndpoint)) {
-                      _showSnack('The end point is already in use');
-                      return;
-                    }
-
-                    final payload = <String, dynamic>{
-                      if (leftEndpoint['cableId'] != null) ...{
-                        'cable1': leftEndpoint['cableId'],
-                        'fiber1': leftEndpoint['fiberIndex'],
-                      } else ...{
-                        'switch1': leftEndpoint['switchId'],
-                        'port1': leftEndpoint['portIndex'],
-                      },
-                      if (rightEndpoint['cableId'] != null) ...{
-                        'cable2': rightEndpoint['cableId'],
-                        'fiber2': rightEndpoint['fiberIndex'],
-                      } else ...{
-                        'switch2': rightEndpoint['switchId'],
-                        'port2': rightEndpoint['portIndex'],
-                      },
-                    };
-
-                    if (_connectionExists(connections, payload)) {
-                      _showSnack('This connection already exists');
-                      return;
-                    }
-
-                    connections.add(payload);
-                    cabinet['connections'] = connections;
-                    _touchCabinet(cabinet);
-                    await _persist();
                     if (!mounted) {
                       return;
                     }
-                    await _recordTaskAddition(
-                      kind: 'Connection added to cabinet',
-                      summary: [
-                        cabinet['name']?.toString() ?? 'Cabinet',
-                        '${_connectionLabelPart(payload, true)} ↔ ${_connectionLabelPart(payload, false)}',
-                      ].join(' • '),
-                      targetRecordId: cabinet['id'] as int?,
-                    );
                     navigator.pop();
-                    _scheduleRebuild();
                   },
                   icon: const Icon(Icons.add),
                   label: Text(tr('Add')),
@@ -2180,30 +2531,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
         );
       },
     );
-  }
-
-  String _connectionLabelPart(Map<String, dynamic> connection, bool first) {
-    if (first && connection['cable1'] != null && connection['fiber1'] != null) {
-      final cable = _getCableById(connection['cable1'] as int);
-      return '${cable?['name'] ?? 'Cable'}[${(connection['fiber1'] as int) + 1}]';
-    }
-    if (!first &&
-        connection['cable2'] != null &&
-        connection['fiber2'] != null) {
-      final cable = _getCableById(connection['cable2'] as int);
-      return '${cable?['name'] ?? 'Cable'}[${(connection['fiber2'] as int) + 1}]';
-    }
-    if (first && connection['switch1'] != null && connection['port1'] != null) {
-      final sw = _getSwitchById(connection['switch1'] as int);
-      return '${sw?['name'] ?? 'Switch'} port ${(connection['port1'] as int) + 1}';
-    }
-    if (!first &&
-        connection['switch2'] != null &&
-        connection['port2'] != null) {
-      final sw = _getSwitchById(connection['switch2'] as int);
-      return '${sw?['name'] ?? 'Switch'} port ${(connection['port2'] as int) + 1}';
-    }
-    return 'Point';
   }
 
   Widget _buildMapPane() {
@@ -2457,33 +2784,26 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     : _portTypeOptical;
                 final portColor = _portTypeColor(portType);
                 final switchId = sw['id'] as int;
+                final endpoint = _switchEndpoint(switchId, index);
                 return _ConnectionAnchor(
                   registry: _connectionAnchors,
-                  anchorKey: _portKey(switchId, index),
+                  anchorKey: _endpointKey(endpoint),
                   color: portColor,
                   child: DragTarget<Map<String, dynamic>>(
-                    onWillAcceptWithDetails: (_) => true,
+                    onWillAcceptWithDetails: (details) => !_sameEndpoint(
+                      Map<String, dynamic>.from(details.data),
+                      endpoint,
+                    ),
                     onAcceptWithDetails: (details) {
-                      final data = details.data;
-                      final connection = data['cableId'] != null
-                          ? {
-                              'cable1': data['cableId'],
-                              'fiber1': data['fiberIndex'],
-                              'switch2': sw['id'],
-                              'port2': index,
-                            }
-                          : {
-                              'switch1': data['switchId'],
-                              'port1': data['portIndex'],
-                              'switch2': sw['id'],
-                              'port2': index,
-                            };
-                      _scheduleAddConnectionUnified(connection);
+                      _scheduleAddConnectionBetweenEndpoints(
+                        endpoint1: Map<String, dynamic>.from(details.data),
+                        endpoint2: endpoint,
+                      );
                     },
                     builder: (context, candidateData, rejectedData) {
                       final hover = candidateData.isNotEmpty;
                       return Draggable<Map<String, dynamic>>(
-                        data: {'switchId': sw['id'], 'portIndex': index},
+                        data: endpoint,
                         feedback: Material(
                           color: Colors.transparent,
                           child: Container(
@@ -2629,7 +2949,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
   Widget _buildCableCard(Map<String, dynamic> cable) {
     final scheme = cable['color_scheme'] ?? 'default';
     final colors = _fiberSchemes[scheme] ?? _fiberSchemes.values.first;
-    final spliters = List<int>.from(cable['spliters'] ?? const []);
     final selected = _selectedCableId == cable['id'];
     final cableName = (cable['name'] ?? tr('Cable')).toString().trim();
     final fibersCount = (cable['fibers'] as int?) ?? 1;
@@ -2698,30 +3017,22 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 runSpacing: 4,
                 children: List.generate(fibersCount, (index) {
                   final color = colors[index % colors.length];
-                  final spliter = index < spliters.length ? spliters[index] : 0;
+                  final endpoint = _cableEndpoint(cable['id'] as int, index);
                   final fiberWidget = DragTarget<Map<String, dynamic>>(
-                    onWillAcceptWithDetails: (_) => true,
+                    onWillAcceptWithDetails: (details) => !_sameEndpoint(
+                      Map<String, dynamic>.from(details.data),
+                      endpoint,
+                    ),
                     onAcceptWithDetails: (details) {
-                      final data = details.data;
-                      final connection = data['cableId'] != null
-                          ? {
-                              'cable1': data['cableId'],
-                              'fiber1': data['fiberIndex'],
-                              'cable2': cable['id'],
-                              'fiber2': index,
-                            }
-                          : {
-                              'switch1': data['switchId'],
-                              'port1': data['portIndex'],
-                              'cable2': cable['id'],
-                              'fiber2': index,
-                            };
-                      _scheduleAddConnectionUnified(connection);
+                      _scheduleAddConnectionBetweenEndpoints(
+                        endpoint1: Map<String, dynamic>.from(details.data),
+                        endpoint2: endpoint,
+                      );
                     },
                     builder: (context, candidateData, rejectedData) {
                       final hover = candidateData.isNotEmpty;
                       return Draggable<Map<String, dynamic>>(
-                        data: {'cableId': cable['id'], 'fiberIndex': index},
+                        data: endpoint,
                         feedback: Material(
                           color: Colors.transparent,
                           child: Container(
@@ -2761,15 +3072,11 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     children: [
                       _ConnectionAnchor(
                         registry: _connectionAnchors,
-                        anchorKey: _fiberKey(cable['id'] as int, index),
+                        anchorKey: _endpointKey(endpoint),
                         color: color,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
-                            fiberWidget,
-                            if (spliter > 0) const SizedBox(width: 4),
-                            if (spliter > 0) _spliterBadge(spliter),
-                          ],
+                          children: [fiberWidget],
                         ),
                       ),
                     ],
@@ -2777,6 +3084,265 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                 }),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSplitterList() {
+    final left = _getSplittersBySide(0);
+    final right = _getSplittersBySide(1);
+    if (left.isEmpty && right.isEmpty) {
+      return Text(tr('No splitters added'));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useColumns = constraints.maxWidth >= 560;
+        final leftColumn = _buildSplitterColumn(0, left);
+        final rightColumn = _buildSplitterColumn(1, right);
+        if (!useColumns) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [leftColumn, const SizedBox(height: 8), rightColumn],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: leftColumn),
+            const SizedBox(width: 12),
+            Expanded(child: rightColumn),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSplitterColumn(int side, List<Map<String, dynamic>> splitters) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          tr(side == 0 ? 'Left' : 'Right'),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        if (splitters.isEmpty) Text(tr('No items')),
+        ...splitters.map((splitter) => _buildSplitterCard(splitter, side)),
+      ],
+    );
+  }
+
+  Widget _buildSplitterCard(Map<String, dynamic> splitter, int side) {
+    final ratio = (splitter['ratio'] as int?) ?? 8;
+    final splitterId = splitter['id'] as int;
+    final orientation = (splitter['orientation'] as String?) == 'horizontal'
+        ? 'horizontal'
+        : 'vertical';
+    final inputColor = Colors.teal;
+    final outputColor = Colors.indigo;
+    final inputEndpoint = _splitterEndpoint(splitterId, 'input', 0);
+
+    final outputs = List.generate(ratio, (index) {
+      final endpoint = _splitterEndpoint(splitterId, 'output', index);
+      return _buildSplitterPort(
+        endpoint: endpoint,
+        label: index + 1,
+        accentColor: outputColor,
+        isInput: false,
+      );
+    });
+
+    final outputsWidget = orientation == 'horizontal'
+        ? Wrap(spacing: 8, runSpacing: 8, children: outputs)
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: outputs
+                .map(
+                  (port) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: port,
+                  ),
+                )
+                .toList(growable: false),
+          );
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        splitter['name'] ?? tr('Splitter'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'PON 1:$ratio вЂў ${orientation == 'vertical' ? 'vertical' : 'horizontal'}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _editSplitter(splitterId);
+                    }
+                    if (value == 'delete') {
+                      _deleteSplitter(splitterId);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(value: 'edit', child: Text(tr('Edit'))),
+                    PopupMenuItem(value: 'delete', child: Text(tr('Delete'))),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  'IN',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: inputColor.shade700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildSplitterInput(
+                  endpoint: inputEndpoint,
+                  accentColor: inputColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'OUT',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: outputColor.shade700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: outputsWidget),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSplitterInput({
+    required Map<String, dynamic> endpoint,
+    required Color accentColor,
+  }) {
+    return _buildSplitterPort(
+      endpoint: endpoint,
+      label: null,
+      accentColor: accentColor,
+      isInput: true,
+    );
+  }
+
+  Widget _buildSplitterPort({
+    required Map<String, dynamic> endpoint,
+    required int? label,
+    required Color accentColor,
+    required bool isInput,
+  }) {
+    return _ConnectionAnchor(
+      registry: _connectionAnchors,
+      anchorKey: _endpointKey(endpoint),
+      color: accentColor,
+      child: DragTarget<Map<String, dynamic>>(
+        onWillAcceptWithDetails: (details) =>
+            !_sameEndpoint(Map<String, dynamic>.from(details.data), endpoint),
+        onAcceptWithDetails: (details) {
+          _scheduleAddConnectionBetweenEndpoints(
+            endpoint1: Map<String, dynamic>.from(details.data),
+            endpoint2: endpoint,
+          );
+        },
+        builder: (context, candidateData, rejectedData) {
+          final isHover = candidateData.isNotEmpty;
+          return Draggable<Map<String, dynamic>>(
+            data: endpoint,
+            feedback: Material(
+              color: Colors.transparent,
+              child: _splitterPortChip(
+                accentColor: accentColor,
+                label: label,
+                highlight: true,
+                isInput: isInput,
+              ),
+            ),
+            childWhenDragging: Opacity(
+              opacity: 0.3,
+              child: _splitterPortChip(
+                accentColor: accentColor,
+                label: label,
+                highlight: isHover,
+                isInput: isInput,
+              ),
+            ),
+            child: _splitterPortChip(
+              accentColor: accentColor,
+              label: label,
+              highlight: isHover,
+              isInput: isInput,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _splitterPortChip({
+    required Color accentColor,
+    required int? label,
+    required bool highlight,
+    required bool isInput,
+  }) {
+    return Container(
+      width: isInput ? 42 : 34,
+      height: 26,
+      decoration: BoxDecoration(
+        color: isInput ? Colors.teal.shade50 : Colors.indigo.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: highlight ? Colors.deepOrange : accentColor,
+          width: highlight ? 2 : 1,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          label == null ? 'IN' : '$label',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11,
+            color: isInput ? Colors.teal.shade900 : Colors.indigo.shade900,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -2816,21 +3382,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     );
   }
 
-  Widget _spliterBadge(int spliter, {Key? key}) {
-    return Container(
-      key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        '1:$spliter',
-        style: const TextStyle(color: Colors.white, fontSize: 9),
-      ),
-    );
-  }
-
   Widget _buildSelectedCableDetails() {
     final cable = _selectedCableId == null
         ? null
@@ -2840,7 +3391,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
     }
 
     final comments = List<String>.from(cable['fiber_comments'] ?? const []);
-    final spliters = List<int>.from(cable['spliters'] ?? const []);
 
     final commentItems = comments
         .asMap()
@@ -2851,20 +3401,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             children: [
               Text('[${entry.key + 1}]: '),
               Expanded(child: Text(entry.value)),
-            ],
-          ),
-        )
-        .toList(growable: false);
-
-    final spliterItems = spliters
-        .asMap()
-        .entries
-        .where((entry) => entry.value != 0)
-        .map(
-          (entry) => Row(
-            children: [
-              Text('[${entry.key + 1}]: '),
-              Text(tr('Splitter {value}', {'value': '${entry.value}'})),
             ],
           ),
         )
@@ -2883,11 +3419,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
             const SizedBox(height: 8),
             Text(tr('Fiber comments:')),
             ...commentItems,
-          ],
-          if (spliterItems.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(tr('Splitters:')),
-            ...spliterItems,
           ],
         ],
       ),
@@ -3130,6 +3661,25 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     ),
                   ),
                   _buildCableList(),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: Row(
+                      children: [
+                        Text(
+                          tr('Splitters'),
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: _addSplitter,
+                          icon: const Icon(Icons.add),
+                          label: Text(tr('Add splitter')),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildSplitterList(),
                 ],
               ),
             ),
@@ -3192,9 +3742,7 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                         },
                         icon: const Icon(Icons.delete_outline),
                       ),
-                      title: Text(
-                        '${_connectionLabelPart(connection, true)} <--> ${_connectionLabelPart(connection, false)}',
-                      ),
+                      title: Text(_connectionLabel(connection)),
                     );
                   })
                   .toList(growable: false),
@@ -3356,7 +3904,7 @@ class _CabinetHelpDialog extends StatelessWidget {
                 icon: Icons.dns_rounded,
                 title: tr('Switches and ports'),
                 body: tr(
-                  'Press Add in the Switches section to create equipment. Choose the port count and port type, then use each port menu to edit comments, change type, add splitter data, or trace the port on the infrastructure map.',
+                  'Press Add in the Switches section to create equipment. Choose the port count and port type, then use each port menu to edit comments, change type, or trace the port on the infrastructure map.',
                 ),
                 image: const _CabinetSwitchHelpPicture(),
               ),
@@ -3364,7 +3912,7 @@ class _CabinetHelpDialog extends StatelessWidget {
                 icon: Icons.cable_rounded,
                 title: tr('Cables and fibers'),
                 body: tr(
-                  'Press Add cable to add incoming or outgoing cable fibers. Select a cable to see fiber comments and splitter marks. Rename or delete cables from the cable menu.',
+                  'Press Add cable to add incoming or outgoing cable fibers. Select a cable to see fiber comments. Rename or delete cables from the cable menu.',
                 ),
                 image: const _CabinetCableHelpPicture(),
               ),
@@ -3940,19 +4488,37 @@ class _RenderConnectionLineLayer extends RenderProxyBox {
   }
 
   String? _endpointKey(Map<String, dynamic> connection, bool first) {
-    final cableId = _asInt(connection[first ? 'cable1' : 'cable2']);
-    final fiberIndex = _asInt(connection[first ? 'fiber1' : 'fiber2']);
-    if (cableId != null && fiberIndex != null) {
-      return '$cableId:$fiberIndex';
+    final endpoint = connection[first ? 'endpoint1' : 'endpoint2'];
+    if (endpoint is! Map) {
+      return null;
     }
 
-    final switchId = _asInt(connection[first ? 'switch1' : 'switch2']);
-    final portIndex = _asInt(connection[first ? 'port1' : 'port2']);
-    if (switchId != null && portIndex != null) {
+    final endpointMap = Map<String, dynamic>.from(endpoint);
+    if (endpointMap['type'] == 'switch') {
+      final switchId = _asInt(endpointMap['switchId']);
+      final portIndex = _asInt(endpointMap['portIndex']);
+      if (switchId == null || portIndex == null) {
+        return null;
+      }
       return 's$switchId:$portIndex';
     }
 
-    return null;
+    if (endpointMap['type'] == 'splitter') {
+      final splitterId = _asInt(endpointMap['splitterId']);
+      final portIndex = _asInt(endpointMap['portIndex']) ?? 0;
+      final portType = endpointMap['portType']?.toString() ?? 'output';
+      if (splitterId == null) {
+        return null;
+      }
+      return 'splitter:$splitterId:$portType:$portIndex';
+    }
+
+    final cableId = _asInt(endpointMap['cableId']);
+    final fiberIndex = _asInt(endpointMap['fiberIndex']);
+    if (cableId == null || fiberIndex == null) {
+      return null;
+    }
+    return '$cableId:$fiberIndex';
   }
 
   double _direction(double value) {

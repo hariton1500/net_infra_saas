@@ -437,25 +437,19 @@ class SignalPathPlanner {
     int portIndex,
   ) {
     for (final connection in _connectionsOf(cabinet)) {
-      final firstPort =
-          _asInt(connection['switch1']) == switchId &&
-          _asInt(connection['port1']) == portIndex;
-      final secondPort =
-          _asInt(connection['switch2']) == switchId &&
-          _asInt(connection['port2']) == portIndex;
-      if (firstPort) {
-        final cableId = _asInt(connection['cable2']);
-        final fiberIndex = _asInt(connection['fiber2']);
-        if (cableId != null && fiberIndex != null) {
-          return _CableFiber(cableId, fiberIndex);
-        }
+      final firstPort = _portEndpointOf(
+        connection,
+        true,
+      )?.matches(switchId, portIndex);
+      final secondPort = _portEndpointOf(
+        connection,
+        false,
+      )?.matches(switchId, portIndex);
+      if (firstPort == true) {
+        return _fiberEndpointOf(connection, false);
       }
-      if (secondPort) {
-        final cableId = _asInt(connection['cable1']);
-        final fiberIndex = _asInt(connection['fiber1']);
-        if (cableId != null && fiberIndex != null) {
-          return _CableFiber(cableId, fiberIndex);
-        }
+      if (secondPort == true) {
+        return _fiberEndpointOf(connection, true);
       }
     }
     return null;
@@ -586,22 +580,13 @@ class SignalPathPlanner {
   }
 
   _PortEndpoint? _portEndpointOf(Map<String, dynamic> connection, bool first) {
-    if (connection['endpoint1'] is Map || connection['endpoint2'] is Map) {
-      final endpoint = connection[first ? 'endpoint1' : 'endpoint2'];
-      if (endpoint is! Map) {
-        return null;
-      }
-      final map = Map<String, dynamic>.from(endpoint);
-      final switchId = _asInt(map['switchId']);
-      final portIndex = _asInt(map['portIndex']);
-      if (switchId != null && portIndex != null) {
-        return _PortEndpoint(switchId, portIndex);
-      }
+    final endpoint = connection[first ? 'endpoint1' : 'endpoint2'];
+    if (endpoint is! Map) {
       return null;
     }
-
-    final switchId = _asInt(connection[first ? 'switch1' : 'switch2']);
-    final portIndex = _asInt(connection[first ? 'port1' : 'port2']);
+    final map = Map<String, dynamic>.from(endpoint);
+    final switchId = _asInt(map['switchId']);
+    final portIndex = _asInt(map['portIndex']);
     if (switchId != null && portIndex != null) {
       return _PortEndpoint(switchId, portIndex);
     }
@@ -609,22 +594,13 @@ class SignalPathPlanner {
   }
 
   _CableFiber? _fiberEndpointOf(Map<String, dynamic> connection, bool first) {
-    if (connection['endpoint1'] is Map || connection['endpoint2'] is Map) {
-      final endpoint = connection[first ? 'endpoint1' : 'endpoint2'];
-      if (endpoint is! Map) {
-        return null;
-      }
-      final map = Map<String, dynamic>.from(endpoint);
-      final cableId = _asInt(map['cableId']);
-      final fiberIndex = _asInt(map['fiberIndex']);
-      if (cableId != null && fiberIndex != null) {
-        return _CableFiber(cableId, fiberIndex);
-      }
+    final endpoint = connection[first ? 'endpoint1' : 'endpoint2'];
+    if (endpoint is! Map) {
       return null;
     }
-
-    final cableId = _asInt(connection[first ? 'cable1' : 'cable2']);
-    final fiberIndex = _asInt(connection[first ? 'fiber1' : 'fiber2']);
+    final map = Map<String, dynamic>.from(endpoint);
+    final cableId = _asInt(map['cableId']);
+    final fiberIndex = _asInt(map['fiberIndex']);
     if (cableId != null && fiberIndex != null) {
       return _CableFiber(cableId, fiberIndex);
     }
@@ -763,4 +739,8 @@ class _PortEndpoint {
 
   final int switchId;
   final int portIndex;
+
+  bool matches(int switchId, int portIndex) {
+    return this.switchId == switchId && this.portIndex == portIndex;
+  }
 }

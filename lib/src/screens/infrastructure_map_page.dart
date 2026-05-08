@@ -964,6 +964,43 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
         yield _TraceTransition(left);
       }
     }
+
+    if (endpoint.kind == _TraceEndpointKind.splitterPort) {
+      final splitters = List<Map<String, dynamic>>.from(
+        record['splitters'] ?? const [],
+      );
+      final splitter = splitters.cast<Map<String, dynamic>?>().firstWhere(
+        (item) => item?['id'] == endpoint.splitterId,
+        orElse: () => null,
+      );
+      if (splitter == null) {
+        return;
+      }
+      final ratio = (splitter['ratio'] as int?) ?? 8;
+      if (endpoint.splitterPortType == 'input') {
+        for (var index = 0; index < ratio; index++) {
+          yield _TraceTransition(
+            _TraceEndpoint.splitterPort(
+              entityTypeCode: endpoint.entityTypeCode,
+              entityId: endpoint.entityId,
+              splitterId: endpoint.splitterId!,
+              splitterPortType: 'output',
+              splitterPortIndex: index,
+            ),
+          );
+        }
+      } else {
+        yield _TraceTransition(
+          _TraceEndpoint.splitterPort(
+            entityTypeCode: endpoint.entityTypeCode,
+            entityId: endpoint.entityId,
+            splitterId: endpoint.splitterId!,
+            splitterPortType: 'input',
+            splitterPortIndex: 0,
+          ),
+        );
+      }
+    }
   }
 
   Iterable<_TraceTransition> _traceMuffNeighbors(
@@ -1085,9 +1122,18 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
     Map<String, dynamic> connection,
     bool first,
   ) {
-    final switchId = connection[first ? 'switch1' : 'switch2'] as int?;
-    final portIndex = connection[first ? 'port1' : 'port2'] as int?;
-    if (switchId != null && portIndex != null) {
+    final endpoint = connection[first ? 'endpoint1' : 'endpoint2'];
+    if (endpoint is! Map) {
+      return null;
+    }
+
+    final endpointMap = Map<String, dynamic>.from(endpoint);
+    if (endpointMap['type'] == 'switch') {
+      final switchId = endpointMap['switchId'] as int?;
+      final portIndex = endpointMap['portIndex'] as int?;
+      if (switchId == null || portIndex == null) {
+        return null;
+      }
       return _TraceEndpoint.cabinetPort(
         entityTypeCode: entityTypeCode,
         entityId: entityId,
@@ -1096,8 +1142,24 @@ class _InfrastructureMapPageState extends State<InfrastructureMapPage> {
       );
     }
 
-    final cableId = connection[first ? 'cable1' : 'cable2'] as int?;
-    final fiberIndex = connection[first ? 'fiber1' : 'fiber2'] as int?;
+    if (endpointMap['type'] == 'splitter') {
+      final splitterId = endpointMap['splitterId'] as int?;
+      final portType = endpointMap['portType'] as String?;
+      final portIndex = endpointMap['portIndex'] as int?;
+      if (splitterId == null || portType == null || portIndex == null) {
+        return null;
+      }
+      return _TraceEndpoint.splitterPort(
+        entityTypeCode: entityTypeCode,
+        entityId: entityId,
+        splitterId: splitterId,
+        splitterPortType: portType,
+        splitterPortIndex: portIndex,
+      );
+    }
+
+    final cableId = endpointMap['cableId'] as int?;
+    final fiberIndex = endpointMap['fiberIndex'] as int?;
     if (cableId != null && fiberIndex != null) {
       return _TraceEndpoint.cableFiber(
         entityTypeCode: entityTypeCode,
