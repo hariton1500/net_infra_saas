@@ -2689,30 +2689,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             child: Row(
               children: [
                 Text(
-                  tr('Cables'),
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                if (hasCables)
-                  FilledButton.tonalIcon(
-                    onPressed: _addCable,
-                    icon: const Icon(Icons.add),
-                    label: Text(tr('Add cable')),
-                  ),
-              ],
-            ),
-          ),
-          if (!hasCables)
-            _buildEmptySectionState(
-              message: tr('No cables added'),
-              buttonLabel: tr('Add cable'),
-              onPressed: _addCable,
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: Row(
-              children: [
-                Text(
                   tr('Splitters'),
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
@@ -2731,6 +2707,30 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
               message: tr('No splitters added'),
               buttonLabel: tr('Add splitter'),
               onPressed: _addSplitter,
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Row(
+              children: [
+                Text(
+                  tr('Cables'),
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                if (hasCables)
+                  FilledButton.tonalIcon(
+                    onPressed: _addCable,
+                    icon: const Icon(Icons.add),
+                    label: Text(tr('Add cable')),
+                  ),
+              ],
+            ),
+          ),
+          if (!hasCables)
+            _buildEmptySectionState(
+              message: tr('No cables added'),
+              buttonLabel: tr('Add cable'),
+              onPressed: _addCable,
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -3122,6 +3122,7 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
         ),
         const SizedBox(height: 8),
         if (cables.isEmpty && splitters.isEmpty) Text(tr('No items')),
+        ...splitters.map((splitter) => _buildSplitterCard(splitter, side)),
         ...cables.map((cable) {
           final isSelected = _selectedCableId == cable['id'];
           return Card(
@@ -3274,7 +3275,6 @@ class _MuffNotebookPageState extends State<MuffNotebookPage> {
             ),
           );
         }),
-        ...splitters.map((splitter) => _buildSplitterCard(splitter, side)),
       ],
     );
   }

@@ -3648,25 +3648,6 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     child: Row(
                       children: [
                         Text(
-                          tr('Cables'),
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: _addCable,
-                          icon: const Icon(Icons.add),
-                          label: Text(tr('Add cable')),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildCableList(),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 0),
-                    child: Row(
-                      children: [
-                        Text(
                           tr('Splitters'),
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
@@ -3680,6 +3661,25 @@ class _CabinetNotebookPageState extends State<CabinetNotebookPage> {
                     ),
                   ),
                   _buildSplitterList(),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: Row(
+                      children: [
+                        Text(
+                          tr('Cables'),
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: _addCable,
+                          icon: const Icon(Icons.add),
+                          label: Text(tr('Add cable')),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildCableList(),
                 ],
               ),
             ),
