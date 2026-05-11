@@ -80,6 +80,15 @@ Replies checked on 2026-05-07:
 
 No delivery failure messages found in Gmail for this outreach as of 2026-05-07.
 
+Replies checked on 2026-05-10:
+
+| Company | Reply status | Next action |
+|---|---|---|
+| Interfiber | Hot lead; clarified they thought the sender was Albanian, but agreed to communicate through WhatsApp and shared a personal number. | Continue in WhatsApp in written Albanian/English with translation; ask 3-5 priority problems and offer async demo notes. |
+| TIM-PROJEKT | Strong technical interest; they have their own tools for field survey, subscriber acquisition, construction tracking, and TeleCAD-GIS data extraction, but lack a design-phase tool for routes, capacities, HLD/LLD in GIS. Asked about Serbian standards, Telekom Srbija specs, TeleCAD DXF, API/integration, and as-built outputs. Requested a call next week. | Prepare a technical reply and demo agenda; be transparent about current capabilities and position Net Infra SaaS as operations/as-built + possible integration layer rather than claiming full HLD/LLD design support. |
+
+No delivery failure messages found in Gmail for this outreach as of 2026-05-10.
+
 Not sent yet because the available public path is a contact form, WhatsApp, phone, or an email hidden by the website crawler:
 
 | Company | Next action |
