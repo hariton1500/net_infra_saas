@@ -19,3 +19,8 @@ flutter build web `
   --base-href="$baseHref" `
   --dart-define="SUPABASE_URL=$env:SUPABASE_URL" `
   --dart-define="SUPABASE_ANON_KEY=$env:SUPABASE_ANON_KEY"
+
+$appHtml = "build/web/app.html"
+if (Test-Path $appHtml) {
+  (Get-Content $appHtml -Raw).Replace('$FLUTTER_BASE_HREF', $baseHref) | Set-Content $appHtml
+}

@@ -18,3 +18,7 @@ flutter build web \
   --base-href="${BASE_HREF}" \
   --dart-define="SUPABASE_URL=${SUPABASE_URL}" \
   --dart-define="SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}"
+
+if [[ -f build/web/app.html ]]; then
+  LC_ALL=C perl -0pi -e "s|\\\$FLUTTER_BASE_HREF|${BASE_HREF}|g" build/web/app.html
+fi

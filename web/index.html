@@ -1,46 +1,727 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
-
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="net_infra_saas">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Net Infra SaaS - Network Infrastructure Management for Telecom Teams</title>
+  <meta name="description" content="Net Infra SaaS helps internet providers, fiber operators, and telecom teams manage cabinets, splice points, cable routes, field tasks, and infrastructure changes in one workspace.">
+  <meta name="keywords" content="network infrastructure management, telecom SaaS, fiber network documentation, cable route management, network cabinets, splice points, field service tasks, internet provider software">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#071526">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Net Infra SaaS - Network Infrastructure Management">
+  <meta property="og:description" content="One workspace for telecom infrastructure records, fiber routes, splice points, field tasks, and team coordination.">
+  <meta property="og:image" content="feature_graphic_1024x500.png">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="/">
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>net_infra_saas</title>
   <link rel="manifest" href="manifest.json">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Net Infra SaaS",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "description": "A digital workspace for network infrastructure records, operational tasks, and field changes for telecom teams.",
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "Internet service providers, fiber network operators, telecom contractors, field engineering teams"
+      }
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How is Net Infra SaaS different from a generic task manager?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A generic task manager stores tasks. Net Infra SaaS connects tasks with network assets, fiber routes, splice points, cabinets, and infrastructure documentation."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the service useful for a small technical team?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. A small team can start with a shared operational base and expand the workflow as the company grows."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What kind of data can be managed?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The service is designed for network cabinets, splice points, cable lines, routes, employees, tasks, and changes related to network operations."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can it support field operations?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Net Infra SaaS helps connect office planning, assigned field work, and actual infrastructure changes made on site."
+          }
+        }
+      ]
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #102033;
+      --muted: #5b6b7d;
+      --line: #d8e3ed;
+      --panel: #ffffff;
+      --wash: #f6f9fb;
+      --deep: #071526;
+      --navy: #0d2a43;
+      --teal: #12b8a6;
+      --green: #3bb273;
+      --amber: #f2b84b;
+      --coral: #e86a5f;
+      --blue: #3577c8;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background: var(--wash);
+      color: var(--ink);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(216, 227, 237, 0.8);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(14px);
+    }
+
+    .header-inner,
+    .section-inner {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 72px;
+      gap: 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+      gap: 12px;
+      font-weight: 900;
+      color: var(--deep);
+    }
+
+    .brand img {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .nav a:hover {
+      color: var(--deep);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .button.primary {
+      color: #06151f;
+      background: var(--teal);
+      box-shadow: 0 14px 36px rgba(18, 184, 166, 0.28);
+    }
+
+    .button.secondary {
+      color: var(--deep);
+      border-color: var(--line);
+      background: #fff;
+    }
+
+    .hero {
+      color: #fff;
+      background:
+        linear-gradient(100deg, rgba(7, 21, 38, 0.94), rgba(7, 21, 38, 0.76) 52%, rgba(7, 21, 38, 0.42)),
+        url("feature_graphic_1024x500.png") center / cover no-repeat,
+        var(--deep);
+    }
+
+    .hero .section-inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+      align-items: end;
+      min-height: min(760px, calc(100vh - 72px));
+      padding: clamp(64px, 9vw, 120px) 0 46px;
+      gap: clamp(28px, 6vw, 70px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      margin: 0 0 18px;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 999px;
+      color: #baf5ed;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 860px;
+      font-size: clamp(42px, 7vw, 84px);
+    }
+
+    h2 {
+      max-width: 780px;
+      font-size: clamp(32px, 4vw, 54px);
+    }
+
+    h3 {
+      font-size: 21px;
+    }
+
+    .hero-copy p {
+      max-width: 720px;
+      margin: 22px 0 0;
+      color: #d8e6ef;
+      font-size: clamp(18px, 2.2vw, 23px);
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      margin-top: 32px;
+      gap: 12px;
+    }
+
+    .hero-card {
+      align-self: stretch;
+      display: grid;
+      align-content: end;
+      gap: 12px;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
+    }
+
+    .hero-card strong {
+      font-size: 42px;
+      line-height: 1;
+    }
+
+    .hero-card span {
+      color: #d8e6ef;
+      font-weight: 750;
+    }
+
+    section {
+      padding: clamp(58px, 8vw, 96px) 0;
+      background: #fff;
+    }
+
+    section.alt {
+      background: var(--wash);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 28px;
+      margin-bottom: 34px;
+    }
+
+    .section-head p {
+      max-width: 470px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card,
+    .feature {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .card {
+      padding: 24px;
+    }
+
+    .card p,
+    .feature p,
+    .faq p {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .feature {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 18px;
+      padding: 22px;
+    }
+
+    .icon {
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      color: #fff;
+      background: var(--navy);
+      font-size: 26px;
+      font-weight: 900;
+    }
+
+    .icon.teal {
+      background: var(--teal);
+      color: #06151f;
+    }
+
+    .icon.green {
+      background: var(--green);
+      color: #06151f;
+    }
+
+    .icon.amber {
+      background: var(--amber);
+      color: #2d2104;
+    }
+
+    .icon.coral {
+      background: var(--coral);
+    }
+
+    .proof {
+      color: #fff;
+      background: var(--deep);
+    }
+
+    .proof .section-head p,
+    .proof .card p {
+      color: #cad9e5;
+    }
+
+    .proof .card {
+      border-color: rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .steps {
+      counter-reset: step;
+    }
+
+    .steps .card {
+      position: relative;
+      padding-top: 62px;
+    }
+
+    .steps .card::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      top: 22px;
+      left: 22px;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      color: #06151f;
+      background: var(--teal);
+      font-weight: 900;
+    }
+
+    .audience-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 26px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .audience-list li {
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--deep);
+      background: #fff;
+      font-weight: 800;
+    }
+
+    .faq {
+      display: grid;
+      gap: 14px;
+    }
+
+    details {
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--deep);
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .cta {
+      color: #fff;
+      background:
+        linear-gradient(120deg, rgba(18, 184, 166, 0.16), transparent 44%),
+        var(--deep);
+    }
+
+    .cta-box {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 26px;
+    }
+
+    .cta p {
+      max-width: 720px;
+      color: #d8e6ef;
+      font-size: 19px;
+    }
+
+    .site-footer {
+      padding: 28px 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      background: #fff;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      gap: 16px;
+      font-size: 14px;
+    }
+
+    .footer-inner a {
+      color: var(--deep);
+      font-weight: 800;
+    }
+
+    @media (max-width: 860px) {
+      .nav a:not(.button) {
+        display: none;
+      }
+
+      .hero .section-inner,
+      .grid.three,
+      .grid.two,
+      .cta-box {
+        grid-template-columns: 1fr;
+      }
+
+      .hero .section-inner {
+        min-height: auto;
+        padding-top: 74px;
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      .section-head p {
+        margin-top: 14px;
+      }
+
+      .hero-card {
+        align-self: auto;
+      }
+
+      .footer-inner {
+        display: block;
+      }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="Net Infra SaaS">
+        <img src="icons/Icon-192.png" alt="">
+        <span>Net Infra SaaS</span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#workflow">Use cases</a>
+        <a href="#faq">FAQ</a>
+        <a class="button secondary" href="app.html">Sign in</a>
+      </nav>
+    </div>
+  </header>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+  <main>
+    <section class="hero">
+      <div class="section-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">Fiber routes, cabinets, splice points, and field tasks</p>
+          <h1>Net Infra SaaS</h1>
+          <p>
+            A promotional and operational workspace for telecom teams that need cleaner infrastructure records,
+            better field coordination, and a shared view of real network work.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="mailto:hariton1500@gmail.com?subject=Net Infra SaaS demo request">Request a demo</a>
+            <a class="button secondary" href="product_presentation.html">Open presentation</a>
+          </div>
+        </div>
+        <aside class="hero-card" aria-label="Key benefit">
+          <strong>1</strong>
+          <span>shared system for routes, cabinets, splice points, tasks, employees, and infrastructure changes</span>
+        </aside>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="section-inner">
+        <div class="section-head">
+          <h2>What providers and contractors get</h2>
+          <p>The service supports everyday operations: technical documentation, active work, team accountability, and field updates in one place.</p>
+        </div>
+        <div class="grid three">
+          <article class="card">
+            <h3>One source of truth</h3>
+            <p>Cabinets, splice points, routes, cable lines, and operational notes stay in a shared system instead of chats, spreadsheets, and paper notes.</p>
+          </article>
+          <article class="card">
+            <h3>Office and field alignment</h3>
+            <p>Engineers, installers, and supervisors can see task context, infrastructure changes, and the current state of network assets.</p>
+          </article>
+          <article class="card">
+            <h3>Team scaling</h3>
+            <p>New employees onboard faster because records, responsibilities, and active work already live inside a structured workspace.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="alt">
+      <div class="section-inner">
+        <div class="section-head">
+          <h2>Core service modules</h2>
+          <p>Net Infra SaaS is built as a practical tool for companies that build, maintain, and document real network infrastructure.</p>
+        </div>
+        <div class="grid two">
+          <article class="feature">
+            <div class="icon teal">S</div>
+            <div>
+              <h3>Splice points and connections</h3>
+              <p>Record network points, technical notes, relationships, and infrastructure change history.</p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="icon green">R</div>
+            <div>
+              <h3>Cable routes</h3>
+              <p>Manage routes and objects that matter for maintenance, planning, and field execution.</p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="icon amber">T</div>
+            <div>
+              <h3>Tasks and ownership</h3>
+              <p>Assign work, track statuses, connect employees, and keep operational context close to network records.</p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="icon coral">C</div>
+            <div>
+              <h3>Network cabinets</h3>
+              <p>Document cabinets and network nodes in a structure that stays available to the whole team.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof">
+      <div class="section-inner">
+        <div class="section-head">
+          <h2>Why operational data stops getting lost</h2>
+          <p>When infrastructure work lives in memory, chats, and paper notes, companies pay with delays, mistakes, repeated site visits, and weak accountability.</p>
+        </div>
+        <div class="grid three">
+          <article class="card">
+            <h3>Fewer verbal handoffs</h3>
+            <p>Decisions and field changes are captured where the team already manages objects and tasks.</p>
+          </article>
+          <article class="card">
+            <h3>Faster data lookup</h3>
+            <p>Employees can find infrastructure records without digging through old chats, files, and personal notes.</p>
+          </article>
+          <article class="card">
+            <h3>Cleaner work history</h3>
+            <p>The company builds technical memory that remains useful as the team grows.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="alt">
+      <div class="section-inner">
+        <div class="section-head">
+          <h2>Typical operating flow</h2>
+          <p>The product fits internet service providers, fiber operators, telecom contractors, field engineering teams, and technical supervisors.</p>
+        </div>
+        <div class="grid three steps">
+          <article class="card">
+            <h3>Create a company workspace</h3>
+            <p>Set up a shared environment, employee roles, and the basic structure for team operations.</p>
+          </article>
+          <article class="card">
+            <h3>Add infrastructure records</h3>
+            <p>Document cabinets, splice points, routes, cable lines, addresses, coordinates, and related notes.</p>
+          </article>
+          <article class="card">
+            <h3>Run field tasks</h3>
+            <p>Assign work, capture field changes, and maintain a current operational picture of the network.</p>
+          </article>
+        </div>
+        <ul class="audience-list" aria-label="Who the service is for">
+          <li>internet service providers</li>
+          <li>fiber network operators</li>
+          <li>telecom contractors</li>
+          <li>field crews</li>
+          <li>technical supervisors</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="section-inner">
+        <div class="section-head">
+          <h2>Frequently asked questions</h2>
+          <p>Clear answers help future customers and search engines understand what the product is for.</p>
+        </div>
+        <div class="faq">
+          <details open>
+            <summary>How is Net Infra SaaS different from a generic task manager?</summary>
+            <p>A generic task manager stores tasks. Net Infra SaaS connects tasks with network assets, fiber routes, splice points, cabinets, and infrastructure documentation.</p>
+          </details>
+          <details>
+            <summary>Is the service useful for a small technical team?</summary>
+            <p>Yes. A small team can start with a shared operational base and expand the workflow as the company grows.</p>
+          </details>
+          <details>
+            <summary>What kind of data can be managed?</summary>
+            <p>The service is designed for network cabinets, splice points, cable lines, routes, employees, tasks, and changes related to network operations.</p>
+          </details>
+          <details>
+            <summary>Can it support field operations?</summary>
+            <p>Yes. Net Infra SaaS helps connect office planning, assigned field work, and actual infrastructure changes made on site.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="section-inner cta-box">
+        <div>
+          <h2>Turn scattered infrastructure notes into a shared operational system</h2>
+          <p>Request a Net Infra SaaS demo and discuss how the product can fit your company workflow.</p>
+        </div>
+        <a class="button primary" href="mailto:hariton1500@gmail.com?subject=Net Infra SaaS demo request">Contact us</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>© 2026 Net Infra SaaS. Workspace for network infrastructure operations.</span>
+      <span><a href="privacy.html">Privacy policy</a> · <a href="app.html">Sign in</a></span>
+    </div>
+  </footer>
 </body>
 </html>

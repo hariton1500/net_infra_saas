@@ -1,11 +1,11 @@
 {
-    "name": "net_infra_saas",
-    "short_name": "net_infra_saas",
-    "start_url": ".",
+    "name": "Net Infra SaaS",
+    "short_name": "Net Infra",
+    "start_url": "app.html",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#071526",
+    "theme_color": "#071526",
+    "description": "A workspace for network infrastructure records, operational tasks, and field changes for telecom teams.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
