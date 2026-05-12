@@ -1,7 +1,7 @@
 {
     "name": "Net Infra SaaS",
     "short_name": "Net Infra",
-    "start_url": "app.html",
+    "start_url": "app",
     "display": "standalone",
     "background_color": "#071526",
     "theme_color": "#071526",
