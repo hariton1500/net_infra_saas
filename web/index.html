@@ -171,8 +171,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 46px;
-      padding: 0 18px;
+      min-height: 50px;
+      padding: 0 20px;
       border-radius: 8px;
       border: 1px solid transparent;
       font-weight: 850;
@@ -192,20 +192,51 @@
     }
 
     .hero {
+      position: relative;
+      overflow: hidden;
       color: #fff;
       background:
-        linear-gradient(100deg, rgba(7, 21, 38, 0.94), rgba(7, 21, 38, 0.76) 52%, rgba(7, 21, 38, 0.42)),
-        url("feature_graphic_1024x500.png") center / cover no-repeat,
+        linear-gradient(120deg, rgba(13, 42, 67, 0.36), transparent 44%),
+        linear-gradient(160deg, #06121f 0%, #0a1f33 56%, #092f38 100%),
         var(--deep);
     }
 
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .hero::before {
+      inset: 0;
+      opacity: 0.18;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 92px 92px;
+      mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+    }
+
+    .hero::after {
+      right: -10%;
+      bottom: -34%;
+      width: 48vw;
+      min-width: 520px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(18, 184, 166, 0.18), transparent 66%);
+    }
+
     .hero .section-inner {
+      position: relative;
+      z-index: 1;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
-      align-items: end;
-      min-height: min(760px, calc(100vh - 72px));
-      padding: clamp(64px, 9vw, 120px) 0 46px;
-      gap: clamp(28px, 6vw, 70px);
+      grid-template-columns: minmax(0, 0.95fr) minmax(420px, 1.05fr);
+      align-items: center;
+      min-height: min(740px, calc(100vh - 72px));
+      padding: clamp(56px, 8vw, 96px) 0 clamp(44px, 7vw, 72px);
+      gap: clamp(30px, 5vw, 64px);
     }
 
     .eyebrow {
@@ -231,8 +262,8 @@
     }
 
     h1 {
-      max-width: 860px;
-      font-size: clamp(42px, 7vw, 84px);
+      max-width: 820px;
+      font-size: clamp(46px, 6vw, 78px);
     }
 
     h2 {
@@ -245,39 +276,214 @@
     }
 
     .hero-copy p {
-      max-width: 720px;
+      max-width: 650px;
       margin: 22px 0 0;
       color: #d8e6ef;
-      font-size: clamp(18px, 2.2vw, 23px);
+      font-size: clamp(18px, 1.8vw, 22px);
     }
 
     .hero-actions {
       display: flex;
       flex-wrap: wrap;
-      margin-top: 32px;
+      margin-top: 34px;
       gap: 12px;
     }
 
-    .hero-card {
-      align-self: stretch;
+    .hero-proof {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 28px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .hero-proof li {
+      padding: 9px 12px;
+      border: 1px solid rgba(216, 227, 237, 0.18);
+      border-radius: 999px;
+      color: #d8e6ef;
+      background: rgba(255, 255, 255, 0.07);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .product-preview {
+      position: relative;
       display: grid;
-      align-content: end;
-      gap: 12px;
-      padding: 24px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid rgba(216, 227, 237, 0.18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 34px 84px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(16px);
+    }
+
+    .preview-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: #d8e6ef;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .preview-dots {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .preview-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(216, 230, 239, 0.42);
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 190px;
+      gap: 14px;
+    }
+
+    .network-map,
+    .task-rail,
+    .metric-strip article {
+      border: 1px solid rgba(216, 227, 237, 0.16);
+      border-radius: 8px;
+      background: rgba(7, 21, 38, 0.62);
+    }
+
+    .network-map {
+      position: relative;
+      min-height: 330px;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(145deg, rgba(18, 184, 166, 0.16), rgba(7, 21, 38, 0.82));
+      background-size: 56px 56px, 56px 56px, auto;
+    }
+
+    .route-line {
+      position: absolute;
+      left: 14%;
+      right: 12%;
+      top: 48%;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--teal), var(--green), var(--amber));
+      transform: rotate(-16deg);
+      box-shadow: 0 0 28px rgba(18, 184, 166, 0.34);
+    }
+
+    .node {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(216, 230, 239, 0.82);
+      border-radius: 50%;
+      background: #071526;
+      box-shadow: 0 0 0 6px rgba(18, 184, 166, 0.12);
+    }
+
+    .node::after {
+      content: attr(data-label);
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 7px;
+      border-radius: 8px;
+      color: #d8e6ef;
+      background: rgba(7, 21, 38, 0.86);
+      font-size: 11px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .node-a {
+      left: 14%;
+      top: 58%;
+    }
+
+    .node-b {
+      left: 45%;
+      top: 42%;
+    }
+
+    .node-c {
+      right: 14%;
+      top: 27%;
+    }
+
+    .asset-card {
+      position: absolute;
+      left: 20px;
+      top: 18px;
+      width: min(250px, calc(100% - 40px));
+      padding: 14px;
+      border: 1px solid rgba(216, 227, 237, 0.18);
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
     }
 
-    .hero-card strong {
-      font-size: 42px;
-      line-height: 1;
+    .asset-card strong,
+    .task-rail strong,
+    .metric-strip strong {
+      display: block;
+      color: #fff;
+      font-size: 15px;
+      line-height: 1.25;
     }
 
-    .hero-card span {
-      color: #d8e6ef;
-      font-weight: 750;
+    .asset-card span,
+    .task-rail span,
+    .metric-strip span {
+      display: block;
+      margin-top: 5px;
+      color: #b8c7d4;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .task-rail {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .task-row {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .task-row small {
+      display: inline-flex;
+      margin-bottom: 8px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      color: #071526;
+      background: var(--teal);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .metric-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-strip article {
+      padding: 14px;
     }
 
     section {
@@ -499,6 +705,7 @@
       .hero .section-inner,
       .grid.three,
       .grid.two,
+      .preview-grid,
       .cta-box {
         grid-template-columns: 1fr;
       }
@@ -516,8 +723,16 @@
         margin-top: 14px;
       }
 
-      .hero-card {
-        align-self: auto;
+      .product-preview {
+        padding: 12px;
+      }
+
+      .network-map {
+        min-height: 270px;
+      }
+
+      .metric-strip {
+        grid-template-columns: 1fr;
       }
 
       .footer-inner {
@@ -556,10 +771,62 @@
             <a class="button primary" href="mailto:hariton1500@gmail.com?subject=Net Infra SaaS demo request">Request a demo</a>
             <a class="button secondary" href="product_presentation.html">Open presentation</a>
           </div>
+          <ul class="hero-proof" aria-label="Product highlights">
+            <li>Asset-linked tasks</li>
+            <li>Field update history</li>
+            <li>Shared infrastructure records</li>
+          </ul>
         </div>
-        <aside class="hero-card" aria-label="Key benefit">
-          <strong>1</strong>
-          <span>shared system for routes, cabinets, splice points, tasks, employees, and infrastructure changes</span>
+        <aside class="product-preview" aria-label="Net Infra SaaS product preview">
+          <div class="preview-topbar">
+            <span>Network operations workspace</span>
+            <span class="preview-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          </div>
+          <div class="preview-grid">
+            <div class="network-map" aria-label="Fiber route map mockup">
+              <div class="route-line"></div>
+              <div class="node node-a" data-label="Cabinet A12"></div>
+              <div class="node node-b" data-label="Splice 08"></div>
+              <div class="node node-c" data-label="Route 4B"></div>
+              <div class="asset-card">
+                <strong>Splice point 08</strong>
+                <span>2 active tasks · last field update 14:20</span>
+              </div>
+            </div>
+            <div class="task-rail" aria-label="Field task queue">
+              <strong>Field queue</strong>
+              <span>Live operational context</span>
+              <div class="task-row">
+                <small>Today</small>
+                <strong>Inspect cabinet A12</strong>
+                <span>Assigned to field crew</span>
+              </div>
+              <div class="task-row">
+                <small>Open</small>
+                <strong>Update route capacity</strong>
+                <span>Linked to Route 4B</span>
+              </div>
+              <div class="task-row">
+                <small>Review</small>
+                <strong>Confirm splice records</strong>
+                <span>Supervisor check</span>
+              </div>
+            </div>
+          </div>
+          <div class="metric-strip" aria-label="Operational benefits">
+            <article>
+              <strong>Fewer lost updates</strong>
+              <span>Changes stay attached to assets</span>
+            </article>
+            <article>
+              <strong>Cleaner handoffs</strong>
+              <span>Office and field share context</span>
+            </article>
+            <article>
+              <strong>Faster lookup</strong>
+              <span>Records are searchable by object</span>
+            </article>
+          </div>
         </aside>
       </div>
     </section>
